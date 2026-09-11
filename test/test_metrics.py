@@ -135,13 +135,25 @@ assert(SCV_Graph.build({producer,consumer}).wareNodes.energycells.balanceUnknown
 
 -- Record actual widget calls to compare both popup entry points.
 function tableMock()
-    local t={properties={},rows={}}
+    local t={properties={},rows={},groups={}}
     function t:setColWidthPercent() end
-    function t:addRow(key)
-        local r={key=key}; self.rows[#self.rows+1]=r
+    function t:addRowGroup(properties)
+        local group={properties=properties,rows={}}
+        self.groups[#self.groups+1]=group
+        local owner=self
+        function group:addRow(key,props)
+            local r=owner:addRow(key,props)
+            r.group=self; self.rows[#self.rows+1]=r
+            return r
+        end
+        return group
+    end
+    function t:addRow(key, props)
+        local r={key=key,properties=props}; self.rows[#self.rows+1]=r
         for i=1,2 do
             local c={handlers={}}; r[i]=c
             function c:setColSpan(n) self.span=n; return self end
+            function c:setBackgroundColSpan(n) self.bgspan=n; return self end
             function c:createText(text, props) self.text=text; self.props=props; return self end
             function c:createStatusBar(props) self.bar=props; return self end
             function c:createButton(props) self.button=props; return self end
@@ -169,7 +181,10 @@ function compareEntry(role, stationID)
     assert(a.rows[i+2][1].text == b.rows[j+2][1].text)
     assert(a.rows[i+2][2].text == b.rows[j+2][2].text)
     assert(a.rows[i+3][1].text == b.rows[j+3][1].text)
-    assert(a.rows[i+4][1].props.height == 6 and b.rows[j+4][1].props.height == 6)
+    assert(a.rows[i+4][1].props.height == 2 and b.rows[j+4][1].props.height == 2)
+    assert(a.rows[i+4].properties.borderBelow == false)
+    assert(a.rows[i+2][1].bgspan == 2 and b.rows[j+2][1].bgspan == 2)
+    assert(a.rows[i+2][1].span == nil and a.rows[i+2][2].text ~= nil)
     assert(a.rows[i][1].props.mouseOverText and b.rows[j][1].props.mouseOverText)
     local input = stationID == 'B'
     local data = graph.stationNodes[stationID].wares.energycells
@@ -177,14 +192,36 @@ function compareEntry(role, stationID)
         assert(string.find(a.rows[i][1].props.mouseOverText,'warning:',1,true))
         assert(string.find(b.rows[j][1].props.mouseOverText,'warning:',1,true))
     end
-    assert(a.rows[i+2][2].props.color == (not input and 'text_positive' or 'text_inactive'))
+    local color=a.rows[i+2][2].props.color
+    if input and data.consKnown and data.consMax>0 then
+        assert(color.r==255 and color.g==150 and color.b==150 and color.glow==0)
+    else
+        assert(color == (not input and 'text_positive' or 'text_inactive'))
+    end
+    assert(#a.groups==0 and #b.groups==0) -- no automatic group padding
+    for n=0,3 do
+        assert(a.rows[i+n].group==nil and not a.rows[i+n].properties.borderBelow)
+        assert(a.rows[i+n].properties.bgColor=='row_background_unselectable')
+        assert(b.rows[j+n].properties.bgColor=='row_background_unselectable')
+    end
+    assert(a.rows[i+4].group==nil) -- gap is outside the background
+    assert(string.find(a.rows[i+3][1].text,'lasts ',1,true)==1)
     assert(a.rows[i][1].props.wordwrap and b.rows[j][1].props.wordwrap)
     assert(a.properties.maxVisibleHeight==220 and b.properties.maxVisibleHeight==220)
+    assert(a.properties.highlightMode=='off' and b.properties.highlightMode=='off')
     return a.rows[i+2][1].text,a.rows[i+2][2].text
 end
 consumer.wares.energycells.consMax=2400000
+function GetFlowchartNodeExpandedFrameData() return 210,100,20,2 end
+local paddedFrame={properties={x=100,width=220,height=220}}
+menu.graph=SCV_Graph.build({producer,consumer})
+menu.expandWare({id=1},paddedFrame,tableMock(),menu.graph.wareNodes.energycells)
+assert(paddedFrame.properties.x==82 and paddedFrame.properties.width==256)
+assert(paddedFrame.properties.height==220)
+menu.expandWare({id=1},paddedFrame,tableMock(),menu.graph.wareNodes.energycells)
+assert(paddedFrame.properties.width==256) -- normalization is not cumulative
 local stock,rate=compareEntry(false,'A')
-assert(stock == 'Stock 120.0k' and rate == '+4.8M/h',stock..rate)
+assert(stock == 'Amount 120.0k / 200.0k' and rate == '+4.8M/h',stock..rate)
 local _, inputRate=compareEntry(true,'B')
 assert(inputRate == '-2.4M/h')
 consumer.wares.energycells.consKnown=false

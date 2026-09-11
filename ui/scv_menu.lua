@@ -38,6 +38,7 @@ local config = {
 	trendDeadband          = 0.02,
 	nameFieldWidth         = 420,
 	savedVersion           = 2,
+	consumptionColor       = { r = 255, g = 150, b = 150, a = 100, glow = 0 },
 }
 
 local function log(msg)
@@ -306,19 +307,6 @@ local function formatRate(n)
 	return formatAmount(n) .. "/h"
 end
 
--- Signed, because the sign IS the finding: negative means the chain cannot sustain this
--- ware regardless of how much happens to be banked right now.
-local function formatSigned(n)
-	if n == nil then return "? /h" end
-	n = tonumber(n) or 0
-	if n > 0 then
-		return "+" .. formatRate(n)
-	elseif n < 0 then
-		return "-" .. formatRate(math.abs(n))
-	end
-	return formatRate(0)
-end
-
 local function formatPartial(n, known, rate)
 	local value = rate and formatRate(n) or formatAmount(n)
 	if known then return value end
@@ -430,12 +418,23 @@ function menu.decorateNodes(graph)
 				s1, s2   = 1, 1
 			end
 
+			-- ONE full-operation line. supplyCap and demandCap used to be printed TWICE -
+			-- once as a ratio and once as a difference - and because the two lines were
+			-- worded differently they read as two contradicting measurements of the same
+			-- ware. netRate is defined as supplyCap - demandCap, so the second line never
+			-- carried information the first did not.
 			local lines = {}
 			lines[#lines + 1] = T(3015, tostring(#node.producers), tostring(#node.consumers))
+			lines[#lines + 1] = T(3050,
+				formatPartial(node.supplyCap, node.supplyKnown, true),
+				formatPartial(node.demandCap, node.demandKnown, true),
+				node.balance and string.format("%.2fx", node.balance) or "?")
 			if node.balance then
-				lines[#lines + 1] = T(3050, formatRate(node.supplyCap), formatRate(node.demandCap),
-					string.format("%.2fx", node.balance))
-				if node.balance < 1 then lines[#lines + 1] = T(3072) end
+				-- The shortfall in units/h belongs here, where it explains the orange: a
+				-- ratio says how bad, this says by how much.
+				if node.balance < 1 then
+					lines[#lines + 1] = T(3072, formatRate(math.abs(node.netRate or 0)))
+				end
 			elseif node.balanceUnknown == "supply" then
 				lines[#lines + 1] = T(3051)
 			elseif node.balanceUnknown == "zero-demand" then
@@ -444,8 +443,6 @@ function menu.decorateNodes(graph)
 				lines[#lines + 1] = T(3052)
 			end
 			lines[#lines + 1] = T(3053, formatPartial(node.supplyStock, node.supplyStockKnown), formatPartial(node.demandStock, node.demandStockKnown))
-			lines[#lines + 1] = T(3054, formatPartial(node.supplyCap, node.supplyKnown, true), formatPartial(node.demandCap, node.demandKnown, true),
-				formatSigned(node.netRate))
 			if node.worstConsumer and node.worstCover then
 				local sn = graph.stationNodes[node.worstConsumer]
 				lines[#lines + 1] = T(3055, (sn and sn.name) or "?", formatHours(node.worstCover))
@@ -1018,6 +1015,8 @@ end
 -- splits its table the same way (Helper.onExpandLSOStorageNode: setColWidthPercent(2, 30)).
 local function setupColumns(ftable)
 	ftable:setColWidthPercent(2, 32)
+	-- Keep selectable entry rows for native scrolling, but hide the focus rectangle.
+	ftable.properties.highlightMode = "off"
 end
 
 local function sectionHeader(ftable, text)
@@ -1036,27 +1035,35 @@ local function detailEntry(ftable, key, name, w, isInput)
 	local b = m.bar
 	local rate = m.rateKnown and (m.sign .. formatRate(m.rate)) or "? /h"
 	local stock = b.stockKnown and formatAmount(b.start) or "?"
+	local capacity = ((w.limit or 0) > 0 or (w.capacityUnits or 0) > 0)
+		and ((b.estimated and "~" or "") .. formatAmount(b.max)) or "?"
 	local long = T(isInput and 3035 or 3036, rate)
 	if not m.rateKnown then long = T(3037) end
 	local reason = warningReason(name, w.health)
 	local labelTip = reason and (reason .. "\n" .. long) or long
-	local r = ftable:addRow(key, {})
+	-- Explicit row backgrounds need no group wrapper. Avoid its automatic padding;
+	-- the transparent 2px spacer below is the only gap between metric blocks.
+	local function metricRow(rowkey)
+		return ftable:addRow(rowkey, { bgColor = Color["row_background_unselectable"], borderBelow = false })
+	end
+	local r = metricRow(key)
 	r[1]:setColSpan(2):createText(name, { wordwrap = true, color = severityColor(m.severity), mouseOverText = labelTip })
-	r = ftable:addRow(false, {})
+	r = metricRow(false)
 	barCell(r[1]:setColSpan(2), w, name, long)
-	r = ftable:addRow(false, {})
-	r[1]:createText(T(3060, stock), { wordwrap = true })
+	r = metricRow(false)
+	r[1]:setBackgroundColSpan(2):createText(T(3060, stock, capacity), { wordwrap = true,
+		mouseOverText = b.estimated and T(3045) or (b.unknown and T(3046) or "") })
 	r[2]:createText(rate, { halign = "right", wordwrap = true, mouseOverText = long,
-		color = m.rateKnown and not isInput and (m.rate or 0) > 0 and Color["text_positive"] or Color["text_inactive"] })
-	r = ftable:addRow(false, {})
+		color = m.rateKnown and (m.rate or 0) > 0 and (isInput and config.consumptionColor or Color["text_positive"]) or Color["text_inactive"] })
+	r = metricRow(false)
 	local fullTime = m.capacityHours and ((b.estimated and "~" or "") .. formatHours(m.capacityHours)) or "?"
 	local coverageTip = T(isInput and 3070 or 3071)
 	if b.estimated then coverageTip = coverageTip .. "\n" .. T(3045) end
 	r[1]:setColSpan(2):createText(T(3069, m.stockHours and formatHours(m.stockHours) or "?", fullTime),
 		{ wordwrap = true, mouseOverText = coverageTip, color = Color["text_inactive"] })
 	-- A small full-width spacer, following vanilla's explicit-height text rows.
-	r = ftable:addRow(false, {})
-	r[1]:setColSpan(2):createText(" ", { fontsize = 1, height = 6 })
+	r = ftable:addRow(false, { borderBelow = false })
+	r[1]:setColSpan(2):createText(" ", { fontsize = 1, height = 2 })
 end
 
 function menu.expandStation(node, frame, ftable, nodedata)
@@ -1098,6 +1105,18 @@ end
 
 -- Same entry layout as the station popup, with station names.
 function menu.expandWare(node, frame, ftable, nodedata)
+	-- Stadium nodes reserve half-round side space; rectangle nodes use the common
+	-- expansion padding (also returned as vertical padding). Match rectangle insets
+	-- inside the same node outline, before table widths and wrapped heights resolve.
+	if node and node.id and not frame.scvMatchedInsets then
+		local _, _, sidePadding, commonPadding = GetFlowchartNodeExpandedFrameData(node.id)
+		if sidePadding and commonPadding and sidePadding > commonPadding then
+			local extra = sidePadding - commonPadding
+			frame.properties.x = frame.properties.x - extra
+			frame.properties.width = frame.properties.width + 2 * extra
+			frame.scvMatchedInsets = true
+		end
+	end
 	capToFrame(frame, ftable)
 	setupColumns(ftable)
 

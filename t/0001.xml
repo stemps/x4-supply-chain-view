@@ -70,21 +70,20 @@
     <t id="3051">Maximum supply is incomplete or unknown; no complete balance is available.</t>
     <t id="3052">Maximum demand is incomplete or unknown; no complete balance is available.</t>
     <t id="3053">Suppliers hold %s, consumers hold %s</t>
-    <t id="3054">At full operation: production %s, consumption %s (balance %s)</t>
     <t id="3055">Lowest known stock coverage at full operation, without deliveries: %s, %s</t>
     <t id="3056">Balanced: maximum supply equals maximum demand</t>
 
-    <t id="3060">Stock %s</t>
+    <t id="3060">Amount %s / %s</t>
     <t id="3063">Maximum consumption is zero; supply/demand ratio is not applicable.</t>
     <t id="3064">Reserved trades unavailable; expected fill is unknown.</t>
     <t id="3065">Stock health cannot be fully assessed: some stock, capacity or maximum rates are unknown.</t>
     <t id="3066">%s — %s %s. %s warning: less than %s. This is a full-operation projection, not confirmation that the station is currently stalled. Reservations and future trades are not included.</t>
     <t id="3067">Red</t>
     <t id="3068">Orange</t>
-    <t id="3069">Coverage %s / full %s</t>
+    <t id="3069">lasts %s / when full %s</t>
     <t id="3070">Current stock / full storage, expressed as hours of maximum consumption including current workforce. Assumes no deliveries; reservations are not included. The second value describes the buffer when fully stocked.</t>
     <t id="3071">Current stock / full storage, expressed as hours of maximum production. For an output this is production-equivalent inventory, not consumer coverage or time remaining until full. Reservations and collections are not included.</t>
-    <t id="3072">Orange bar segment: maximum supply is below maximum demand.</t>
+    <t id="3072">Orange bar segment: maximum supply is below maximum demand by %s.</t>
     <t id="3073">Red stock number: maximum demand exceeds maximum supply beyond the balance tolerance. This colour describes production balance, not current inventory movement.</t>
 
     <!-- 4xxx: limits and degradation -->

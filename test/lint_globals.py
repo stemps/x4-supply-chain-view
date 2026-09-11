@@ -37,6 +37,7 @@ LUA_BUILTINS = {
 # X4 engine globals this mod uses. Every entry was verified against reference/ui/ as a
 # GLOBAL (not a C.<name> ffi function) before being added here.
 ENGINE_GLOBALS = {
+	"GetFlowchartNodeExpandedFrameData",  # helper.lua expand(): native shape padding
     "ConvertStringTo64Bit", "ConvertIDTo64Bit", "ConvertStringToLuaID",
     "DebugError", "ReadText", "TraceBack",
     "GetComponentData", "GetWareData", "GetMacroData", "GetLibraryEntry",
