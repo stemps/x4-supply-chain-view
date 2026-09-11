@@ -145,6 +145,28 @@ function SCV_Graph.validRate(value)
 	return n ~= nil and n == n and n >= 0 and n < math.huge
 end
 
+-- Storage is a union of participating stations, never one copy per edge/role.
+function SCV_Graph.storageTotals(stations, ware, producers, consumers)
+	local total = { stock = 0, capacity = 0, stockKnown = true, capacityKnown = true, estimated = false }
+	local seen = {}
+	for _, ids in ipairs({ producers, consumers }) do
+		for _, id in ipairs(ids) do
+			if not seen[id] then
+				seen[id] = true
+				local w = stations[id] and stations[id].wares[ware]
+				if w then
+					if w.stockKnown ~= false then total.stock = total.stock + (w.stock or 0)
+					else total.stockKnown = false end
+					local cap = w.limit or 0
+					if cap <= 0 then cap = w.capacityUnits or 0; total.estimated = total.estimated or cap > 0 end
+					if cap > 0 then total.capacity = total.capacity + cap else total.capacityKnown = false end
+				else total.stockKnown = false; total.capacityKnown = false end
+			end
+		end
+	end
+	return total
+end
+
 function SCV_Graph.rateKnown(w, isInput)
 	local flag = w.prodKnown
 	-- Explicit flags distinguish real zero from unavailable rates. Legacy callers
@@ -448,7 +470,8 @@ function SCV_Graph.build(stations, options)
 				wnode.coverHours = wnode.demandStock / wnode.demandRate
 			end
 
-			wnode.totalStock = wnode.supplyStock + wnode.demandStock
+			wnode.storage = SCV_Graph.storageTotals(stationNodes, ware, producers, consumers)
+			wnode.totalStock = wnode.storage.stock
 
 			-- URGENCY comes from the consumer that runs dry first, NOT from the chain average.
 			-- Average cover (total consumer stock / total draw) is dominated by the big

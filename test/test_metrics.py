@@ -189,8 +189,10 @@ function compareEntry(role, stationID)
     local input = stationID == 'B'
     local data = graph.stationNodes[stationID].wares.energycells
     if data.health.severity ~= 'ok' then
-        assert(string.find(a.rows[i][1].props.mouseOverText,'warning:',1,true))
-        assert(string.find(b.rows[j][1].props.mouseOverText,'warning:',1,true))
+        assert(string.find(a.rows[i][1].props.mouseOverText,'threshold: below',1,true))
+        assert(string.find(b.rows[j][1].props.mouseOverText,'threshold: below',1,true))
+        assert(string.find(a.rows[i][1].props.mouseOverText,'\\n\\n',1,true))
+        assert(not string.find(a.rows[i][1].props.mouseOverText,'At full operation:',1,true))
     end
     local color=a.rows[i+2][2].props.color
     if input and data.consKnown and data.consMax>0 then
@@ -258,6 +260,71 @@ assert(menu.expandedNode==node)
 menu.onFlowchartNodeCollapsed(node,frame)
 assert(cleared and menu.expandedNode==nil and menu.expandedMenuFrame==nil)
 ''')
+lua.execute('''
+local a={id='a',name='Supplier',wares={ore={name='Ore',output=true,stock=100,limit=200,prodMax=50,prodKnown=true}}}
+local b={id='b',name='Consumer',wares={ore={name='Ore',input=true,stock=50,limit=300,consMax=80,consKnown=true}}}
+local graph=SCV_Graph.build({a,b})
+local w=graph.wareNodes.ore
+assert(w.storage.stock==150 and w.storage.capacity==500)
+menu.decorateNodes(graph)
+assert(w[1].properties.value==150 and w[1].properties.max==500)
+assert(w[1].properties.slider1==-1 and w[1].properties.slider2==-1)
+assert(w[1].statusText=='-30/h' and w[1].color==nil)
+menu.graph=graph
+local t=tableMock()
+menu.expandWare(nil,{properties={height=220}},t,w)
+assert(t.rows[1][1].text=='Totals')
+assert(t.rows[2][1].text=='Amount 150 / 500')
+assert(t.rows[3][1].text=='Production' and t.rows[3][2].text=='+50/h')
+assert(t.rows[3][2].props.color=='text_positive')
+assert(t.rows[4][1].text=='Consumption' and t.rows[4][2].text=='-80/h')
+assert(t.rows[4][2].props.color.g==150)
+assert(t.rows[3][1].bgspan==2 and t.rows[4][1].bgspan==2)
+assert(t.rows[5][1].text=='Supplied by')
+local dedup=SCV_Graph.storageTotals(graph.stationNodes,'ore',{'a','a'},{'a','b'})
+assert(dedup.stock==150 and dedup.capacity==500)
+b.wares.ore.limit=0; b.wares.ore.capacityUnits=400
+graph=SCV_Graph.build({a,b}); w=graph.wareNodes.ore
+assert(w.storage.estimated and w.storage.capacity==600)
+b.wares.ore.capacityUnits=0; b.wares.ore.stockKnown=false
+graph=SCV_Graph.build({a,b}); w=graph.wareNodes.ore
+assert(not w.storage.capacityKnown and not w.storage.stockKnown and w.storage.stock==100)
+menu.decorateNodes(graph)
+assert(w[1].properties.value==0 and w[1].statusText=='-30/h')
+b.wares.ore.limit=300; b.wares.ore.stockKnown=true; b.wares.ore.consKnown=false
+graph=SCV_Graph.build({a,b}); w=graph.wareNodes.ore
+menu.decorateNodes(graph)
+assert(w[1].properties.value==150 and w[1].properties.max==500 and w[1].statusText=='? /h')
+menu.graph=graph
+local partial=tableMock()
+menu.expandWare(nil,{properties={height=220}},partial,w)
+assert(partial.rows[4][2].text=='-80/h + ?')
+assert(string.find(partial.rows[4][2].props.mouseOverText,'known subtotal',1,true))
+a.wares.ore.stock=900
+graph=SCV_Graph.build({a,b}); w=graph.wareNodes.ore
+menu.decorateNodes(graph)
+assert(w.storage.stock==950 and w[1].properties.value==500 and w[1].properties.max==500)
+''')
+lua.execute(r'''
+local station={id='warn',name='Factory',wares={
+    food={name='Terran MRE',input=true,stock=39,limit=100,consMax=60,consKnown=true},
+    ore={name='Ore',input=true,stock=0,consKnown=false},
+    ice={name='Ice',input=true,stock=0,consKnown=false}}}
+local graph=SCV_Graph.build({station})
+menu.decorateNodes(graph)
+local text=graph.stationNodes.warn[1].properties.mouseOverText
+assert(text=='Terran MRE\nLow input buffer\n\nLasts: 39m\nRed threshold: below 1h\n\nInputs without supplier: 3\nSome metrics unavailable\n\nAssumes maximum consumption.\nExcludes deliveries/reservations.',text)
+local output={id='out',name='Factory',wares={x={name='Product',output=true,stock=18,limit=50,prodMax=60,prodKnown=true}}}
+graph=SCV_Graph.build({output}); menu.decorateNodes(graph)
+text=graph.stationNodes.out[1].properties.mouseOverText
+assert(string.find(text,'Output storage risk\n\nFull in: 32m',1,true))
+assert(string.find(text,'Assumes maximum production.\nExcludes collections/reservations.',1,true))
+assert(not string.find(text,'Some metrics unavailable',1,true))
+station.wares.food.stock=120
+graph=SCV_Graph.build({station}); menu.decorateNodes(graph)
+assert(string.find(graph.stationNodes.warn[1].properties.mouseOverText,'Orange threshold: below 3h',1,true))
+''')
+assert all(texts[key].isascii() for key in [3065,3066,*range(3090,3101)])
 for source in (root/'ui').glob('*.lua'):
     lua.execute('assert(load(...))', source.read_text(encoding='utf-8'))
 print('Reader, maximum-rate, unknown-data, paired popup, scroll, collapse and Lua syntax checks passed.')

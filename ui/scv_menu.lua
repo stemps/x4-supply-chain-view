@@ -307,6 +307,11 @@ local function formatRate(n)
 	return formatAmount(n) .. "/h"
 end
 
+local function formatSigned(n)
+	if n == nil then return "? /h" end
+	return (n > 0 and "+" or "") .. formatRate(n)
+end
+
 local function formatPartial(n, known, rate)
 	local value = rate and formatRate(n) or formatAmount(n)
 	if known then return value end
@@ -324,13 +329,22 @@ local function formatHours(hours)
 	return T(5000, string.format("%.1f", hours))
 end
 
-local function warningReason(name, health)
+local function warningReason(name, health, context)
 	if not health or health.severity == "ok" then return nil end
-	local label = health.reason == "backedup" and T(3004) or T(3003)
+	local output = health.reason == "backedup"
 	local threshold = health.severity == "critical" and SCV_Graph.THRESHOLDS.criticalHours
 		or SCV_Graph.THRESHOLDS.warningHours
-	return T(3066, name, label, formatHours(health.hours),
-		T(health.severity == "critical" and 3067 or 3068), formatHours(threshold))
+	local lines = { name, T(output and 3091 or 3090), "",
+		T(output and 3093 or 3092, formatHours(health.hours)),
+		T(3094, T(health.severity == "critical" and 3067 or 3068), T(5000, string.format("%g", threshold))) }
+	if context and #context > 0 then
+		lines[#lines + 1] = ""
+		for _, line in ipairs(context) do lines[#lines + 1] = line end
+	end
+	lines[#lines + 1] = ""
+	lines[#lines + 1] = T(output and 3096 or 3095)
+	lines[#lines + 1] = T(output and 3098 or 3097)
+	return table.concat(lines, "\n")
 end
 
 -- Turn SCV_Graph's structural nodes into the shape the flowchart render loop wants: a
@@ -344,18 +358,19 @@ function menu.decorateNodes(graph)
 	for _, node in ipairs(graph.nodes) do
 		if node.scvkind == "station" then
 			local parts = {}
+			local warningName, warningHealth
 			if node.worstWare then
 				local w = node.wares[node.worstWare]
 				local h = w and w.health
 				if h and (h.severity ~= "ok") then
-					parts[#parts + 1] = warningReason(w.name or node.worstWare, h)
+					warningName, warningHealth = w.name or node.worstWare, h
 				end
 			end
 			if #node.unmet > 0 then
-				parts[#parts + 1] = T(3005) .. ": " .. #node.unmet
+				parts[#parts + 1] = T(3099, tostring(#node.unmet))
 			end
 			if #node.unsold > 0 then
-				parts[#parts + 1] = T(3006) .. ": " .. #node.unsold
+				parts[#parts + 1] = T(3100, tostring(#node.unsold))
 			end
 			if #node.collapsed > 0 then
 				parts[#parts + 1] = T(4002, tostring(#node.collapsed))
@@ -368,7 +383,8 @@ function menu.decorateNodes(graph)
 				properties = {
 					shape         = "rectangle",
 					width         = config.stationNodeWidth,
-					mouseOverText = (#parts > 0) and table.concat(parts, "\n") or T(3014),
+					mouseOverText = warningReason(warningName, warningHealth, parts)
+						or ((#parts > 0) and table.concat(parts, "\n") or T(3014)),
 				},
 				statuscolor = severityColor(node.severity),
 				color       = (node.severity == "critical") and Color["lso_node_error"] or nil,
@@ -391,103 +407,31 @@ function menu.decorateNodes(graph)
 				node[1].statusIcon = severityIcon(node.severity)
 			end
 		else
-			-- WARE NODE: three questions, one cell.
-			--
-			--   BAR      can the chain SUSTAIN it?   capacity balance, supply / demand
-			--   STATUS   how much is BANKED?          total stock, coloured by trend
-			--   OUTLINE  is anyone about to STALL?    the consumer that runs dry first
-			--
-			-- The bar used to be hours of cover capped at 4.5h, and it saturated: food and
-			-- medical supplies buffered for hundreds of hours all read 100%, so a ware holding
-			-- 636k and one holding 54k looked identical and nothing short of an imminent stall
-			-- showed at all.
-
-			-- BAR: capacity balance on a 0 - 2x scale, both sliders parked on 1.0x.
-			-- With step = 0 the sliders are shading, not handles (helper.lua flowchartnode
-			-- defaults), and their two rules combine into a readable bar:
-			--   slider1 shades from the value UP to it   -> short of 1.0x: the missing
-			--                                              capacity shows in orange
-			--   slider2 shades from it UP to the value   -> past 1.0x: the spare capacity
-			--                                              shows in green
-			-- so blue reaches as far as supply meets demand, orange is the shortfall and
-			-- green is the headroom.
-			local barValue, barMax, s1, s2 = 0, 1, -1, -1
-			if node.balance then
-				barMax   = config.balanceScale
-				barValue = math.min(node.balance, config.balanceScale)
-				s1, s2   = 1, 1
-			end
-
-			-- ONE full-operation line. supplyCap and demandCap used to be printed TWICE -
-			-- once as a ratio and once as a difference - and because the two lines were
-			-- worded differently they read as two contradicting measurements of the same
-			-- ware. netRate is defined as supplyCap - demandCap, so the second line never
-			-- carried information the first did not.
-			local lines = {}
-			lines[#lines + 1] = T(3015, tostring(#node.producers), tostring(#node.consumers))
-			lines[#lines + 1] = T(3050,
+			-- Inventory fill and full-operation hourly balance are separate metrics.
+			local storage = node.storage
+			local known = storage.stockKnown and storage.capacityKnown and storage.capacity > 0
+			local amount = T(3060, formatPartial(storage.stock, storage.stockKnown),
+				(storage.estimated and "~" or "") .. formatPartial(storage.capacity, storage.capacityKnown))
+			local lines = { amount, T(3081,
 				formatPartial(node.supplyCap, node.supplyKnown, true),
-				formatPartial(node.demandCap, node.demandKnown, true),
-				node.balance and string.format("%.2fx", node.balance) or "?")
-			if node.balance then
-				-- The shortfall in units/h belongs here, where it explains the orange: a
-				-- ratio says how bad, this says by how much.
-				if node.balance < 1 then
-					lines[#lines + 1] = T(3072, formatRate(math.abs(node.netRate or 0)))
-				end
-			elseif node.balanceUnknown == "supply" then
-				lines[#lines + 1] = T(3051)
-			elseif node.balanceUnknown == "zero-demand" then
-				lines[#lines + 1] = T(3063)
-			else
-				lines[#lines + 1] = T(3052)
-			end
-			lines[#lines + 1] = T(3053, formatPartial(node.supplyStock, node.supplyStockKnown), formatPartial(node.demandStock, node.demandStockKnown))
-			if node.worstConsumer and node.worstCover then
-				local sn = graph.stationNodes[node.worstConsumer]
-				lines[#lines + 1] = T(3055, (sn and sn.name) or "?", formatHours(node.worstCover))
-				local w = sn and sn.wares[node.scvware]
-				local reason = warningReason((sn and sn.name) or "?", w and w.health)
-				if reason then lines[#lines + 1] = reason end
-			end
-			lines[#lines + 1] = node.inbound and T(3010) or T(3011)
-
-			-- Colour shows production balance at full operation, not observed stock movement.
-			local trend = not node.netKnown and Color["text_inactive"] or nil
-			local deadband = math.max(1, node.demandCap * config.trendDeadband)
-			if node.netKnown and node.netRate > deadband then
-				trend = Color["text_positive"]
-			elseif node.netKnown and node.netRate < -deadband then
-				trend = Color["text_negative"]
-				lines[#lines + 1] = T(3073)
-			end
-
-			-- OUTLINE: urgency from the consumer that runs dry first.
-			local outline = nil
-			if node.severity == "critical" then
-				outline = Color["lso_node_error"]
-			elseif node.severity == "warning" then
-				outline = Color["lso_node_warning"]
-			end
-
+				formatPartial(node.demandCap, node.demandKnown, true), formatSigned(node.netRate)) }
+			if storage.estimated then lines[#lines + 1] = T(3045) end
+			if not known then lines[#lines + 1] = T(3082) end
+			local rateColor = Color["text_inactive"]
+			if node.netKnown and node.netRate > 0 then rateColor = Color["text_positive"]
+			elseif node.netKnown and node.netRate < 0 then rateColor = config.consumptionColor end
 			node.text = node.name
 			node[1] = {
 				properties = {
-					shape         = "stadium",
-					width         = config.wareNodeWidth,
-					value         = barValue,
-					max           = barMax,
-					step          = 0,       -- shading overlays, not draggable handles
-					slider1       = s1,
-					slider2       = s2,
-					slider1MouseOverText = (s1 >= 0) and T(3056) or "",
-					slider2MouseOverText = (s2 >= 0) and T(3056) or "",
+					shape = "stadium", width = config.wareNodeWidth,
+					value = known and math.min(storage.stock, storage.capacity) or 0,
+					max = known and storage.capacity or 1,
+					step = 0, slider1 = -1, slider2 = -1,
 					mouseOverText = table.concat(lines, "\n"),
 				},
-				statusText  = formatPartial(node.totalStock, node.supplyStockKnown and node.demandStockKnown),
-				statuscolor = trend,
-				color       = outline,
+				statusText = formatSigned(node.netRate), statuscolor = rateColor,
 			}
+
 		end
 	end
 end
@@ -1020,7 +964,7 @@ local function setupColumns(ftable)
 end
 
 local function sectionHeader(ftable, text)
-	local row = ftable:addRow(false, {})
+	local row = ftable:addRow(false, { paddingTop = 8 })
 	row[1]:setColSpan(2):createText(text, Helper.headerRow1Properties)
 end
 
@@ -1040,7 +984,7 @@ local function detailEntry(ftable, key, name, w, isInput)
 	local long = T(isInput and 3035 or 3036, rate)
 	if not m.rateKnown then long = T(3037) end
 	local reason = warningReason(name, w.health)
-	local labelTip = reason and (reason .. "\n" .. long) or long
+	local labelTip = reason or long
 	-- Explicit row backgrounds need no group wrapper. Avoid its automatic padding;
 	-- the transparent 2px spacer below is the only gap between metric blocks.
 	local function metricRow(rowkey)
@@ -1119,6 +1063,25 @@ function menu.expandWare(node, frame, ftable, nodedata)
 	end
 	capToFrame(frame, ftable)
 	setupColumns(ftable)
+
+	sectionHeader(ftable, T(3080))
+	local storage = nodedata.storage
+	local totals = ftable:addRow("totals", { bgColor = Color["row_background_unselectable"], borderBelow = false })
+	totals[1]:setColSpan(2):createText(T(3060,
+		formatPartial(storage.stock, storage.stockKnown),
+		(storage.estimated and "~" or "") .. formatPartial(storage.capacity, storage.capacityKnown)),
+		{ wordwrap = true, mouseOverText = storage.estimated and T(3045) or T(3083) })
+	local function totalRate(label, amount, known, sign, color, tooltip)
+		local value = formatPartial(amount, known, true)
+		if known or amount > 0 then value = sign .. value end
+		local tip = T(tooltip)
+		if not known then tip = tip .. "\n" .. T(3088) end
+		local row = ftable:addRow(false, { bgColor = Color["row_background_unselectable"], borderBelow = false })
+		row[1]:setBackgroundColSpan(2):createText(T(label), { mouseOverText = tip })
+		row[2]:createText(value, { halign = "right", wordwrap = true, color = color, mouseOverText = tip })
+	end
+	totalRate(3084, nodedata.supplyCap, nodedata.supplyKnown, "+", Color["text_positive"], 3086)
+	totalRate(3085, nodedata.demandCap, nodedata.demandKnown, "-", config.consumptionColor, 3087)
 
 	local graph = menu.graph
 	local function stationsFor(ids)
