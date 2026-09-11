@@ -1,0 +1,720 @@
+-- Supply Chain View — the model.
+--
+-- This file makes NO game API calls. It takes a plain description of some stations and
+-- returns a plain description of a graph, so the tricky parts (cycle breaking, budget
+-- degradation, the health arithmetic) can be exercised without launching X4.
+--
+-- It owns no display strings either. Names arrive already resolved from the data layer;
+-- ReadText and colour live in scv_menu. The model knows severities, not colours.
+
+-- GLOBAL, not local: this is how the addon environment shares state between the files
+-- listed in ui.xml. Declaring it local would make the later files find nil and go inert
+-- quietly - the exact failure the ui.xml load order comment warns about.
+SCV_Graph = {}
+
+-- ---------------------------------------------------------------------------------
+-- Engine limits. From reference\ui\widget\lua\widget_fullscreen.lua:778 (config.flowchart).
+-- These are hard allocation limits in the widget system: exceeding them does not error,
+-- it drops whatever did not fit. We budget against them explicitly so that the thing the
+-- user loses is a thing we chose, and told them about.
+-- ---------------------------------------------------------------------------------
+SCV_Graph.LIMITS = {
+	maxNodes = 100,
+	maxEdges = 150,
+	maxCols  = 30,
+}
+
+-- Hours of headroom below which a ware is flagged.
+SCV_Graph.THRESHOLDS = {
+	criticalHours = 1,
+	warningHours  = 3,
+}
+
+-- Wares nearly every station trades. When a chain is over budget these collapse from their
+-- own node into a per-station badge: an energy cells node wired to all twelve stations
+-- costs twelve edges and says nothing you had not already assumed.
+SCV_Graph.COMMON_WARES = {
+	energycells = true,
+	water       = true,
+}
+
+-- Transport type -> edge slot rank, matching the vanilla Logical Station Overview
+-- (menu_station_overview.lua:544). The rank feeds Helper.setupDAGLayout's edge-crossing
+-- reduction, so using the same convention gets the same tidy layout vanilla has.
+local SLOT_RANK = { solid = 3, liquid = 2, container = 1 }
+
+function SCV_Graph.slotRank(transporttype)
+	return SLOT_RANK[transporttype] or 1
+end
+
+-- ---------------------------------------------------------------------------------
+-- Health
+-- ---------------------------------------------------------------------------------
+
+-- Rates are units per hour (GetContainerWareProduction / GetContainerWareConsumption are
+-- per-hour; vanilla derives a comparable figure as amount * 3600 / queueduration at
+-- menu_station_overview.lua:2642).
+--
+-- Two different questions, deliberately not collapsed into one "percent full" number:
+-- an INPUT at 20% may be fine if little is consuming it; an OUTPUT at 95% is a problem
+-- precisely because it is nearly full. What matters is time, not fill.
+local function hoursOfCover(stock, consumption)
+	if (not consumption) or (consumption <= 0) then
+		return nil    -- nothing draws it here: it cannot run dry
+	end
+	return stock / consumption
+end
+
+local function hoursToFull(stock, limit, production)
+	if (not production) or (production <= 0) then
+		return nil    -- nothing makes it here: it cannot back up
+	end
+	-- limit == 0 means UNKNOWN, not "no capacity". A pure trade ware has no production
+	-- limit at all, and treating that as zero headroom declared every such ware critically
+	-- backed up the instant anything produced it.
+	if (not limit) or (limit <= 0) then
+		return nil
+	end
+	local headroom = limit - (stock or 0)
+	if headroom <= 0 then
+		return 0
+	end
+	return headroom / production
+end
+
+function SCV_Graph.severityFor(hours)
+	if hours < SCV_Graph.THRESHOLDS.criticalHours then
+		return "critical"
+	elseif hours < SCV_Graph.THRESHOLDS.warningHours then
+		return "warning"
+	end
+	return "ok"
+end
+
+local SEVERITY_RANK = { ok = 0, warning = 1, critical = 2 }
+
+function SCV_Graph.severityRank(severity)
+	return SEVERITY_RANK[severity] or 0
+end
+
+function SCV_Graph.worseSeverity(a, b)
+	if SCV_Graph.severityRank(b) > SCV_Graph.severityRank(a) then
+		return b
+	end
+	return a
+end
+
+-- Classify one ware at one station. A ware that is both an input and an output here is
+-- judged on whichever side is worse, because either one stalls the station.
+function SCV_Graph.wareHealth(w)
+	local cover = w.stockKnown ~= false and SCV_Graph.rateKnown(w, true)
+		and hoursOfCover(w.stock, w.consMax) or nil
+	local tofull = w.stockKnown ~= false and SCV_Graph.rateKnown(w, false)
+		and hoursToFull(w.stock, w.limit, w.prodMax) or nil
+
+	local severity, hours, reason = "ok", nil, nil
+
+	if cover then
+		severity, hours, reason = SCV_Graph.severityFor(cover), cover, "starved"
+	end
+	if tofull then
+		local s = SCV_Graph.severityFor(tofull)
+		if SCV_Graph.severityRank(s) > SCV_Graph.severityRank(severity) then
+			severity, hours, reason = s, tofull, "backedup"
+		end
+	end
+
+	local role = "idle"
+	if w.output and w.input then
+		role = "both"
+	elseif w.output then
+		role = "output"
+	elseif w.input then
+		role = "input"
+	end
+
+	local known = w.stockKnown ~= false
+		and (not w.input or SCV_Graph.rateKnown(w, true))
+		and (not w.output or (SCV_Graph.rateKnown(w, false) and (w.limit or 0) > 0))
+	return { role = role, severity = severity, hours = hours, reason = reason, known = known,
+	         cover = cover, tofull = tofull }
+end
+
+function SCV_Graph.validRate(value)
+	local n = tonumber(value)
+	return n ~= nil and n == n and n >= 0 and n < math.huge
+end
+
+function SCV_Graph.rateKnown(w, isInput)
+	local flag = w.prodKnown
+	-- Explicit flags distinguish real zero from unavailable rates. Legacy callers
+	-- without flags can establish only positive, measurable capacity.
+	if isInput then flag = w.consKnown end
+	if flag ~= nil then return flag end
+	return (tonumber(isInput and w.consMax or w.prodMax) or 0) > 0
+end
+
+-- ---------------------------------------------------------------------------------
+-- Detail-panel arithmetic (pure, so it is unit-tested rather than eyeballed in game)
+-- ---------------------------------------------------------------------------------
+
+-- Theoretical rates for ONE module, computed the way the Logical Station Overview does
+-- (menu_station_overview.lua:2611-2621):
+--     queueduration = sum of cycle over EVERY product in the module's list
+--     product rate  = amount * 3600 / queueduration
+--     resource rate = amount * 3600 / queueduration
+-- The trap is the denominator. A module that can make several products cycles through all
+-- of them, so each one's rate is its amount over the WHOLE queue, not over its own cycle.
+-- Dividing by the product's own cycle overstates a multi-product module by the number of
+-- products it has.
+--
+-- This is the BASE rate at 100% efficiency, without workforce bonus - the same figure the
+-- LSO labels as the single-module rate.
+function SCV_Graph.moduleRates(products)
+	local produced, consumed = {}, {}
+	if type(products) ~= "table" then
+		return produced, consumed
+	end
+	local queue = 0
+	for _, p in ipairs(products) do
+		queue = queue + (tonumber(p.cycle) or 0)
+	end
+	if queue <= 0 then
+		return produced, consumed
+	end
+	for _, p in ipairs(products) do
+		if p.ware then
+			produced[p.ware] = (produced[p.ware] or 0) + (tonumber(p.amount) or 0) * 3600 / queue
+		end
+		for _, r in ipairs(p.resources or {}) do
+			if r.ware then
+				consumed[r.ware] = (consumed[r.ware] or 0) + (tonumber(r.amount) or 0) * 3600 / queue
+			end
+		end
+	end
+	return produced, consumed
+end
+
+-- The stock bar for one ware at one station, including reserved trades.
+--
+-- Mirrors vanilla's own trade-menu cargo bar (menu_map.lua:31054):
+--     start   = stock now
+--     current = stock once every reserved exchange has completed
+-- so a pending gain draws in the positive colour and a pending loss in the negative one.
+--
+-- NET change, not role-based. Deliveries in and pickups out are both applied, because a
+-- station routinely has both: a mining hub receives from its own miners while factories are
+-- collecting from it. Showing only one direction per role would misstate what the hold will
+-- actually contain. In the common case this reduces to "inputs gain, outputs lose".
+--
+-- The denominator is the station's storage allocation for the ware when the engine reports
+-- one; otherwise the station's whole capacity for that transport type, which is an upper
+-- bound (it is shared between every ware of that type) and is flagged as an estimate.
+function SCV_Graph.reservationBar(w)
+	local stock    = tonumber(w.stock) or 0
+	local incoming = tonumber(w.incoming) or 0
+	local outgoing = tonumber(w.outgoing) or 0
+	local future   = stock + incoming - outgoing
+	if future < 0 then
+		future = 0
+	end
+
+	local limit = tonumber(w.limit) or 0
+	local estimated = false
+	local maxv = limit
+	if maxv <= 0 then
+		maxv = tonumber(w.capacityUnits) or 0
+		estimated = true
+	end
+	local capacityKnown = maxv > 0
+	local stockKnown = w.stockKnown ~= false
+	local reservationsKnown = w.reservationsKnown ~= false
+	if maxv <= 0 then
+		maxv = 1
+	end
+
+	return {
+		start     = stock,
+		current   = future,
+		max       = maxv,
+		incoming  = incoming,
+		outgoing  = outgoing,
+		estimated = estimated,
+		unknown   = not capacityKnown or not stockKnown,
+		stockKnown = stockKnown,
+		reservationsKnown = reservationsKnown,
+		percent = capacityKnown and stockKnown and stock / maxv * 100 or nil,
+		futurePercent = capacityKnown and stockKnown and reservationsKnown and future / maxv * 100 or nil,
+		drawStart = capacityKnown and stockKnown and math.min(stock, maxv) or 0,
+		drawCurrent = capacityKnown and stockKnown and math.min(reservationsKnown and future or stock, maxv) or 0,
+	}
+end
+
+-- The shared popup contract. Both entry points supply the same ware record and role.
+function SCV_Graph.detailMetrics(w, isInput)
+	local bar = SCV_Graph.reservationBar(w)
+	local rate = isInput and w.consMax or w.prodMax
+	local known = SCV_Graph.rateKnown(w, isInput)
+	local measurable = known and (rate or 0) > 0
+	return {
+		bar = bar,
+		rate = rate,
+		rateKnown = known,
+		stockHours = measurable and bar.stockKnown and bar.start / rate or nil,
+		capacityHours = measurable and ((w.limit or 0) > 0 or (w.capacityUnits or 0) > 0) and bar.max / rate or nil,
+		sign = isInput and "-" or "+",
+		severity = w.health and w.health.severity or "ok",
+	}
+end
+
+-- ---------------------------------------------------------------------------------
+-- Graph construction
+-- ---------------------------------------------------------------------------------
+
+-- stations: array of
+--   { id = "<string form of id64>", name = "...",
+--     wares = { [ware] = { name=, transport=, stock=, limit=, production=, consumption=,
+--                          output = <bool>, input = <bool>, inbound = <bool> } } }
+--
+-- OUTPUT and INPUT are decided by the data layer, not here, and they are NOT the same as
+-- "produces" and "consumes":
+--   output = the station has a SELL offer for the ware, and no module on it consumes it
+--   input  = the station has a BUY  offer for the ware, and no module on it produces it
+-- The offer is what makes a ware part of the chain at all; the module test is what strips
+-- out internal intermediates that never leave the station.
+--
+-- Bipartite by construction: station -> ware -> station. A ware earns a node ONLY if it
+-- crosses between two members of the chain (an output of one, an input of another). Wares
+-- with no counterpart here are the chain's BOUNDARY, reported on the station node rather
+-- than drawn as dangling stubs.
+function SCV_Graph.build(stations, options)
+	options = options or {}
+
+	if (not stations) or (#stations == 0) then
+		return nil, "empty"
+	end
+
+	local nodes        = {}
+	local stationNodes = {}
+	local wareNodes    = {}
+
+	-- Station nodes first, so node order is stable and the diagram does not reshuffle
+	-- between refreshes. Helper's layout iterates originalnodes in order (getNextTier does
+	-- this explicitly rather than iterating the faster hash, to avoid random results), so a
+	-- stable input order is what buys a stable picture.
+	for _, st in ipairs(stations) do
+		local node = {
+			scvkind   = "station",
+			scvid     = st.id,
+			name      = st.name,
+			type      = "container",
+			wares     = st.wares or {},
+			severity  = "ok",
+			healthKnown = true,
+			worstWare = nil,
+			unmet     = {},    -- an input here, supplied by nobody in the chain
+			unsold    = {},    -- an output here, taken by nobody in the chain
+			collapsed = {},    -- common wares folded into a badge by applyBudget
+		}
+		for ware, w in pairs(node.wares) do
+			local h = SCV_Graph.wareHealth(w)
+			w.health = h
+			node.healthKnown = node.healthKnown and h.known
+			if SCV_Graph.severityRank(h.severity) > SCV_Graph.severityRank(node.severity) then
+				node.severity  = h.severity
+				node.worstWare = ware
+			end
+		end
+		nodes[#nodes + 1] = node
+		stationNodes[st.id] = node
+	end
+
+	local producersOf, consumersOf = {}, {}
+	for _, st in ipairs(stations) do
+		for ware, w in pairs(st.wares or {}) do
+			if w.output then
+				producersOf[ware] = producersOf[ware] or {}
+				producersOf[ware][#producersOf[ware] + 1] = st.id
+			end
+			if w.input then
+				consumersOf[ware] = consumersOf[ware] or {}
+				consumersOf[ware][#consumersOf[ware] + 1] = st.id
+			end
+		end
+	end
+
+	-- Record the boundary before discarding non-crossing wares. "Nobody here supplies this"
+	-- and "nobody here takes this" are frequently the actually-useful finding.
+	for _, st in ipairs(stations) do
+		local node = stationNodes[st.id]
+		for ware, w in pairs(st.wares or {}) do
+			if w.input and (not producersOf[ware]) then
+				node.unmet[#node.unmet + 1] = ware
+			end
+			if w.output and (not consumersOf[ware]) then
+				node.unsold[#node.unsold + 1] = ware
+			end
+		end
+		table.sort(node.unmet)
+		table.sort(node.unsold)
+	end
+
+	local edges = {}
+	for ware, producers in pairs(producersOf) do
+		local consumers = consumersOf[ware]
+		if consumers then
+			local sample
+			for _, sid in ipairs(producers) do
+				sample = stationNodes[sid].wares[ware]
+				if sample then break end
+			end
+
+			local wnode = {
+				scvkind   = "ware",
+				scvware   = ware,
+				name      = (sample and sample.name) or ware,
+				type      = (sample and sample.transport) or "container",
+				producers   = producers,
+				consumers   = consumers,
+				severity    = "ok",
+				inbound     = false,
+				supplyStock = 0,   -- units held by the stations that supply it
+				supplyRate  = 0,   -- units/h produced by them
+				demandStock = 0,   -- units held by the stations that take it
+				demandRate  = 0,   -- units/h consumed by them
+				demandLimit = 0,   -- summed storage capacity at consumers (0 == unknown)
+				netRate     = 0,   -- supplyRate - demandRate
+				coverHours  = nil, -- demandStock / demandRate, nil when demandRate == 0
+				-- CAPACITY, the structural view (see the balance block below)
+				supplyCap   = 0,   -- sum of prodMax over suppliers, units/h
+				demandCap   = 0,   -- sum of consMax over consumers (modules + workforce)
+				balance     = nil, -- supplyCap / demandCap, nil when either side is unknown
+				balanceUnknown = nil, -- "supply" | "demand" when balance cannot be computed
+				totalStock  = 0,   -- supplyStock + demandStock
+				worstCover  = nil, -- hours of cover at the consumer that runs dry first
+				worstConsumer = nil, -- that consumer's station id
+				supplyKnown = true,
+				demandKnown = true,
+				supplyStockKnown = true,
+				demandStockKnown = true,
+			}
+
+			-- CHAIN-WIDE totals, not one station's numbers.
+			--
+			-- Reporting the worst single station made "Offered 0/h, Stock 0" appear for a
+			-- ware whose suppliers were full: "offered" read the supplier's PRODUCTION rate
+			-- (zero for a mining hub, which supplies from stock) while "stock" read the
+			-- starving CONSUMER. Both were true of some station and neither described the
+			-- link. Supply and demand are now summed separately over their own ends.
+			for _, sid in ipairs(producers) do
+				local w = stationNodes[sid].wares[ware]
+				if w then
+					wnode.supplyStock = wnode.supplyStock + (w.stock or 0)
+					wnode.supplyKnown = wnode.supplyKnown and SCV_Graph.rateKnown(w, false)
+					wnode.supplyStockKnown = wnode.supplyStockKnown and w.stockKnown ~= false
+					wnode.supplyCap   = wnode.supplyCap + (w.prodMax or 0)
+				end
+			end
+			for _, sid in ipairs(consumers) do
+				local w = stationNodes[sid].wares[ware]
+				if w then
+					wnode.demandStock = wnode.demandStock + (w.stock or 0)
+					wnode.demandKnown = wnode.demandKnown and SCV_Graph.rateKnown(w, true)
+					wnode.demandStockKnown = wnode.demandStockKnown and w.stockKnown ~= false
+					wnode.demandCap   = wnode.demandCap + (w.consMax or 0)
+					-- The consumer that runs dry FIRST, judged on its own stock and draw.
+					local c = w.health and w.health.cover
+					if c and ((not wnode.worstCover) or (c < wnode.worstCover)) then
+						wnode.worstCover    = c
+						wnode.worstConsumer = sid
+					end
+					if (w.limit or 0) > 0 then
+						wnode.demandLimit = wnode.demandLimit + w.limit
+					end
+					if w.inbound then
+						wnode.inbound = true
+					end
+				end
+			end
+
+			wnode.supplyRate, wnode.demandRate = wnode.supplyCap, wnode.demandCap
+			wnode.netKnown = wnode.supplyKnown and wnode.demandKnown
+			wnode.netRate = wnode.netKnown and (wnode.supplyCap - wnode.demandCap) or nil
+
+			-- Hours the CHAIN can keep consuming this ware from what its consumers already
+			-- hold. nil when nothing draws it at a rate - notably a shipyard, whose build
+			-- queue has no measurable maximum consumption rate.
+			if wnode.demandKnown and wnode.demandStockKnown and wnode.demandRate > 0 then
+				wnode.coverHours = wnode.demandStock / wnode.demandRate
+			end
+
+			wnode.totalStock = wnode.supplyStock + wnode.demandStock
+
+			-- URGENCY comes from the consumer that runs dry first, NOT from the chain average.
+			-- Average cover (total consumer stock / total draw) is dominated by the big
+			-- holders: ten stations sitting on 80k each hide the one that is down to minutes.
+			-- The average is kept in coverHours for the mouse-over; it just no longer decides
+			-- the colour.
+			if wnode.worstCover then
+				wnode.severity = SCV_Graph.severityFor(wnode.worstCover)
+			end
+
+			-- BALANCE: can the chain SUSTAIN this ware? Capacity, not the instantaneous
+			-- rates. Those drop to 0 whenever a module stalls, so a starving consumer stops
+			-- counting as demand exactly when it is starving - a shortage could make the
+			-- net look healthier. Capacity is what the stations would make and draw running
+			-- flat out, so it is stable and it separates a genuine structural shortfall from
+			-- a supplier that merely looks empty because its output was shipped out.
+			--
+			-- Unknown rather than zero when a side has no capacity figure: a supplier with
+			-- no production module (a mining hub - ships deliver its ore) has no supply
+			-- capacity to report, and a ratio of 0 would read as a total shortage.
+			if not wnode.supplyKnown then
+				wnode.balanceUnknown = "supply"
+			elseif not wnode.demandKnown then
+				wnode.balanceUnknown = "demand"
+			elseif wnode.demandCap == 0 then
+				wnode.balanceUnknown = "zero-demand"
+			else
+				wnode.balance = wnode.supplyCap / wnode.demandCap
+			end
+
+			nodes[#nodes + 1] = wnode
+			wareNodes[ware] = wnode
+
+			local rank = SCV_Graph.slotRank(wnode.type)
+			for _, sid in ipairs(producers) do
+				edges[#edges + 1] = { from = stationNodes[sid], to = wnode, rank = rank, ware = ware }
+			end
+			for _, sid in ipairs(consumers) do
+				edges[#edges + 1] = { from = wnode, to = stationNodes[sid], rank = rank, ware = ware }
+			end
+		end
+	end
+
+	local graph = {
+		nodes           = nodes,
+		stationNodes    = stationNodes,
+		wareNodes       = wareNodes,
+		edges           = edges,
+		droppedEdges    = {},
+		collapsedWares  = {},
+		droppedStations = {},
+	}
+
+	SCV_Graph.breakCycles(graph)
+	SCV_Graph.applyBudget(graph, options)
+	SCV_Graph.materializePredecessors(graph)
+
+	graph.counts = { nodes = #graph.nodes, edges = #graph.edges }
+	return graph
+end
+
+-- ---------------------------------------------------------------------------------
+-- Cycle breaking
+-- ---------------------------------------------------------------------------------
+
+-- Helper.setupDAGLayout DOES survive cycles - buildTiers detects a stalled tier and calls
+-- removeCyclicEdge in a loop until the graph is acyclic. But it logs
+--   "setupDAGLayoutHelper: Cyclic dependencies detected. Removing dependencies..."
+-- to debug.txt and drops an ARBITRARY edge to recover.
+--
+-- Two player stations that supply each other is an ordinary X4 topology, not an error, so
+-- leaving it to the engine means routine debug.txt spam plus a diagram that loses a
+-- different edge depending on hash order. Breaking cycles here means we choose the edge,
+-- we can render the fact, and the log stays clean enough that a real error stands out.
+function SCV_Graph.breakCycles(graph)
+	local succ = {}
+	for _, e in ipairs(graph.edges) do
+		succ[e.from] = succ[e.from] or {}
+		local s = succ[e.from]
+		s[#s + 1] = e
+	end
+
+	local WHITE, GREY, BLACK = 0, 1, 2
+	local colour = {}
+	for _, n in ipairs(graph.nodes) do
+		colour[n] = WHITE
+	end
+
+	local dropped = {}
+
+	-- Iterative DFS. Recursion would be fine at these sizes, but a stack overflow inside a
+	-- UI callback takes the whole menu down, and the iterative form costs little.
+	local function visit(root)
+		local stack = { { node = root, idx = 1 } }
+		colour[root] = GREY
+		while #stack > 0 do
+			local top  = stack[#stack]
+			local outs = succ[top.node]
+			if outs and (top.idx <= #outs) then
+				local e = outs[top.idx]
+				top.idx = top.idx + 1
+				if not e.dropped then
+					local c = colour[e.to]
+					if c == GREY then
+						e.dropped = true          -- back edge: closes a cycle
+						dropped[#dropped + 1] = e
+					elseif c == WHITE then
+						colour[e.to] = GREY
+						stack[#stack + 1] = { node = e.to, idx = 1 }
+					end
+				end
+			else
+				colour[top.node] = BLACK
+				stack[#stack] = nil
+			end
+		end
+	end
+
+	for _, n in ipairs(graph.nodes) do
+		if colour[n] == WHITE then
+			visit(n)
+		end
+	end
+
+	if #dropped > 0 then
+		local kept = {}
+		for _, e in ipairs(graph.edges) do
+			if not e.dropped then
+				kept[#kept + 1] = e
+			end
+		end
+		graph.edges = kept
+		graph.droppedEdges = dropped
+	end
+end
+
+-- ---------------------------------------------------------------------------------
+-- Budget
+-- ---------------------------------------------------------------------------------
+
+-- Degrade in two stages, cheapest loss first, and report everything given up. Never
+-- silently truncate: a diagram quietly missing a station is worse than no diagram, because
+-- it looks complete.
+function SCV_Graph.applyBudget(graph, options)
+	local limits = options.limits or SCV_Graph.LIMITS
+
+	local function overBudget()
+		return (#graph.nodes > limits.maxNodes) or (#graph.edges > limits.maxEdges)
+	end
+
+	if not overBudget() then
+		return
+	end
+
+	-- Stage 1: collapse common wares into per-station badges, highest degree first, since
+	-- that is where the edges actually are.
+	local candidates = {}
+	for ware, wnode in pairs(graph.wareNodes) do
+		if SCV_Graph.COMMON_WARES[ware] then
+			candidates[#candidates + 1] = { ware = ware, node = wnode,
+				degree = #wnode.producers + #wnode.consumers }
+		end
+	end
+	table.sort(candidates, function (a, b)
+		if a.degree ~= b.degree then return a.degree > b.degree end
+		return a.ware < b.ware      -- deterministic tie-break
+	end)
+
+	for _, c in ipairs(candidates) do
+		if not overBudget() then break end
+		SCV_Graph.removeNode(graph, c.node)
+		graph.wareNodes[c.ware] = nil
+		graph.collapsedWares[#graph.collapsedWares + 1] = c.ware
+		for _, sid in ipairs(c.node.producers) do
+			local sn = graph.stationNodes[sid]
+			if sn then sn.collapsed[#sn.collapsed + 1] = c.ware end
+		end
+		for _, sid in ipairs(c.node.consumers) do
+			local sn = graph.stationNodes[sid]
+			if sn then sn.collapsed[#sn.collapsed + 1] = c.ware end
+		end
+	end
+
+	-- Stage 2: drop whole stations, least-connected first - the least-connected station
+	-- contributes least to the chain's shape, so the core survives.
+	while overBudget() do
+		local victim, victimDegree
+		for _, n in ipairs(graph.nodes) do
+			if n.scvkind == "station" then
+				local d = 0
+				for _, e in ipairs(graph.edges) do
+					if (e.from == n) or (e.to == n) then d = d + 1 end
+				end
+				if (not victim) or (d < victimDegree) or ((d == victimDegree) and (n.scvid < victim.scvid)) then
+					victim, victimDegree = n, d
+				end
+			end
+		end
+		if not victim then
+			break    -- nothing left to drop; the ware nodes alone exceed the limit
+		end
+		SCV_Graph.removeNode(graph, victim)
+		graph.stationNodes[victim.scvid] = nil
+		graph.droppedStations[#graph.droppedStations + 1] = { id = victim.scvid, name = victim.name }
+		SCV_Graph.pruneOrphanWares(graph)
+	end
+end
+
+function SCV_Graph.removeNode(graph, node)
+	for i = #graph.nodes, 1, -1 do
+		if graph.nodes[i] == node then
+			table.remove(graph.nodes, i)
+			break
+		end
+	end
+	for i = #graph.edges, 1, -1 do
+		local e = graph.edges[i]
+		if (e.from == node) or (e.to == node) then
+			table.remove(graph.edges, i)
+		end
+	end
+end
+
+function SCV_Graph.pruneOrphanWares(graph)
+	local changed = true
+	while changed do
+		changed = false
+		for _, n in ipairs(graph.nodes) do
+			if n.scvkind == "ware" then
+				local hasIn, hasOut = false, false
+				for _, e in ipairs(graph.edges) do
+					if e.to == n then hasIn = true end
+					if e.from == n then hasOut = true end
+				end
+				if not (hasIn and hasOut) then
+					SCV_Graph.removeNode(graph, n)
+					graph.wareNodes[n.scvware] = nil
+					changed = true
+					break
+				end
+			end
+		end
+	end
+end
+
+-- ---------------------------------------------------------------------------------
+-- Hand-off to the layout
+-- ---------------------------------------------------------------------------------
+
+-- Helper.setupDAGLayout reads node.predecessors[predecessornode] = slotrank. We keep an
+-- explicit edge list until this point because cycle detection and budgeting are far easier
+-- over a list than over a hash keyed by table identity.
+function SCV_Graph.materializePredecessors(graph)
+	for _, n in ipairs(graph.nodes) do
+		n.predecessors = nil
+	end
+	for _, e in ipairs(graph.edges) do
+		e.to.predecessors = e.to.predecessors or {}
+		e.to.predecessors[e.from] = e.rank
+	end
+end
+
+local function init()
+	SCV_Graph.version = 2
+end
+
+init()
+
+return SCV_Graph

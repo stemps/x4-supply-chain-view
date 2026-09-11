@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!-- Page 90210. t/ files are UNIONED across base + DLC + mods rather than overridden, so a
+     page-id collision silently MERGES entries with another mod's. Vanilla's highest page id
+     is 30622 and nothing in the game uses the 90000s, so this range is safe. -->
+<language>
+  <page id="90210" voice="no">
+    <!-- 1xxx: chrome -->
+    <t id="1000">Supply Chain</t>
+    <t id="1002">Supply Chains</t>
+    <t id="1004">No supply chain selected</t>
+    <t id="1005">Right-click one or more stations on the map - yours or another faction's - and choose Supply Chain to create one or add to an existing one.</t>
+    <t id="1008">Delete this supply chain</t>
+    <t id="1010">Create</t>
+    <t id="1011">Cancel</t>
+    <t id="1013">Show on map</t>
+    <t id="1014">Supply Chain %s</t>
+    <t id="1015">%s stations</t>
+    <t id="1016">Remove from this supply chain</t>
+
+    <!-- 2xxx: context menu and creation -->
+    <t id="2000">Create new Supply Chain</t>
+    <t id="2002">%s (already in)</t>
+    <t id="2003">%s (+%s)</t>
+    <t id="2004">%s more not shown</t>
+    <t id="2005">Stations</t>
+    <t id="2010">Name the new supply chain. %s station(s) will be added to it.</t>
+
+    <!-- 3xxx: diagram labels and status -->
+    <t id="3003">stock coverage at full operation without deliveries:</t>
+    <t id="3004">time to full at full operation without collections:</t>
+    <t id="3005">No supplier in this chain</t>
+    <t id="3006">Nobody here takes this</t>
+    <t id="3010">Delivery in progress</t>
+    <t id="3011">No delivery scheduled</t>
+    <t id="3012">Mutual trade: %s link(s) drawn one way only (%s)</t>
+    <t id="3013">Worst: %s</t>
+    <t id="3014">No stock coverage or capacity warning at full operation.</t>
+    <t id="3015">%s supplying, %s taking</t>
+    <t id="3020">Those stations were already in this supply chain.</t>
+    <t id="3021">Added %s station(s).</t>
+    <t id="3022">%s station(s) in this chain no longer exist and are not shown.</t>
+    <t id="3023">%s station(s) have unavailable storage information. Links remain visible; unavailable amounts show as ?.</t>
+    <t id="3027">full %s</t>
+    <t id="3028">cover %s</t>
+
+    <!-- 3030-3046: node detail panels -->
+    <t id="3030">Open Logical Station Overview</t>
+    <t id="3031">Inputs</t>
+    <t id="3032">Outputs</t>
+    <t id="3033">Supplied by</t>
+    <t id="3034">Taken by</t>
+    <!-- 3035/3036: effective maximum rates under current station conditions. -->
+    <t id="3035">At full operation: %s consumed, including current workforce. Assumes sufficient inputs and output space.</t>
+    <t id="3036">At full operation: %s produced, including current production modifiers. Assumes sufficient inputs and output space.</t>
+    <t id="3037">Maximum hourly rate unknown: unmeasured mining/trading, shipbuilding demand, or unavailable module data.</t>
+    <t id="3040">This station has no input or output wares under the chain's rules.</t>
+    <t id="3041">Stock %s of %s</t>
+    <t id="3042">Incoming (reserved): %s</t>
+    <t id="3043">Outgoing (reserved): %s</t>
+    <t id="3044">After reserved trades: %s</t>
+    <t id="3045">Capacity is an estimate: the station's total storage for this transport type, shared with other wares.</t>
+    <t id="3046">Storage capacity unknown.</t>
+    <!-- 3047: the compact rate beside a ware name; the section header says whether it is
+         consumption or production, and 3035/3036 give the full wording on mouse-over -->
+    <t id="3047">max %s</t>
+    <t id="3049">none</t>
+
+    <!-- 3050-3056: graph tooltip uses the SAME maximum rates as the bar and detail panels. -->
+    <t id="3050">At full operation: supply %s, demand %s (%s)</t>
+    <t id="3051">Maximum supply is incomplete or unknown; no complete balance is available.</t>
+    <t id="3052">Maximum demand is incomplete or unknown; no complete balance is available.</t>
+    <t id="3053">Suppliers hold %s, consumers hold %s</t>
+    <t id="3054">At full operation: production %s, consumption %s (balance %s)</t>
+    <t id="3055">Lowest known stock coverage at full operation, without deliveries: %s, %s</t>
+    <t id="3056">Balanced: maximum supply equals maximum demand</t>
+
+    <t id="3060">Stock %s</t>
+    <t id="3063">Maximum consumption is zero; supply/demand ratio is not applicable.</t>
+    <t id="3064">Reserved trades unavailable; expected fill is unknown.</t>
+    <t id="3065">Stock health cannot be fully assessed: some stock, capacity or maximum rates are unknown.</t>
+    <t id="3066">%s — %s %s. %s warning: less than %s. This is a full-operation projection, not confirmation that the station is currently stalled. Reservations and future trades are not included.</t>
+    <t id="3067">Red</t>
+    <t id="3068">Orange</t>
+    <t id="3069">Coverage %s / full %s</t>
+    <t id="3070">Current stock / full storage, expressed as hours of maximum consumption including current workforce. Assumes no deliveries; reservations are not included. The second value describes the buffer when fully stocked.</t>
+    <t id="3071">Current stock / full storage, expressed as hours of maximum production. For an output this is production-equivalent inventory, not consumer coverage or time remaining until full. Reservations and collections are not included.</t>
+    <t id="3072">Orange bar segment: maximum supply is below maximum demand.</t>
+    <t id="3073">Red stock number: maximum demand exceeds maximum supply beyond the balance tolerance. This colour describes production balance, not current inventory movement.</t>
+
+    <!-- 4xxx: limits and degradation -->
+    <t id="4000">Chain too large to draw</t>
+    <t id="4001">This chain needs %s nodes and %s edges; the game's diagram supports at most %s and %s. Common wares were collapsed and these stations were left out: %s</t>
+    <t id="4002">Common wares collapsed: %s</t>
+    <t id="4003">Split this chain into smaller ones to see it.</t>
+    <t id="4004">No trade links between these stations</t>
+    <t id="4005">A link needs one station with a sell offer for a ware and another with a buy offer for the same ware. Wares a station both produces and consumes internally do not count.</t>
+
+    <!-- 5xxx: units -->
+    <t id="5000">%sh</t>
+    <t id="5001">%sm</t>
+    <t id="5002">never</t>
+  </page>
+</language>

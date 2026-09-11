@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Supply Chain View.
+
+     save="false" — this mod stores NO game state. The supply chains live in a UI
+     <savedvariable storage="savegame"> declared in ui.xml, which the engine serialises into
+     the savegame independently of the extension's save flag. Setting save="true" here would
+     bake the extension into saves and make removing it a corruption risk, for no benefit.
+
+     BOTH dependencies are optional="true", and the mod works without either:
+       kuertee UI Extensions provides the interact-menu custom-actions-group api that puts
+         "Supply Chain" on the map right-click menu. Without it, the top-level Supply Chain
+         tab is the way in. (The api lives in UIX, not in SirNukes' Interact Menu API -
+         that one cannot create new subsections, by its own documentation.)
+       SirNukes Mod Support APIs is used only for Register_OnLoad_Init, a convenience for
+         retrying the interact-menu registration once the game is up. scv_interact retries
+         on menu open instead when it is absent.
+     optional="true" preserves load ORDER when they are installed without making them
+     requirements. The dependency id is the TARGET'S CONTENT ID, not its folder name: the
+     folders are kuertee_ui_extensions and sn_mod_support_apis while the ids are below.
+
+     The UI-level requirements (ego_detailmonitorhelper, ego_detailmonitor) are part of the
+     BASE GAME and live in the .cat archives, not extensions/ — they are declared as UI-addon
+     dependencies in ui.xml instead. Extension-level <dependency> and ui.xml <dependency> are
+     different mechanisms: the former orders EXTENSIONS, the latter orders UI ADDONS. -->
+<content id="supply_chain_view"
+         name="Supply Chain View"
+         author="Simon Stemplinger"
+         version="200"
+         date="2026-09-06"
+         save="false"
+         enabled="1"
+         description="Right-click your stations on the map to group them into a supply chain, then see it as a diagram: who supplies whom, which inputs are about to run dry, and which outputs are backing up because nobody is collecting them.">
+  <text language="44"
+        name="Supply Chain View"
+        description="Right-click your stations on the map to group them into a supply chain, then see it as a diagram: who supplies whom, which inputs are about to run dry, and which outputs are backing up because nobody is collecting them."/>
+  <dependency id="kuerteeUIExtensionsAndHUD" optional="true" name="kuertee UI Extensions and HUD"/>
+  <dependency id="ws_2042901274" optional="true" name="SirNukes Mod Support APIs"/>
+</content>
