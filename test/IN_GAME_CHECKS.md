@@ -3,6 +3,12 @@
 Quit and relaunch X4 for the updated text resources, then load an existing save and chain.
 The mod remains installed through its Junction; no file copy or save migration is needed.
 
+Graph loading: open a chain with more than four stations. The graph pane should show
+the vanilla "Loading..." message, then reveal the complete graph once, with no initial
+four-station subset. Switch chains while loading and remove a member, then repeat with
+a chain of four or fewer stations (it should display immediately). Check debug.txt after
+reloading the UI; automated lifecycle tests cannot verify native widget presentation.
+
 1. Fully supplied solar factory: compare its maximum output against vanilla's effective
    aggregate rate (not the single-module base rate). Check stations in different sunlight
    sectors and stations with different workforce. Repeat for an ordinary factory.

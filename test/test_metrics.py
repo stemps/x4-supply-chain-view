@@ -327,4 +327,50 @@ assert(string.find(graph.stationNodes.warn[1].properties.mouseOverText,'Orange t
 assert all(texts[key].isascii() for key in [3065,3066,*range(3090,3101)])
 for source in (root/'ui').glob('*.lua'):
     lua.execute('assert(load(...))', source.read_text(encoding='utf-8'))
-print('Reader, maximum-rate, unknown-data, paired popup, scroll, collapse and Lua syntax checks passed.')
+lua.execute('''
+-- Exercise the real chunked scanner and menu lifecycle. No graph may be built from
+-- a partial scan, including a refresh arriving while the scan is in progress.
+local reads, builds, displays = 0, 0, 0
+local members = {}
+SCV_Store = { selected=function() return {} end }
+menu.currentMembers = function() return members end
+function getElapsedTime() return 100 end
+local frame = { addTable=function() return tableMock() end }
+SCV_Data.readStation = function(st)
+    reads = reads + 1
+    if st.id == 'failed' then error('station unavailable') end
+    return {id=st.id, name=st.id, wares={}}
+end
+SCV_Graph.build = function(stations)
+    builds = builds + 1
+    assert(#stations == #members, 'partial graph published')
+    return nil -- stop before native layout/widget creation
+end
+menu.display = function()
+    displays = displays + 1
+    menu.displayChain(frame, 0, 0, 500)
+end
+for _, count in ipairs({1, 4, 5, 12}) do
+    members = {}
+    for i=1,count do members[i]={id=tostring(i), name=tostring(i)} end
+    reads, builds, displays = 0, 0, 0
+    menu.markDirty()
+    menu.display()
+    assert(reads == math.min(count, SCV_Data.SCAN_CHUNK))
+    if count > SCV_Data.SCAN_CHUNK then
+        assert(builds == 0 and menu.graph == nil and menu.flowchart == nil)
+    else
+        assert(builds == 1 and menu.scanDone)
+        menu.refresh = nil
+    end
+    for i=1,10 do menu.onUpdate() end
+    assert(menu.scanDone and reads == count)
+    assert(builds == 1, 'completion must publish exactly once')
+end
+-- A failed read still completes through the scanner's existing visible stub.
+members = {{id='failed', name='failed'}}
+menu.markDirty()
+menu.display()
+assert(menu.scanDone and SCV_Data.cache.failed.failed)
+''')
+print('Reader, maximum-rate, unknown-data, paired popup, scroll, collapse, atomic graph and Lua syntax checks passed.')

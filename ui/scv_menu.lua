@@ -202,6 +202,7 @@ function menu.onUpdate()
 			local _, done = SCV_Data.scanGroup(members, false)
 			if done then
 				menu.scanDone = true
+				menu.refresh = nil -- this display also satisfies any pending refresh
 				menu.display()
 			end
 		end
@@ -680,7 +681,19 @@ function menu.displayChain(frame, x, y, width)
 		return
 	end
 
-	local stations = SCV_Data.scanGroup(members, false)
+	local stations, done = SCV_Data.scanGroup(members, false)
+	menu.scanDone = done
+	-- scanGroup returns a partial snapshot while its remaining batches are pending.
+	-- Do not lay out or publish that subset: it would jump to a different graph when
+	-- onUpdate finishes the scan. Keep the bounded reads and reveal only the final graph.
+	if not done then
+		menu.graph = nil
+		menu.flowchart = nil
+		local ftable = frame:addTable(1, { tabOrder = 2, width = width, x = x, y = y })
+		local row = ftable:addRow(false, { fixed = true })
+		row[1]:createText(ReadText(1001, 7201), Helper.headerRowCenteredProperties)
+		return
+	end
 	local graph = SCV_Graph.build(stations, {})
 	menu.graph = graph
 	if not graph then
