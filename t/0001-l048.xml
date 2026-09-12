@@ -101,5 +101,6 @@
     <t id="5001">%smin</t>
     <t id="5002">nigdy</t>
     <t id="5003">%s/h</t>
+    <t id="2020">Usunąć łańcuch dostaw „%s”? Same stacje pozostaną bez zmian.</t>
   </page>
 </language>

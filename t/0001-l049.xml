@@ -101,5 +101,6 @@
     <t id="5001">%smin</t>
     <t id="5002">nie</t>
     <t id="5003">%s/h</t>
+    <t id="2020">Lieferkette „%s“ löschen? Die Stationen selbst bleiben unverändert.</t>
   </page>
 </language>

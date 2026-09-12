@@ -101,5 +101,6 @@
     <t id="5001">%smin</t>
     <t id="5002">nunca</t>
     <t id="5003">%s/h</t>
+    <t id="2020">Excluir a cadeia de suprimentos "%s"? As estações não serão afetadas.</t>
   </page>
 </language>

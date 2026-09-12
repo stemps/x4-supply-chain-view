@@ -1,0 +1,175 @@
+"""Toolbar and management-frame contracts using the real Lua menu and store."""
+from pathlib import Path
+from xml.etree import ElementTree as ET
+from lupa import LuaRuntime
+
+root = Path(__file__).resolve().parents[1]
+lua = LuaRuntime(unpack_returned_tuples=True)
+lua.globals().texts = lua.table_from({int(t.attrib['id']): t.text for t in ET.parse(root/'t/0001.xml').iter('t')})
+lua.execute('''
+function DebugError() end
+function getElapsedTime() return 10 end
+function ReadText(page,id) return page == 90210 and texts[id] or tostring(id) end
+package.preload.ffi=function() return {C={}} end
+Color=setmetatable({}, {__index=function(_,key) return key end})
+frames={}; invalidations=0; builds=0; closed=0; refreshes=0
+local function value(v) return type(v)=='function' and v() or v end
+Helper={topLevelMenus={}, registerMenu=function() end, viewWidth=1280, viewHeight=720,
+    frameBorder=5, borderSize=2, sidebarWidth=30, standardTextHeight=16,
+    standardButtonHeight=26, standardTextOffsetx=5,
+    headerRowCenteredProperties={}, headerRow1Properties={},
+    scaleX=function(x) return x*1.5 end, scaleY=function(x) return x*1.5 end,
+    clearFrame=function(_,layer) frames[layer]=nil end,
+    clearDataForRefresh=function() end, closeMenu=function() closed=closed+1 end,
+    createTopLevelTab=function() return 45 end}
+function Helper.createFrameHandle(_, props)
+    local frame={properties=props,tables={}}
+    function frame:setBackground() end
+    function frame:display() frames[props.layer]=self end
+    function frame:update() self.updates=(self.updates or 0)+1 end
+    function frame:getUsedHeight()
+        local h=0; for _,t in ipairs(self.tables) do h=math.max(h,(t.properties.y or 0)+t:getVisibleHeight()) end
+        return h
+    end
+    function frame:addTable(n, p)
+        local t={properties=p,rows={},widths={}}
+        function t:setColWidth(i,w) self.widths[i]=w end
+        function t:getVisibleHeight() return math.min(#self.rows*39,self.properties.maxVisibleHeight or 10000) end
+        function t:addRow(_, rowprops)
+            local row={properties=rowprops}
+            for i=1,n do
+                local c={handlers={},span=1}
+                function c:setColSpan(span) self.span=span; return self end
+                function c:createText(text,pr) self.text=text; self.textprops=pr; return self end
+                function c:createButton(pr) self.properties=pr or {}; return self end
+                function c:createEditBox(pr) self.properties=pr; return self end
+                function c:createDropDown(options,pr) self.options=options; self.properties=pr; return self end
+                function c:setTextProperties(pr) self.textprops=pr; return self end
+                function c:setText(text,pr) self.text=text; self.textprops=pr; return self end
+                function c:setIcon(icon,pr) self.icon=icon; self.iconprops=pr; return self end
+                function c:getWidth()
+                    if t.widths[i] then return t.widths[i] end
+                    local fixed=0; local count=0
+                    for _,w in pairs(t.widths) do fixed=fixed+w; count=count+1 end
+                    return (p.width-fixed-(n-1)*2)/(n-count)
+                end
+                function c:getHeight() return 39 end
+                row[i]=c
+            end
+            self.rows[#self.rows+1]=row; return row
+        end
+        self.tables[#self.tables+1]=t; return t
+    end
+    return frame
+end
+SCV_Data={invalidate=function() invalidations=invalidations+1 end,
+    describe=function(id) if id=='missing' then return nil end
+        return {id=id,id64=id,code='code'..id,name='Station '..id} end,
+    lookupCode=function() end,
+    scanGroup=function() return {},true end,
+    refreshStep=function() refreshes=refreshes+1 end}
+''')
+lua.execute((root/'ui/scv_store.lua').read_text(encoding='utf-8'))
+lua.globals().menu = lua.execute((root/'ui/scv_menu.lua').read_text(encoding='utf-8'))
+lua.execute('''
+-- Replace only graph rendering: real display, toolbar and overlay paths run below.
+function menu.displayChain(_,x,y,width)
+    builds=builds+1; graphRect={x=x,y=y,width=width}
+    menu.currentMembers()
+    menu.graph={stationNodes={}}; menu.flowchart={}; menu.refreshState={}; menu.scanDone=true
+end
+menu.mode='chain'; menu.display()
+local function toolbar() return frames[3].tables[1].rows[1] end
+local row=toolbar()
+for _,i in ipairs({1,2,3,4,6}) do assert(row[i].properties.active==false) end
+assert(row[2].options[1].id=='0')
+assert(graphRect.x==Helper.frameBorder)
+assert(graphRect.width==1280-45-5-5-2, 'graph uses all available width')
+
+SCV_Store.create('A very long chain name '..string.rep('abc ',40),{{id='1',code='code1'}})
+menu.display(); row=toolbar()
+assert(not row[1].properties.active and not row[3].properties.active)
+assert(row[2].properties.mouseOverText==SCV_Store.get(1).name)
+for i=2,8 do SCV_Store.create('Chain '..i,{}) end
+SCV_Store.select(1); menu.display(); row=toolbar()
+assert(#row[2].options==8 and row[2].options[8].text=='Chain 8')
+assert(not row[1].properties.active and row[3].properties.active)
+
+local graph,flow,refresh,before=menu.graph,menu.flowchart,menu.refreshState,builds
+menu.expandedNode={collapse=function() collapsed=true end}
+row[4].handlers.onClick()
+assert(collapsed and menu.expandedNode==nil and menu.managementMode=='stations')
+assert(menu.graph==graph and menu.flowchart==flow and menu.refreshState==refresh and builds==before)
+local p=frames[2].properties
+assert(p.x>=5 and p.x+p.width<=1275 and p.y+p.height<=715)
+menu.onUpdate(); assert(refreshes==1 and frames[2].updates>0)
+menu.onCloseElement('back',2)
+assert(not frames[2] and closed==0 and menu.graph==graph)
+menu.toggleManagement('stations'); menu.toggleManagement('stations'); assert(not frames[2])
+
+menu.openManagement('actions')
+frames[2].tables[1].rows[2][1].handlers.onClick()
+assert(menu.managementMode=='rename')
+local edit=frames[2].tables[1].rows[2]
+edit[1].handlers.onEditBoxDeactivated(nil,' Renamed ',true); edit[2].handlers.onClick()
+assert(SCV_Store.get(1).name=='Renamed' and menu.graph==graph and builds==before)
+assert(toolbar()[2].options[1].text=='Renamed')
+menu.openManagement('rename')
+edit=frames[2].tables[1].rows[2]
+menu.scanDone=false; menu.refresh=1
+menu.onUpdate()
+assert(menu.managementMode=='rename' and frames[2].tables[1].rows[2]==edit and builds==before)
+menu.scanDone=true; menu.refresh=nil
+edit[1].handlers.onEditBoxDeactivated(nil,'   ',true); edit[2].handlers.onClick()
+assert(menu.managementMode=='rename' and SCV_Store.get(1).name=='Renamed')
+menu.onCloseElement('back',2); assert(menu.renameIndex==nil and closed==0)
+
+-- All warnings and add feedback remain accessible with the overlay closed.
+menu.notice='Added 7 stations.'; menu.missingMembers=2
+menu.graph.structureChanged=true; menu.graph.refreshFailed=true; menu.graph.lockedCount=3
+assert(menu.hasWarning() and toolbar()[5].properties.active())
+local text=toolbar()[5].properties.mouseOverText()
+assert(text:find('Added 7 stations.',1,true) and text:find(texts[3101],1,true) and text:find(texts[3102],1,true))
+toolbar()[5].handlers.onClick(); assert(menu.managementMode=='stations')
+assert(frames[2].tables[1].rows[2][1].text:find('Added 7 stations.',1,true))
+
+-- Remove a member, rebuild once, and restore the panel. No chain deletion occurs.
+local rows=frames[2].tables[1].rows
+rows[#rows][3].handlers.onClick(); assert(menu.managementMode=='stations' and menu.refreshState==nil)
+menu.display(); assert(menu.managementMode=='stations' and #SCV_Store.get(1).members==0)
+menu.closeManagement()
+toolbar()[2].handlers.onDropDownConfirmed(nil,'8')
+assert(select(2,SCV_Store.selected())==8 and menu.refreshState==nil)
+menu.display(); row=toolbar(); assert(row[1].properties.active and not row[3].properties.active)
+row[3].handlers.onClick(); assert(select(2,SCV_Store.selected())==8, 'no wrapping')
+row[1].handlers.onClick(); assert(select(2,SCV_Store.selected())==7)
+menu.display()
+
+menu.openManagement('delete'); assert(SCV_Store.count()==8)
+assert(frames[2].tables[1].rows[2][1].text:find('Chain 7',1,true))
+frames[2].tables[1].rows[4][1].handlers.onClick(); assert(SCV_Store.count()==8)
+menu.openManagement('delete'); frames[2].tables[1].rows[3][1].handlers.onClick()
+assert(SCV_Store.count()==7 and menu.managementMode==nil)
+menu.display()
+
+-- A large station list scrolls inside the overlay; square icons fill buttons.
+local entries={}; for i=1,100 do entries[i]={id=tostring(i),code='code'..i} end
+SCV_Store.create('Large',entries); menu.display(); menu.openManagement('stations')
+local t=frames[2].tables[1]
+assert(#t.rows==103 and t:getVisibleHeight()<=t.properties.maxVisibleHeight)
+local icon=t.rows[4][2].iconprops
+assert(icon.width==39 and icon.height==39 and icon.x==3 and icon.y==0 and icon.scaling==false)
+before=builds; menu.closeManagement(); assert(builds==before)
+menu.onCloseElement('back',5); assert(closed==1)
+
+-- The creation screen also survives display cleanup with its pending name intact.
+menu.mode='name'; menu.nameText='New chain'; menu.pendingStations={}
+menu.display()
+assert(menu.nameText=='New chain' and frames[5].tables[1].rows[3][1].text=='New chain')
+''')
+
+# Every translation has the new confirmation and exactly one chain-name placeholder.
+for path in (root/'t').glob('*.xml'):
+    entries = [t for t in ET.parse(path).iter('t') if t.attrib['id']=='2020']
+    assert len(entries)==1 and entries[0].text.count('%s')==1, path
+print('PASS toolbar navigation, overlays, rename/delete/remove, graph identity, warnings, bounds and localization')

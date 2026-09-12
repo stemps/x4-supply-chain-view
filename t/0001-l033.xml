@@ -101,5 +101,6 @@
     <t id="5001">%smin</t>
     <t id="5002">jamais</t>
     <t id="5003">%s/h</t>
+    <t id="2020">Supprimer la chaîne logistique « %s » ? Les stations elles-mêmes ne seront pas affectées.</t>
   </page>
 </language>

@@ -121,5 +121,6 @@
     <t id="5001">%sm</t>
     <t id="5002">never</t>
     <t id="5003">%s/h</t>
+    <t id="2020">Delete supply chain "%s"? The stations themselves will not be affected.</t>
   </page>
 </language>

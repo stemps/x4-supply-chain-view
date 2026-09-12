@@ -21,6 +21,8 @@ local menu = {
 local config = {
 	mainFrameLayer         = 5,
 	expandedMenuFrameLayer = 4,
+	toolbarFrameLayer      = 3,
+	managementFrameLayer   = 2,
 	topLevelId             = "scv_supplychain",
 	textPage               = 90210,
 	-- Station names run long ("2 - Factory - Asteroid Belt - Computronic Substrate") and the
@@ -29,7 +31,6 @@ local config = {
 	stationNodeWidth       = 310,
 	wareNodeWidth          = 260,
 	nodeOffsetX            = 20,
-	sideWidth              = 320,
 	-- Capacity balance bar runs 0 .. this; 1.0x (supply equals demand) sits in the middle so
 	-- a shortfall and a surplus get equal room.
 	balanceScale           = 2,
@@ -138,6 +139,10 @@ local function init()
 end
 
 function menu.cleanup()
+	menu.closeManagement()
+	if menu.toolbarFrame then Helper.clearFrame(menu, config.toolbarFrameLayer) end
+	menu.toolbarFrame = nil
+	menu.toolbarGeometry = nil
 	menu.mode            = "chain"
 	menu.graph           = nil
 	menu.scanDone        = nil
@@ -198,7 +203,9 @@ menu.updateInterval = 0.2
 function menu.onUpdate()
 	-- Chunked scanning: pull stations in a few at a time until the chain is fully read,
 	-- then redraw once. A full rescan inside one callback is the crash risk this avoids.
-	if not menu.scanDone then
+	-- Do not destroy an active editbox when an initial scan/queued redraw completes.
+	-- Existing live metrics still refresh below; resume initial rendering after naming.
+	if not menu.scanDone and menu.managementMode ~= "rename" then
 		local members = menu.currentMembers()
 		if #members == 0 then
 			menu.scanDone = true
@@ -212,7 +219,7 @@ function menu.onUpdate()
 		end
 	end
 
-	if menu.refresh and (menu.refresh <= getElapsedTime()) then
+	if menu.refresh and (menu.refresh <= getElapsedTime()) and menu.managementMode ~= "rename" then
 		menu.refresh = nil
 		menu.display()
 	end
@@ -220,9 +227,18 @@ function menu.onUpdate()
 		local snapshot = SCV_Data.refreshStep(menu.refreshState, getElapsedTime())
 		if snapshot then menu.publishMetrics(snapshot) end
 	end
+	if menu.toolbarFrame then menu.toolbarFrame:update() end
+	if menu.managementMode == "stations" and menu.managementStatus ~= menu.statusText() then
+		menu.openManagement("stations")
+	end
+	if menu.managementFrame then menu.managementFrame:update() end
 end
 
 function menu.onCloseElement(dueToClose, layer)
+	if menu.managementMode then
+		menu.closeManagement()
+		return
+	end
 	if (layer == config.expandedMenuFrameLayer) and menu.expandedNode then
 		menu.expandedNode:collapse()
 		return
@@ -502,6 +518,10 @@ local function availableHeight(y)
 end
 
 function menu.display()
+	local managementMode = menu.managementMode
+	menu.closeManagement()
+	if menu.toolbarFrame then Helper.clearFrame(menu, config.toolbarFrameLayer) end
+	menu.toolbarFrame = nil
 	Helper.clearDataForRefresh(menu)
 	-- A redraw destroys any open detail panel along with everything else; holding on to the
 	-- node would make the next close try to collapse a node that no longer exists.
@@ -516,20 +536,22 @@ function menu.display()
 	menu.createTopLevel(menu.frame)
 
 	local topY = (menu.topLevelOffsetY or 0) + Helper.borderSize
-	local sideWidth = Helper.scaleX(config.sideWidth)
 	local rightBarX = Helper.viewWidth - Helper.scaleX(Helper.sidebarWidth) - Helper.frameBorder
 	local contentWidth = rightBarX - Helper.frameBorder - Helper.borderSize
 
 	if menu.mode == "name" then
 		menu.displayNameEntry(menu.frame, Helper.frameBorder, topY, contentWidth)
 	else
-		menu.displayChainList(menu.frame, Helper.frameBorder, topY, sideWidth)
-		menu.displayChain(menu.frame,
-			Helper.frameBorder + sideWidth + Helper.borderSize, topY,
-			contentWidth - sideWidth - Helper.borderSize)
+		menu.toolbarGeometry = { x = Helper.frameBorder, y = topY, width = contentWidth }
+		menu.displayChain(menu.frame, Helper.frameBorder,
+			topY + Helper.scaleY(Helper.standardButtonHeight) + Helper.borderSize, contentWidth)
 	end
 
 	menu.frame:display()
+	if menu.mode == "chain" then
+		menu.displayToolbar()
+		if managementMode == "stations" then menu.openManagement("stations") end
+	end
 end
 
 -- Creation and renaming share the same cell-sized name field.
@@ -566,6 +588,7 @@ function menu.displayNameEntry(frame, x, y, width)
 	row = ftable:addRow(true, { fixed = true })
 	row[1]:setColSpan(2):createButton():setText(T(1011), { halign = "center" })
 	row[1].handlers.onClick = function ()
+		if menu.managementMode == "rename" then menu.closeManagement(); return end
 		menu.mode = "chain"
 		menu.pendingStations = nil
 		menu.renameIndex = nil
@@ -592,6 +615,11 @@ function menu.confirmName()
 	local name = menu.nameText and menu.nameText:match("^%s*(.-)%s*$")
 	if menu.renameIndex then
 		if not SCV_Store.rename(menu.renameIndex, name) then return end
+		if menu.managementMode == "rename" then
+			menu.closeManagement()
+			menu.displayToolbar()
+			return
+		end
 		menu.renameIndex = nil
 		menu.nameText = nil
 		menu.mode = "chain"
@@ -618,120 +646,202 @@ local function setCenteredButtonIcon(button, icon)
 		x = (width - size) / 2, y = (height - size) / 2 })
 end
 
-function menu.displayChainList(frame, x, y, width)
-	-- Three columns: name | Logical Station Overview | remove. The overview link lives here
-	-- (and in each station's detail panel) because a flowchart node has no click event for
-	-- an icon on its label - only expand/collapse and slider events are dispatched.
-	local ftable = frame:addTable(3, { tabOrder = 1, width = width, x = x, y = y,
-		maxVisibleHeight = availableHeight(y) })
-	ftable:setColWidth(2, Helper.scaleX(30), false)
-	ftable:setColWidth(3, Helper.scaleX(30), false)
-
-	local row = ftable:addRow(false, { fixed = true })
-	row[1]:setColSpan(3):createText(T(1002), Helper.headerRowCenteredProperties)
-
-	-- Chains are created from the map context menu now, so say so rather than leaving an
-	-- empty panel that looks broken.
-	row = ftable:addRow(false, { fixed = true })
-	row[1]:setColSpan(3):createText(T(1005), { wordwrap = true, color = Color["text_inactive"] })
-
-	if menu.notice then
-		row = ftable:addRow(false, { fixed = true })
-		row[1]:setColSpan(3):createText(menu.notice, { wordwrap = true, color = Color["text_positive"] })
+-- All toolbar/overlay updates are isolated from the native graph frame.
+function menu.statusText()
+	local lines = {}
+	if menu.notice then lines[#lines + 1] = menu.notice end
+	if (menu.missingMembers or 0) > 0 then lines[#lines + 1] = T(3022, tostring(menu.missingMembers)) end
+	local graph = menu.graph
+	if graph then
+		if graph.structureChanged then lines[#lines + 1] = T(3101) end
+		if graph.refreshFailed then lines[#lines + 1] = T(3102) end
+		if (graph.lockedCount or 0) > 0 then lines[#lines + 1] = T(3023, tostring(graph.lockedCount)) end
 	end
+	return table.concat(lines, "\n")
+end
 
+function menu.hasWarning()
+	local g = menu.graph
+	return (menu.missingMembers or 0) > 0 or (g and
+		(g.structureChanged or g.refreshFailed or (g.lockedCount or 0) > 0)) or false
+end
 
-	-- Say when a stored station no longer resolves. Dropping it silently would show a
-	-- shorter chain than the one that was built, which reads as the mod losing stations.
-	if (menu.missingMembers or 0) > 0 then
-		row = ftable:addRow(false, { fixed = true })
-		row[1]:setColSpan(3):createText(T(3022, tostring(menu.missingMembers)),
-			{ wordwrap = true, color = Color["text_warning"] })
+function menu.closeManagement()
+	if menu.managementFrame then Helper.clearFrame(menu, config.managementFrameLayer) end
+	if menu.managementMode == "rename" then
+		menu.renameIndex = nil
+		menu.nameText = nil
 	end
+	menu.managementFrame = nil
+	menu.managementMode = nil
+	menu.managementChain = nil
+	menu.managementStatus = nil
+end
 
-	local chains = SCV_Store.chains()
-	-- Reserve the notice row so structural changes never require moving the chart.
-	row = ftable:addRow(false, { fixed = true })
-	row[1]:setColSpan(3):createText(function ()
-		local graph = menu.graph
-		if not graph then return " " end
-		if graph.structureChanged then return T(3101) end
-		if graph.refreshFailed then return T(3102) end
-		if (graph.lockedCount or 0) > 0 then return T(3023, tostring(graph.lockedCount)) end
-		return " "
-	end, { wordwrap = true, height = 3 * Helper.standardTextHeight, color = Color["text_warning"] })
-	local _, selectedIdx = SCV_Store.selected()
+function menu.selectChain(index)
+	local _, current = SCV_Store.selected()
+	if not index or not SCV_Store.get(index) then return end
+	menu.closeManagement()
+	if index == current then return end
+	SCV_Store.select(index)
+	menu.notice = nil
+	menu.markDirty()
+end
 
-	for i, chain in ipairs(chains) do
-		row = ftable:addRow(true, { fixed = false, bgColor = (i == selectedIdx)
-			and Color["row_background_selected"] or nil })
-		-- Interactive cells need real widgets; clicks do not fire on createText.
-		row[1]:createButton({ bgColor = Color["button_background_hidden"] })
-			:setText(chain.name .. "  (" .. #chain.members .. ")", { halign = "left" })
-		row[1].handlers.onClick = function ()
-			SCV_Store.select(i)
-			menu.notice = nil
-			menu.markDirty()
-		end
-		row[2]:createButton({ mouseOverText = ReadText(1001, 1114) })
-		setCenteredButtonIcon(row[2], "menu_edit")
-		row[2].handlers.onClick = function ()
-			menu.renameIndex = i
-			menu.nameText = chain.name
-			menu.pendingStations = nil
-			menu.mode = "name"
-			menu.refresh = getElapsedTime() + 0.05
-		end
-		row[3]:createButton({ mouseOverText = T(1008) }):setText("x", { halign = "center" })
-		row[3].handlers.onClick = function ()
-			SCV_Store.delete(i)
-			menu.notice = nil
-			menu.markDirty()
-		end
+function menu.displayToolbar()
+	local geo = menu.toolbarGeometry
+	if not geo then return end
+	if menu.toolbarFrame then Helper.clearFrame(menu, config.toolbarFrameLayer) end
+	local frame = Helper.createFrameHandle(menu, { layer = config.toolbarFrameLayer,
+		x = geo.x, y = geo.y, width = geo.width, height = Helper.scaleY(Helper.standardButtonHeight) })
+	menu.toolbarFrame = frame
+	local ftable = frame:addTable(6, { tabOrder = 1, width = geo.width, x = 0, y = 0 })
+	local buttonWidth = Helper.scaleX(30)
+	local stationsWidth = math.min(Helper.scaleX(180), geo.width * 0.22)
+	for _, col in ipairs({ 1, 3, 5, 6 }) do ftable:setColWidth(col, buttonWidth, false) end
+	ftable:setColWidth(4, stationsWidth, false)
+	local chain, index = SCV_Store.selected()
+	local chains, options = SCV_Store.chains(), {}
+	for i, entry in ipairs(chains) do
+		options[#options + 1] = { id = tostring(i), text = entry.name, icon = "", displayremoveoption = false }
 	end
+	if #options == 0 then options[1] = { id = "0", text = T(1004), icon = "" } end
+	local row = ftable:addRow(true, { fixed = true })
+	row[1]:createButton({ active = chain ~= nil and index > 1 }):setText("<", { halign = "center" })
+	row[1].handlers.onClick = function () menu.selectChain(index - 1) end
+	row[2]:createDropDown(options, { active = chain ~= nil, startOption = chain and tostring(index) or "0",
+		mouseOverText = chain and chain.name or T(1004) }):setTextProperties({ halign = "left" })
+	row[2].handlers.onDropDownConfirmed = function (_, id) menu.selectChain(tonumber(id)) end
+	row[3]:createButton({ active = chain ~= nil and index < #chains }):setText(">", { halign = "center" })
+	row[3].handlers.onClick = function () menu.selectChain(index + 1) end
+	row[4]:createButton({ active = chain ~= nil, mouseOverText = T(2005) })
+		:setText(T(2005) .. " (" .. tostring(chain and #chain.members or 0) .. ")", { halign = "center" })
+	row[4].handlers.onClick = function () menu.toggleManagement("stations") end
+	row[5]:createButton({ active = function () return menu.statusText() ~= "" end,
+		mouseOverText = function () return menu.statusText() end })
+		:setText(function () return menu.hasWarning() and "!" or "i" end,
+			{ halign = "center", color = function () return Color[menu.hasWarning() and "text_warning" or "text_positive"] end })
+	row[5].handlers.onClick = function () menu.openManagement("stations") end
+	row[6]:createButton({ active = chain ~= nil, mouseOverText = ReadText(1001, 7865) }):setText("...", { halign = "center" })
+	row[6].handlers.onClick = function () menu.toggleManagement("actions") end
+	-- Store the station button's left edge in screen pixels, including table borders.
+	geo.anchorX = geo.x + geo.width - stationsWidth - 2 * buttonWidth - 2 * Helper.borderSize
+	geo.overlayY = geo.y + Helper.scaleY(Helper.standardButtonHeight) + Helper.borderSize
+	frame:display()
+end
 
-	local members = menu.currentMembers()
-	if #members > 0 then
-		-- fixed = FALSE deliberately. The row schema states fixed "requires all previous
-		-- rows to be fixed as well", and the scrollable chain rows above already broke that.
-		row = ftable:addRow(false, { fixed = false })
-		row[1]:setColSpan(3):createText(T(1015, tostring(#members)), Helper.headerRow1Properties)
+function menu.toggleManagement(mode)
+	if menu.managementMode == mode then menu.closeManagement() else menu.openManagement(mode) end
+end
 
-		for _, st in ipairs(members) do
-			local severity = "ok"
-			local reason
-			if menu.graph and menu.graph.stationNodes[st.id] then
-				local sn = menu.graph.stationNodes[st.id]
-				severity = sn.severity
-				local w = sn.worstWare and sn.wares[sn.worstWare]
-				reason = w and warningReason(w.name or sn.worstWare, w.health)
+function menu.confirmDelete()
+	local chain, index = SCV_Store.selected()
+	if menu.managementMode ~= "delete" or chain ~= menu.managementChain then return end
+	menu.closeManagement()
+	SCV_Store.delete(index)
+	menu.notice = nil
+	menu.markDirty()
+end
+
+function menu.openManagement(mode)
+	local chain, index = SCV_Store.selected()
+	if not chain or not menu.toolbarGeometry then return end
+	menu.closeManagement()
+	if menu.expandedNode then menu.expandedNode:collapse() end
+	menu.expandedNode = nil
+	menu.expandedMenuFrame = nil
+	menu.managementMode = mode
+	menu.managementChain = chain
+	local geo, border = menu.toolbarGeometry, Helper.frameBorder
+	local width = math.min(Helper.scaleX(mode == "actions" and 240 or 600), Helper.viewWidth - 2 * border)
+	local x = math.max(border, math.min(geo.anchorX, Helper.viewWidth - width - border))
+	local y = math.min(geo.overlayY, Helper.viewHeight - Helper.scaleY(160) - border)
+	y = math.max(border, y)
+	local height = Helper.viewHeight - y - border
+	local frame = Helper.createFrameHandle(menu, { layer = config.managementFrameLayer,
+		x = x, y = y, width = width, height = height, closeOnUnhandledClick = false })
+	menu.managementFrame = frame
+	frame:setBackground("solid", { color = Color["frame_background_semitransparent"] })
+	if mode == "rename" then
+		menu.renameIndex, menu.nameText = index, chain.name
+		menu.displayNameEntry(frame, border, border, width - 2 * border)
+		frame.properties.height = math.min(height, frame:getUsedHeight() + 2 * border)
+	else
+		local ftable = frame:addTable(3, { tabOrder = 1, x = border, y = border,
+			width = width - 2 * border, maxVisibleHeight = height - 2 * border })
+		ftable:setColWidth(2, Helper.scaleX(30), false)
+		ftable:setColWidth(3, Helper.scaleX(30), false)
+		local row = ftable:addRow(true, { fixed = true })
+		row[1]:setColSpan(2):createText(chain.name, { wordwrap = true })
+		row[3]:createButton({ mouseOverText = ReadText(1001, 2670) }):setText("x", { halign = "center" })
+		row[3].handlers.onClick = menu.closeManagement
+		if mode == "stations" then
+			menu.displayStations(ftable, chain, index)
+		elseif mode == "actions" then
+			for _, action in ipairs({ { "rename", 1114 }, { "delete", 8931 } }) do
+				local target = action[1]
+				row = ftable:addRow(true, { fixed = false })
+				row[1]:setColSpan(3):createButton():setText(ReadText(1001, action[2]))
+				row[1].handlers.onClick = function () menu.openManagement(target) end
 			end
-
+		elseif mode == "delete" then
+			row = ftable:addRow(false, { fixed = false })
+			row[1]:setColSpan(3):createText(T(2020, chain.name), { wordwrap = true })
 			row = ftable:addRow(true, { fixed = false })
-			row[1]:createButton({ bgColor = Color["button_background_hidden"],
-				mouseOverText = reason and (reason .. "\n" .. T(1013)) or T(1013) })
-				:setText(st.name, { halign = "left", color = severityColor(severity) })
-			row[1].handlers.onClick = function ()
-				-- Same shape vanilla uses for the map: {0, 0, showuniverse, target}.
-				Helper.closeMenuAndOpenNewMenu(menu, "MapMenu", { 0, 0, true, st.id64 })
-				menu.cleanup()
-			end
-			-- Vanilla uses stationbuildst_lsov for Logical Station Overview links.
-			-- Reuse it here and for our top-level supply chain tab.
-			row[2]:createButton({ mouseOverText = T(3030) })
-			setCenteredButtonIcon(row[2], "stationbuildst_lsov")
-			row[2].handlers.onClick = function ()
-				Helper.closeMenuAndOpenNewMenu(menu, "StationOverviewMenu", { 0, 0, st.id64 })
-				menu.cleanup()
-			end
-			row[3]:createButton({ mouseOverText = T(1016) }):setText("-", { halign = "center" })
-			row[3].handlers.onClick = function ()
-				SCV_Store.removeStation(selectedIdx, st.id)
-				menu.markDirty()
-			end
+			row[1]:setColSpan(3):createButton():setText(ReadText(1001, 8931))
+			row[1].handlers.onClick = menu.confirmDelete
+			row = ftable:addRow(true, { fixed = false })
+			row[1]:setColSpan(3):createButton():setText(T(1011))
+			row[1].handlers.onClick = menu.closeManagement
+		end
+		-- Match vanilla: grow the frame only as far as its bounded table content.
+		frame.properties.height = math.min(height, ftable:getVisibleHeight() + 2 * border)
+	end
+	frame:display()
+end
+
+function menu.displayStations(ftable, chain, index)
+	local members = menu.currentMembers()
+	menu.managementStatus = menu.statusText()
+	local row = ftable:addRow(false, { fixed = false })
+	row[1]:setColSpan(3):createText(menu.managementStatus ~= "" and menu.managementStatus or " ",
+		{ wordwrap = true, color = Color[menu.hasWarning() and "text_warning" or "text_positive"] })
+	row = ftable:addRow(false, { fixed = false })
+	row[1]:setColSpan(3):createText(T(2005) .. " (" .. #chain.members .. ")", Helper.headerRow1Properties)
+	if #members == 0 then
+		row = ftable:addRow(false, { fixed = false })
+		row[1]:setColSpan(3):createText(T(1005), { wordwrap = true })
+	end
+	for _, st in ipairs(members) do
+		local function stationStyle()
+			local sn = menu.graph and menu.graph.stationNodes[st.id]
+			local w = sn and sn.worstWare and sn.wares[sn.worstWare]
+			return severityColor(sn and sn.severity or "ok") or Color["text_normal"],
+				w and warningReason(w.name or sn.worstWare, w.health)
+		end
+		row = ftable:addRow(true, { fixed = false })
+		row[1]:createButton({ bgColor = Color["button_background_hidden"], mouseOverText = function ()
+			local _, reason = stationStyle()
+			return st.name .. "\n" .. (reason and (reason .. "\n") or "") .. T(1013)
+		end }):setText(st.name, { halign = "left", color = function () local color = stationStyle(); return color end })
+		row[1].handlers.onClick = function ()
+			Helper.closeMenuAndOpenNewMenu(menu, "MapMenu", { 0, 0, true, st.id64 }); menu.cleanup()
+		end
+		row[2]:createButton({ mouseOverText = T(3030) })
+		setCenteredButtonIcon(row[2], "stationbuildst_lsov")
+		row[2].handlers.onClick = function ()
+			Helper.closeMenuAndOpenNewMenu(menu, "StationOverviewMenu", { 0, 0, st.id64 }); menu.cleanup()
+		end
+		row[3]:createButton({ mouseOverText = T(1016) }):setText("-", { halign = "center" })
+		row[3].handlers.onClick = function ()
+			local selected = SCV_Store.selected()
+			if selected ~= chain then return end
+			SCV_Store.removeStation(index, st.id)
+			menu.markDirty()
 		end
 	end
 end
+
 
 -- Right pane: the diagram.
 function menu.displayChain(frame, x, y, width)
@@ -1238,6 +1348,7 @@ function menu.expandWare(node, frame, ftable, nodedata)
 end
 
 function menu.onFlowchartNodeExpanded(node, frame, ftable, ftable2)
+	menu.closeManagement()
 	-- One panel at a time, as vanilla does (menu_station_overview.lua onFlowchartNodeExpanded).
 	if node.flowchart and node.flowchart.collapseAllNodes then
 		node.flowchart:collapseAllNodes()

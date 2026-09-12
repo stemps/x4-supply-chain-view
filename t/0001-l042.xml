@@ -101,5 +101,6 @@
     <t id="5001">%smin</t>
     <t id="5002">nikdy</t>
     <t id="5003">%s/h</t>
+    <t id="2020">Odstranit dodavatelský řetězec „%s“? Samotné stanice nebudou ovlivněny.</t>
   </page>
 </language>

@@ -101,5 +101,6 @@
     <t id="5001">%smin</t>
     <t id="5002">mai</t>
     <t id="5003">%s/h</t>
+    <t id="2020">Eliminare la catena di rifornimento «%s»? Le stazioni non subiranno modifiche.</t>
   </page>
 </language>
