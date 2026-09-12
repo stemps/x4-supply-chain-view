@@ -37,6 +37,9 @@ class ReleaseTests(unittest.TestCase):
         self.write("ui/example.lua", "return 1\n")
         self.write("t/0001.xml", "<language/>\n")
         self.write("test/excluded.lua", "return 0\n")
+        self.write("assets/banner.png", "promotional image placeholder\n")
+        self.write("assets/nested/example.lua", "return 'not runtime content'\n")
+        self.write("assets/nested/example.xml", "<promotional/>\n")
         self.write("README.md", "Not shipped\n")
         self.cmd("add", ".")
         self.cmd("commit", "-m", "Initial mod")
@@ -67,6 +70,7 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(self.cmd("rev-parse", "HEAD"), self.cmd("rev-parse", "origin/main"))
         self.assertEqual(self.cmd("cat-file", "-t", "v0.1.0"), "tag")
         with zipfile.ZipFile(archive) as zipped:
+            self.assertFalse(any(name.startswith("supply_chain_view/assets/") for name in zipped.namelist()))
             self.assertEqual(set(zipped.namelist()), {"supply_chain_view/" + p for p in
                              ("content.xml", "ui.xml", "ui/example.lua", "t/0001.xml")})
             for name in zipped.namelist():
