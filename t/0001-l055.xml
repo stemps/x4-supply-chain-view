@@ -90,7 +90,8 @@
     <t id="3068">Laranja</t>
     <t id="3069">dura %s / quando cheio %s</t>
     <t id="3070">Estoque atual / armazenamento cheio, em horas de consumo máximo incluindo a força de trabalho atual. Pressupõe ausência de entregas; reservas não são incluídas. O segundo valor descreve a reserva com o armazenamento cheio.</t>
-    <t id="3071">Estoque atual / armazenamento cheio, em horas de produção máxima. Para uma saída, representa estoque equivalente em horas de produção, não autonomia de consumo nem tempo até encher. Reservas e coletas não são incluídas.</t>
+    <t id="3071">Tempo até encher o armazenamento / tempo para enchê-lo desde vazio, com produção máxima e recursos suficientes. Coletas e reservas não são incluídas. Se a capacidade for estimada, ambos os tempos usam o limite superior do armazenamento compartilhado; outras mercadorias podem reduzir o espaço disponível.</t>
+    <t id="3074">enche em %s / desde vazio %s</t>
     <t id="3072">Segmento laranja: a oferta máxima é inferior à demanda máxima em %s.</t>
     <t id="3073">Estoque em vermelho: a demanda máxima supera a oferta máxima além da tolerância do balanço. Esta cor descreve o balanço produtivo, não a movimentação atual do estoque.</t>
     <t id="4000">Cadeia grande demais para desenhar</t>

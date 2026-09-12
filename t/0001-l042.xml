@@ -90,7 +90,8 @@
     <t id="3068">Oranžová</t>
     <t id="3069">vydrží %s / při plném skladu %s</t>
     <t id="3070">Současné zásoby / plný sklad vyjádřené v hodinách maximální spotřeby včetně současné pracovní síly. Předpokládá žádné dodávky; rezervace nejsou zahrnuty. Druhá hodnota popisuje rezervu při plném skladu.</t>
-    <t id="3071">Současné zásoby / plný sklad vyjádřené v hodinách maximální výroby. U výstupu jde o zásoby v přepočtu na dobu výroby, nikoli o výdrž pro spotřebitele či čas do zaplnění. Bez rezervací a odběrů.</t>
+    <t id="3071">Čas do naplnění skladu / čas naplnění z prázdného stavu při maximální výrobě a dostatku vstupních surovin. Odběry a rezervace se nezapočítávají. Při odhadované kapacitě oba časy vycházejí z horní meze sdíleného skladu; jiné zboží může dostupné místo zmenšit.</t>
+    <t id="3074">naplní se za %s / z prázdného %s</t>
     <t id="3072">Oranžová část ukazatele: maximální nabídka je o %s nižší než maximální poptávka.</t>
     <t id="3073">Červené číslo zásob: maximální poptávka převyšuje maximální nabídku nad toleranci bilance. Barva popisuje výrobní bilanci, nikoli současný pohyb zásob.</t>
     <t id="4000">Řetězec je příliš velký pro vykreslení</t>

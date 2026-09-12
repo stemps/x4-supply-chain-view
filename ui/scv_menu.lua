@@ -1290,6 +1290,8 @@ local function detailEntry(ftable, key, name, w, isInput)
 			and ((b.estimated and "~" or "") .. formatAmount(b.max)) or "?"
 		local long = m.rateKnown and T(isInput and 3035 or 3036, rate) or T(3037)
 		local fullTime = m.capacityHours and ((b.estimated and "~" or "") .. formatHours(m.capacityHours)) or "?"
+		local fillTime = m.fillHours and ((b.estimated and "~" or "")
+			.. (m.fillHours == 0 and T(5001, "0") or formatHours(m.fillHours))) or "?"
 		local coverageTip = T(isInput and 3070 or 3071)
 		if b.estimated then coverageTip = coverageTip .. "\n" .. T(3045) end
 		return { rate = rate, amount = T(3060, stock, capacity), long = long,
@@ -1298,7 +1300,8 @@ local function detailEntry(ftable, key, name, w, isInput)
 			amountTip = b.estimated and T(3045) or (b.unknown and T(3046) or ""),
 			rateColor = m.rateKnown and (m.rate or 0) > 0
 				and (isInput and config.consumptionColor or Color["text_positive"]) or Color["text_inactive"],
-			coverage = T(3069, m.stockHours and formatHours(m.stockHours) or "?", fullTime),
+			coverage = isInput and T(3069, m.stockHours and formatHours(m.stockHours) or "?", fullTime)
+				or T(3074, fillTime, fullTime),
 			coverageTip = coverageTip }
 	end)
 	local function metricRow(rowkey)

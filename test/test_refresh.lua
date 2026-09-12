@@ -68,6 +68,7 @@ local supplierRow = rowIndex("station:supplier")
 local consumerRow = rowIndex("station:consumer")
 assert(popup.rows[consumerRow + 2][1].text == "Amount 10 / 1.0k")
 assert(popup.rows[supplierRow + 1][1].bar.current == 130)
+assert(popup.rows[supplierRow + 3][1].text == "fills in 9.0h / from empty 10.0h")
 
 -- No structural operation is allowed during a publication.
 local build, breakCycles, budget = SCV_Graph.build, SCV_Graph.breakCycles, SCV_Graph.applyBudget
@@ -95,6 +96,7 @@ assert(menu.expandedNode == nativeWare and menu.expandedMenuFrame == panel)
 assert(popup.rows[2][1].text == "Amount 1.2k / 3.0k")
 assert(popup.rows[3][2].text == "+200/h" and popup.rows[4][2].text == "-100/h")
 assert(popup.rows[supplierRow + 1][1].bar.current == 300)
+assert(popup.rows[supplierRow + 3][1].text == "fills in 3.0h / from empty 5.0h")
 assert(popup.rows[consumerRow][1].props.color == "text_normal")
 assert(string.find(nativeWare.tooltip, "1.2k", 1, true))
 
@@ -108,6 +110,7 @@ assert(ware.netRate == 0 and ware.balance == nil and ware.balanceUnknown == "zer
 assert(ware.worstCover == nil and ware.worstConsumer == nil and ware.coverHours == nil)
 assert(popup.rows[supplierRow + 1][1].bar.start == popup.rows[supplierRow + 1][1].bar.current)
 assert(popup.rows[consumerRow + 3][1].text == "lasts ? / when full ?")
+assert(popup.rows[supplierRow + 3][1].text == "fills in ? / from empty ?")
 
 -- A failed station contributes unknowns, never stale figures or a fictitious known zero.
 menu.publishMetrics({ copy(supplier), { id = "consumer", failed = true, wares = {} } })

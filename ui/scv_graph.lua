@@ -278,12 +278,15 @@ function SCV_Graph.detailMetrics(w, isInput)
 	local rate = isInput and w.consMax or w.prodMax
 	local known = SCV_Graph.rateKnown(w, isInput)
 	local measurable = known and (rate or 0) > 0
+	local capacityKnown = (w.limit or 0) > 0 or (w.capacityUnits or 0) > 0
 	return {
 		bar = bar,
 		rate = rate,
 		rateKnown = known,
 		stockHours = measurable and bar.stockKnown and bar.start / rate or nil,
-		capacityHours = measurable and ((w.limit or 0) > 0 or (w.capacityUnits or 0) > 0) and bar.max / rate or nil,
+		fillHours = not isInput and measurable and bar.stockKnown and capacityKnown
+			and hoursToFull(bar.start, bar.max, rate) or nil,
+		capacityHours = measurable and capacityKnown and bar.max / rate or nil,
 		sign = isInput and "-" or "+",
 		severity = w.health and w.health.severity or "ok",
 	}

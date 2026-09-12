@@ -107,7 +107,8 @@
     <t id="3068">Orange</t>
     <t id="3069">lasts %s / when full %s</t>
     <t id="3070">Current stock / full storage, expressed as hours of maximum consumption including current workforce. Assumes no deliveries; reservations are not included. The second value describes the buffer when fully stocked.</t>
-    <t id="3071">Current stock / full storage, expressed as hours of maximum production. For an output this is production-equivalent inventory, not consumer coverage or time remaining until full. Reservations and collections are not included.</t>
+    <t id="3071">Time until storage is full / time to fill it from empty, at maximum production with sufficient inputs. Collections and reservations are excluded. When capacity is estimated, both times use the shared storage upper bound; other wares may reduce the available space.</t>
+    <t id="3074">fills in %s / from empty %s</t>
     <t id="3072">Orange bar segment: maximum supply is below maximum demand by %s.</t>
     <t id="3073">Red stock number: maximum demand exceeds maximum supply beyond the balance tolerance. This colour describes production balance, not current inventory movement.</t>
 

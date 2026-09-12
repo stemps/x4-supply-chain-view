@@ -90,7 +90,8 @@
     <t id="3068">Orange</t>
     <t id="3069">reicht %s / bei vollem Lager %s</t>
     <t id="3070">Aktueller Vorrat / volles Lager, ausgedrückt in Stunden maximalen Verbrauchs einschließlich aktueller Belegschaft. Ohne Lieferungen und Reservierungen. Der zweite Wert beschreibt den Puffer bei vollem Lager.</t>
-    <t id="3071">Aktueller Vorrat / volles Lager, ausgedrückt in Stunden maximaler Produktion. Bei Ausgangswaren entspricht dies dem Vorrat in Produktionsstunden, nicht der Verbrauchsreichweite oder der Restzeit bis zum vollen Lager. Ohne Reservierungen und Abholungen.</t>
+    <t id="3071">Zeit bis zur vollen Lagerbelegung / Füllzeit ab leerem Lager bei maximaler Produktion und ausreichenden Ressourcen. Abholungen und Reservierungen sind ausgeschlossen. Bei geschätzter Kapazität verwenden beide Zeiten die Obergrenze des gemeinsam genutzten Lagers; andere Waren können den verfügbaren Platz verringern.</t>
+    <t id="3074">voll in %s / ab leer %s</t>
     <t id="3072">Oranges Balkensegment: maximales Angebot liegt um %s unter dem maximalen Bedarf.</t>
     <t id="3073">Rote Vorratszahl: maximaler Bedarf übersteigt maximales Angebot jenseits der Bilanztoleranz. Die Farbe beschreibt die Produktionsbilanz, nicht die aktuelle Lagerbewegung.</t>
     <t id="4000">Kette zu groß zur Darstellung</t>

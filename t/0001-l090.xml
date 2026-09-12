@@ -90,7 +90,8 @@
     <t id="3068">Turuncu</t>
     <t id="3069">yeter %s / depo doluyken %s</t>
     <t id="3070">Mevcut iş gücü dahil azami tüketim saati olarak mevcut stok / dolu depo. Teslimat olmadığı varsayılır; rezervasyonlar dahil değildir. İkinci değer, depo tamamen doluyken rezerv süresini gösterir.</t>
-    <t id="3071">Azami üretim saati olarak mevcut stok / dolu depo. Çıktılar için bu, üretim süresine eşdeğer stoktur; tüketici ihtiyacını karşılama süresi veya dolmaya kalan süre değildir. Rezervasyonlar ve mal alımları dahil değildir.</t>
+    <t id="3071">Yeterli kaynakla azami üretimde deponun dolmasına kalan süre / boş depoyu doldurma süresi. Mal alımları ve rezervasyonlar dahil değildir. Kapasite tahminiyse her iki süre de ortak deponun üst sınırını kullanır; diğer mallar kullanılabilir alanı azaltabilir.</t>
+    <t id="3074">%s içinde dolar / boşken %s</t>
     <t id="3072">Turuncu çubuk bölümü: azami arz, azami talepten %s daha düşük.</t>
     <t id="3073">Kırmızı stok sayısı: azami talep azami arzı denge toleransının ötesinde aşıyor. Renk, mevcut stok hareketini değil üretim dengesini gösterir.</t>
     <t id="4000">Zincir çizilemeyecek kadar büyük</t>

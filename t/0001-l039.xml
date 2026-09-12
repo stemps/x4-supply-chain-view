@@ -90,7 +90,8 @@
     <t id="3068">Arancione</t>
     <t id="3069">durata %s / a magazzino pieno %s</t>
     <t id="3070">Scorte attuali / magazzino pieno, in ore di consumo massimo inclusa la forza lavoro attuale. Presuppone nessuna consegna; prenotazioni escluse. Il secondo valore descrive la riserva a magazzino pieno.</t>
-    <t id="3071">Scorte attuali / magazzino pieno, in ore di produzione massima. Per un'uscita indica le scorte equivalenti in ore di produzione, non l'autonomia dei consumatori né il tempo al riempimento. Prenotazioni e ritiri esclusi.</t>
+    <t id="3071">Tempo fino al riempimento / tempo per riempire il deposito da vuoto, alla produzione massima con risorse sufficienti. Ritiri e prenotazioni esclusi. Se la capacità è stimata, entrambi i tempi usano il limite superiore del deposito condiviso; altre merci possono ridurre lo spazio disponibile.</t>
+    <t id="3074">pieno tra %s / da vuoto %s</t>
     <t id="3072">Segmento arancione: l'offerta massima è inferiore alla domanda massima di %s.</t>
     <t id="3073">Scorte in rosso: la domanda massima supera l'offerta massima oltre la tolleranza del bilancio. Il colore descrive il bilancio produttivo, non il movimento attuale delle scorte.</t>
     <t id="4000">Catena troppo grande da disegnare</t>

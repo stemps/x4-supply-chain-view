@@ -90,7 +90,8 @@
     <t id="3068">Naranja</t>
     <t id="3069">dura %s / lleno %s</t>
     <t id="3070">Existencias actuales / almacenamiento lleno, en horas de consumo máximo, incluida la plantilla actual. Supone que no hay entregas; no incluye reservas. El segundo valor describe la autonomía con el almacén lleno.</t>
-    <t id="3071">Existencias actuales / almacenamiento lleno, en horas de producción máxima. En una salida, indica existencias equivalentes a horas de producción, no autonomía de consumo ni tiempo hasta llenarse. No incluye reservas ni recogidas.</t>
+    <t id="3071">Tiempo hasta llenar el almacén / tiempo para llenarlo desde vacío, a producción máxima con suficientes recursos. No incluye recogidas ni reservas. Si la capacidad es estimada, ambos tiempos usan el límite superior del almacenamiento compartido; otras mercancías pueden reducir el espacio disponible.</t>
+    <t id="3074">se llena en %s / desde vacío %s</t>
     <t id="3072">Segmento naranja: la oferta máxima es inferior a la demanda máxima en %s.</t>
     <t id="3073">Existencias en rojo: la demanda máxima supera la oferta máxima más allá de la tolerancia del balance. Este color describe el balance productivo, no el movimiento actual del inventario.</t>
     <t id="4000">Cadena demasiado grande para dibujar</t>

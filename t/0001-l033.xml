@@ -90,7 +90,8 @@
     <t id="3068">Orange</t>
     <t id="3069">autonomie %s / stockage plein %s</t>
     <t id="3070">Stock actuel / stockage plein, en heures de consommation maximale, main-d'œuvre actuelle comprise. Suppose aucune livraison ; réservations exclues. La seconde valeur décrit la réserve lorsque le stockage est plein.</t>
-    <t id="3071">Stock actuel / stockage plein, en heures de production maximale. Pour une sortie, il s'agit du stock exprimé en temps de production, pas de l'autonomie des consommateurs ni du délai de remplissage. Réservations et enlèvements exclus.</t>
+    <t id="3071">Temps restant avant remplissage / temps de remplissage depuis un stockage vide, à production maximale avec suffisamment de ressources. Enlèvements et réservations exclus. Si la capacité est estimée, les deux durées utilisent la limite supérieure du stockage partagé ; les autres marchandises peuvent réduire la place disponible.</t>
+    <t id="3074">plein dans %s / depuis vide %s</t>
     <t id="3072">Segment orange : l'offre maximale est inférieure à la demande maximale de %s.</t>
     <t id="3073">Stock en rouge : la demande maximale dépasse l'offre maximale au-delà de la tolérance d'équilibrage. Cette couleur décrit le bilan de production, pas l'évolution actuelle du stock.</t>
     <t id="4000">Chaîne trop grande pour être affichée</t>

@@ -90,7 +90,8 @@
     <t id="3068">Pomarańczowy</t>
     <t id="3069">wystarczy na %s / pełny magazyn %s</t>
     <t id="3070">Obecne zapasy / pełny magazyn w godzinach maksymalnego zużycia, z uwzględnieniem obecnej siły roboczej. Zakłada brak dostaw; pomija rezerwacje. Druga wartość opisuje rezerwę przy pełnym magazynie.</t>
-    <t id="3071">Obecne zapasy / pełny magazyn w godzinach maksymalnej produkcji. Dla wyjścia jest to zapas przeliczony na czas produkcji, a nie czas wystarczalności dla konsumentów ani czas do zapełnienia. Pomija rezerwacje i odbiory.</t>
+    <t id="3071">Czas do zapełnienia magazynu / czas zapełnienia od pustego, przy maksymalnej produkcji i wystarczających zasobach. Nie uwzględnia odbiorów ani rezerwacji. Przy szacowanej pojemności oba czasy wykorzystują górną granicę wspólnego magazynu; inne towary mogą ograniczyć dostępne miejsce.</t>
+    <t id="3074">zapełni się za %s / od pustego %s</t>
     <t id="3072">Pomarańczowy segment: maksymalna podaż jest niższa od maksymalnego popytu o %s.</t>
     <t id="3073">Czerwona liczba zapasów: maksymalny popyt przewyższa maksymalną podaż poza tolerancją bilansu. Kolor opisuje bilans produkcji, a nie bieżące zmiany zapasów.</t>
     <t id="4000">Łańcuch zbyt duży do narysowania</t>

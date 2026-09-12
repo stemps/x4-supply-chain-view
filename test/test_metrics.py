@@ -216,7 +216,7 @@ function compareEntry(role, stationID)
     if input and data.consKnown and data.consMax>0 then
         assert(color.r==255 and color.g==150 and color.b==150 and color.glow==0)
     else
-        assert(color == (not input and 'text_positive' or 'text_inactive'))
+        assert(color == (not input and data.prodKnown and data.prodMax>0 and 'text_positive' or 'text_inactive'))
     end
     assert(#a.groups==0 and #b.groups==0) -- no automatic group padding
     for n=0,3 do
@@ -225,11 +225,12 @@ function compareEntry(role, stationID)
         assert(b.rows[j+n].properties.bgColor=='row_background_unselectable')
     end
     assert(a.rows[i+4].group==nil) -- gap is outside the background
-    assert(string.find(a.rows[i+3][1].text,'lasts ',1,true)==1)
+    assert(string.find(a.rows[i+3][1].text,input and 'lasts ' or 'fills in ',1,true)==1)
+    assert(a.rows[i+3][1].props.mouseOverText == b.rows[j+3][1].props.mouseOverText)
     assert(a.rows[i][1].props.wordwrap and b.rows[j][1].props.wordwrap)
     assert(a.properties.maxVisibleHeight==220 and b.properties.maxVisibleHeight==220)
     assert(a.properties.highlightMode=='off' and b.properties.highlightMode=='off')
-    return a.rows[i+2][1].text,a.rows[i+2][2].text
+    return a.rows[i+2][1].text,a.rows[i+2][2].text,a.rows[i+3][1].text
 end
 consumer.wares.energycells.consMax=2400000
 function GetFlowchartNodeExpandedFrameData() return 210,100,20,2 end
@@ -254,6 +255,34 @@ assert(output.health.severity=='critical' and output.health.reason=='backedup')
 assert(math.abs(output.health.tofull-(18333-3300)/28200)<1e-9)
 local m=SCV_Graph.detailMetrics(output,false)
 assert(math.abs(m.stockHours-3300/28200)<1e-9 and math.abs(m.capacityHours-18333/28200)<1e-9)
+assert(math.abs(m.fillHours-output.health.tofull)<1e-9)
+local savedOutput=producer.wares.energycells
+producer.wares.energycells=output
+assert(select(3,compareEntry(false,'A'))=='fills in 31m / from empty 39m')
+output.incoming,output.outgoing=9000,2000
+assert(select(3,compareEntry(false,'A'))=='fills in 31m / from empty 39m')
+output.stock=0
+assert(select(3,compareEntry(false,'A'))=='fills in 39m / from empty 39m')
+for _,stock in ipairs({18333,20000}) do
+    output.stock=stock
+    assert(select(3,compareEntry(false,'A'))=='fills in 0m / from empty 39m')
+end
+output.stock,output.limit,output.capacityUnits=3300,0,18333
+assert(select(3,compareEntry(false,'A'))=='fills in ~31m / from empty ~39m')
+output.stockKnown=false
+assert(select(3,compareEntry(false,'A'))=='fills in ? / from empty ~39m')
+output.limit,output.capacityUnits=18333,nil
+assert(select(3,compareEntry(false,'A'))=='fills in ? / from empty 39m')
+output.stockKnown,output.limit=true,0
+assert(select(3,compareEntry(false,'A'))=='fills in ? / from empty ?')
+output.limit,output.prodKnown=18333,false
+assert(select(3,compareEntry(false,'A'))=='fills in ? / from empty ?')
+output.prodKnown,output.prodMax=true,0
+assert(SCV_Graph.detailMetrics(output,false).fillHours==nil)
+assert(select(3,compareEntry(false,'A'))=='fills in ? / from empty ?')
+producer.wares.energycells=savedOutput
+local inputMetrics=SCV_Graph.detailMetrics({stock=100,limit=200,consKnown=true,consMax=50},true)
+assert(inputMetrics.stockHours==2 and inputMetrics.capacityHours==4 and inputMetrics.fillHours==nil)
 local unknown=SCV_Graph.detailMetrics({input=true,stock=100,limit=200,consKnown=false},true)
 assert(unknown.stockHours==nil and unknown.capacityHours==nil)
 local zero=SCV_Graph.detailMetrics({input=true,stock=100,limit=200,consKnown=true,consMax=0},true)
