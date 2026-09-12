@@ -21,9 +21,13 @@ the development mod; no separate copy is needed.
    and verify the name and members persist.
 7. Open Delete. Verify the confirmation names the chain and explains that stations
    are unaffected. Cancel first; then confirm using a disposable chain.
-8. Add stations from the map. Confirm feedback is accessible from the status
-   indicator. Check missing-station/data/refresh warnings remain accessible with
-   management closed; open Stations to read complete details.
+8. Add stations from the map. Feedback appears below the toolbar for six seconds.
+   Warnings remain visible until resolved. Multiple messages wrap on separate rows,
+   warnings first. The strip grows to 20% of the available canvas, then scrolls.
+   With no messages it disappears. The graph moves vertically without rescanning.
+   Open Rename while feedback expires; typing must remain intact. Verify long
+   translated warnings fit, the strip never covers nodes, and no status button or
+   duplicate messages remain in Stations.
 9. Leave Stations open through a live metric refresh. Graph metrics and station
    warning colors should update. Switching chains closes management and starts
    metrics for the newly selected chain.

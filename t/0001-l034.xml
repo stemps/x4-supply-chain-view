@@ -30,7 +30,8 @@
     <t id="3015">%s proveedores, %s receptores</t>
     <t id="3020">Estas estaciones ya estaban en esta cadena de suministro.</t>
     <t id="3021">Se han añadido %s estaciones.</t>
-    <t id="3022">%s estaciones de esta cadena ya no existen y no se muestran.</t>
+    <t id="3022">No se encontraron %s estaciones y no se muestran.</t>
+    <t id="3025">No se encontró %s estación y no se muestra.</t>
     <t id="3023">Información de almacenamiento no disponible para %s estaciones. Los enlaces siguen visibles; las cantidades desconocidas se indican con ?.</t>
     <t id="3027">lleno %s</t>
     <t id="3028">autonomía %s</t>

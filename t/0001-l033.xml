@@ -30,7 +30,8 @@
     <t id="3015">%s fournisseurs, %s preneurs</t>
     <t id="3020">Ces stations étaient déjà dans cette chaîne logistique.</t>
     <t id="3021">%s station(s) ajoutée(s).</t>
-    <t id="3022">%s station(s) de cette chaîne n'existent plus et ne sont pas affichées.</t>
+    <t id="3022">%s stations sont introuvables et ne sont pas affichées.</t>
+    <t id="3025">%s station est introuvable et n’est pas affichée.</t>
     <t id="3023">Les informations de stockage de %s station(s) sont indisponibles. Les liaisons restent visibles ; les quantités inconnues sont indiquées par ?.</t>
     <t id="3027">plein %s</t>
     <t id="3028">autonomie %s</t>

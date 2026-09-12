@@ -30,7 +30,8 @@
     <t id="3015">%s Lieferanten, %s Abnehmer</t>
     <t id="3020">Diese Stationen waren bereits in dieser Lieferkette.</t>
     <t id="3021">%s Stationen hinzugefügt.</t>
-    <t id="3022">%s Stationen dieser Kette existieren nicht mehr und werden nicht angezeigt.</t>
+    <t id="3022">%s Stationen konnten nicht gefunden werden und werden nicht angezeigt.</t>
+    <t id="3025">%s Station konnte nicht gefunden werden und wird nicht angezeigt.</t>
     <t id="3023">Für %s Stationen sind keine Lagerinformationen verfügbar. Verbindungen bleiben sichtbar; unbekannte Mengen erscheinen als ?.</t>
     <t id="3027">voll %s</t>
     <t id="3028">reicht %s</t>

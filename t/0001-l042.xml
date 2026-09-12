@@ -30,7 +30,8 @@
     <t id="3015">Dodavatelé: %s, odběratelé: %s</t>
     <t id="3020">Tyto stanice již byly součástí řetězce.</t>
     <t id="3021">Počet přidaných stanic: %s.</t>
-    <t id="3022">Počet již neexistujících a nezobrazených stanic v řetězci: %s.</t>
+    <t id="3022">Nenalezené stanice: %s. Nejsou zobrazeny.</t>
+    <t id="3025">Nenalezená stanice: %s. Není zobrazena.</t>
     <t id="3023">Stanice s nedostupnými údaji o skladech: %s. Spojení zůstávají viditelná; neznámá množství jsou označena ?.</t>
     <t id="3027">plný %s</t>
     <t id="3028">výdrž %s</t>

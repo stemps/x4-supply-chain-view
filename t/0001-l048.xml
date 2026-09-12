@@ -30,7 +30,8 @@
     <t id="3015">Dostawcy: %s, odbiorcy: %s</t>
     <t id="3020">Te stacje już należały do tego łańcucha dostaw.</t>
     <t id="3021">Dodano stacje: %s.</t>
-    <t id="3022">Nieistniejące już stacje w tym łańcuchu, które nie są wyświetlane: %s.</t>
+    <t id="3022">Nie znaleziono stacji: %s. Nie są wyświetlane.</t>
+    <t id="3025">Nie znaleziono stacji: %s. Nie jest wyświetlana.</t>
     <t id="3023">Stacje bez dostępnych danych magazynowych: %s. Połączenia pozostają widoczne; nieznane ilości oznaczono ?.</t>
     <t id="3027">pełny %s</t>
     <t id="3028">zapas na %s</t>

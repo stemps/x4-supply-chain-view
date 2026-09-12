@@ -30,7 +30,8 @@
     <t id="3015">%s tedarikçi, %s alıcı</t>
     <t id="3020">Bu istasyonlar zaten bu tedarik zincirindeydi.</t>
     <t id="3021">%s istasyon eklendi.</t>
-    <t id="3022">Bu zincirdeki %s istasyon artık mevcut değil ve gösterilmiyor.</t>
+    <t id="3022">%s istasyon bulunamadı ve gösterilmiyor.</t>
+    <t id="3025">%s istasyon bulunamadı ve gösterilmiyor.</t>
     <t id="3023">%s istasyonun depo bilgileri kullanılamıyor. Bağlantılar görünür kalır; bilinmeyen miktarlar ? ile gösterilir.</t>
     <t id="3027">dolu %s</t>
     <t id="3028">yeter %s</t>

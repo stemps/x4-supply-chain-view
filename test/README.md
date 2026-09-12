@@ -17,7 +17,8 @@ Individual suites are available as `test-graph`, `test-metrics`, and `test-store
 singular/plural wording, and preservation of members and selection when renaming.
 It also runs `test_management.py`: full-width graph geometry, arrow/dropdown navigation,
 independent overlay lifecycle, rename/delete/remove actions, graph identity, live refresh,
-warning access, large station lists, and localized deletion confirmation placeholders.
+visible status timing/ordering/height limits, cached graph redraws, large station
+lists, and localized deletion/missing-station placeholders.
 `test-metrics` also runs `test_refresh.lua`: bounded sweeps through 50 stations,
 atomic publication, in-place native node/popup updates, missing-data recovery,
 structural-change detection and cancellation when switching or closing the view.

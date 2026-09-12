@@ -38,7 +38,8 @@
     <t id="3015">%s supplying, %s taking</t>
     <t id="3020">Those stations were already in this supply chain.</t>
     <t id="3021">Added %s %s.</t>
-    <t id="3022">%s station(s) in this chain no longer exist and are not shown.</t>
+    <t id="3022">%s stations could not be found and are not shown.</t>
+    <t id="3025">%s station could not be found and is not shown.</t>
     <t id="3023">%s station(s) have unavailable storage information. Links remain visible; unavailable amounts show as ?.</t>
     <t id="3027">full %s</t>
     <t id="3028">cover %s</t>
