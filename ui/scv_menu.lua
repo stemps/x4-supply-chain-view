@@ -315,18 +315,18 @@ local function formatAmount(n)
 end
 
 local function formatRate(n)
-	return formatAmount(n) .. "/h"
+	return T(5003, formatAmount(n))
 end
 
 local function formatSigned(n)
-	if n == nil then return "? /h" end
+	if n == nil then return T(5003, "? ") end
 	return (n > 0 and "+" or "") .. formatRate(n)
 end
 
 local function formatPartial(n, known, rate)
 	local value = rate and formatRate(n) or formatAmount(n)
 	if known then return value end
-	return (n or 0) > 0 and (value .. " + ?") or (rate and "? /h" or "?")
+	return (n or 0) > 0 and (value .. " + ?") or (rate and T(5003, "? ") or "?")
 end
 
 -- Hours as something readable. Below an hour, minutes are what you act on.
@@ -1062,7 +1062,7 @@ local function detailEntry(ftable, key, name, w, isInput)
 	local fields = liveFields(function ()
 		local m = SCV_Graph.detailMetrics(w, isInput)
 		local b = m.bar
-		local rate = m.rateKnown and (m.sign .. formatRate(m.rate)) or "? /h"
+		local rate = m.rateKnown and (m.sign .. formatRate(m.rate)) or T(5003, "? ")
 		local stock = b.stockKnown and formatAmount(b.start) or "?"
 		local capacity = ((w.limit or 0) > 0 or (w.capacityUnits or 0) > 0)
 			and ((b.estimated and "~" or "") .. formatAmount(b.max)) or "?"

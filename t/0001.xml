@@ -120,5 +120,6 @@
     <t id="5000">%sh</t>
     <t id="5001">%sm</t>
     <t id="5002">never</t>
+    <t id="5003">%s/h</t>
   </page>
 </language>
