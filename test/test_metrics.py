@@ -269,7 +269,7 @@ assert(w.storage.stock==150 and w.storage.capacity==500)
 menu.decorateNodes(graph)
 assert(w[1].properties.value==150 and w[1].properties.max==500)
 assert(w[1].properties.slider1==-1 and w[1].properties.slider2==-1)
-assert(w[1].statusText=='-30/h' and w[1].color==nil)
+assert(w[1].statusText=='-30/h (-38%)' and w[1].color==nil)
 menu.graph=graph
 local t=tableMock()
 menu.expandWare(nil,{properties={height=220}},t,w)
@@ -290,7 +290,7 @@ b.wares.ore.capacityUnits=0; b.wares.ore.stockKnown=false
 graph=SCV_Graph.build({a,b}); w=graph.wareNodes.ore
 assert(not w.storage.capacityKnown and not w.storage.stockKnown and w.storage.stock==100)
 menu.decorateNodes(graph)
-assert(w[1].properties.value==0 and w[1].statusText=='-30/h')
+assert(w[1].properties.value==0 and w[1].statusText=='-30/h (-38%)')
 b.wares.ore.limit=300; b.wares.ore.stockKnown=true; b.wares.ore.consKnown=false
 graph=SCV_Graph.build({a,b}); w=graph.wareNodes.ore
 menu.decorateNodes(graph)

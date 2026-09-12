@@ -420,6 +420,10 @@ function menu.decorateNodes(graph)
 			local rateColor = Color["text_inactive"]
 			if node.netKnown and node.netRate > 0 then rateColor = Color["text_positive"]
 			elseif node.netKnown and node.netRate < 0 then rateColor = config.consumptionColor end
+			local rateText = formatSigned(node.netRate)
+			if node.netKnown and node.demandCap > 0 then
+				rateText = rateText .. string.format(" (%+.0f%%)", node.netRate / node.demandCap * 100)
+			end
 			node.text = node.name
 			node[1] = {
 				properties = {
@@ -429,7 +433,7 @@ function menu.decorateNodes(graph)
 					step = 0, slider1 = -1, slider2 = -1,
 					mouseOverText = table.concat(lines, "\n"),
 				},
-				statusText = formatSigned(node.netRate), statuscolor = rateColor,
+				statusText = rateText, statuscolor = rateColor,
 			}
 
 		end
