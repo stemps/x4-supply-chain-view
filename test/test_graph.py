@@ -26,7 +26,7 @@ def check(label, cond, detail=""):
 
 def station(sid, name, wares):
     """wares: {ware: dict(output=, input=, stock=, limit=, production=, consumption=,
-                          transport=, inbound=)}"""
+                          transport=)}"""
     t = lua.table()
     for ware, w in wares.items():
         t[ware] = lua.table(
@@ -38,7 +38,6 @@ def station(sid, name, wares):
             consumption=w.get("consumption", 0),
             output=w.get("output", False),
             input=w.get("input", False),
-            inbound=w.get("inbound", False),
             prodMax=w.get("prodMax", w.get("production", 0)),
             consMax=w.get("consMax", w.get("consumption", 0)),
         )
@@ -142,60 +141,32 @@ stations = lua.table(
 )
 g = G.build(stations, lua.table())
 w = g.wareNodes["silicon"]
-check("supply stock summed over SUPPLIERS", w.supplyStock == 12000, f"got={w.supplyStock}")
-check("supply rate summed over suppliers", w.supplyRate == 50, f"got={w.supplyRate}")
-check("demand stock summed over CONSUMERS", w.demandStock == 30, f"got={w.demandStock}")
-check("demand rate summed over consumers", w.demandRate == 500, f"got={w.demandRate}")
-check("unmeasured mining throughput makes net unknown", w.netRate is None, f"got={w.netRate}")
-check("cover is consumer stock over consumer draw",
-      abs(w.coverHours - 30 / 500) < 1e-9, f"got={w.coverHours}")
-check("severity from the consumer that runs dry first", w.severity == "critical")
-check("a supplier that holds stock but produces nothing still counts as supply",
-      w.supplyStock > 0 and w.supplyRate == 50)
+check("combined stock counts all participants", w.storage.stock == 12030)
+check("combined capacity", w.storage.capacity == 30000)
+check("maximum supplier subtotal", w.supplyCap == 50)
+check("maximum consumer total", w.demandCap == 500)
+check("unmeasured mining makes net unknown", w.netRate is None)
+check("consumer station warns", g.stationNodes["f1"].severity == "critical")
 
-print("\n=== no consumption rate: cover undefined, not zero ===")
-stations = lua.table(
-    station("fac", "Factory", {"hullparts": dict(output=True, stock=900, limit=1000,
-                                                 production=100)}),
-    station("yard", "Shipyard", {"hullparts": dict(input=True, stock=10, limit=20000,
-                                                   consumption=0)}),
-)
-g = G.build(stations, lua.table())
-w = g.wareNodes["hullparts"]
-check("cover is nil when nothing consumes at a rate", w.coverHours is None)
-check("  ...severity stays ok rather than fabricating urgency", w.severity == "ok")
-check("  ...consumer capacity available for the stock fallback bar",
-      w.demandLimit == 20000, f"got={w.demandLimit}")
-check("  ...net is unknown when demand is unknown", w.netRate is None)
-
-print("\n=== unknown limit must not fake a backed-up ware ===")
-h = G.wareHealth(lua.table(stock=4000, limit=0, prodMax=50, consMax=0, output=True))
-check("unknown limit -> no time-to-full", h.tofull is None)
-check("  ...so severity is ok, not critical", h.severity == "ok", f"got={h.severity}")
-h = G.wareHealth(lua.table(stock=990, limit=1000, prodMax=50, consMax=0, output=True))
-check("a KNOWN limit still detects backing up",
-      h.reason == "backedup" and h.tofull is not None, f"tofull={h.tofull}")
-
-
-print("\n=== health: time, not fill ===")
-h = G.wareHealth(lua.table(stock=100, limit=1000, prodMax=0, consMax=200, input=True))
-check("input with 0.5h cover -> critical", h.severity == "critical", f"hours={h.hours:.2f}")
-check("  ...role is input", h.role == "input")
-h = G.wareHealth(lua.table(stock=500, limit=1000, prodMax=0, consMax=200, input=True))
-check("input with 2.5h cover -> warning", h.severity == "warning", f"hours={h.hours:.2f}")
-h = G.wareHealth(lua.table(stock=980, limit=1000, prodMax=100, consMax=0, output=True))
-check("output 20 from full at 100/h -> critical (backed up)",
-      h.severity == "critical" and h.reason == "backedup", f"hours={h.hours:.2f}")
-h = G.wareHealth(lua.table(stock=10, limit=1000, prodMax=0, consMax=0))
-check("idle ware never flagged", h.severity == "ok" and h.role == "idle")
-check("  ...and no divide-by-zero", h.hours is None)
-h = G.wareHealth(lua.table(stock=1, limit=10, prodMax=5, consMax=100, output=True, input=True))
-check("both-ends ware judged on the worse side", h.severity == "critical" and h.role == "both")
+print("\n=== input-only warning boundaries ===")
+for stock, expected in [(0,"critical"),(14.999,"critical"),(15,"warning"),(29.999,"warning"),(30,"ok"),(100,"ok")]:
+    h = G.wareHealth(lua.table(input=True,stock=stock,consMax=60,consKnown=True))
+    check(f"{stock} minutes -> {expected}", h.severity == expected)
+for fields in [dict(stockKnown=False,consMax=60,consKnown=True), dict(consMax=0,consKnown=True), dict(consMax=60,consKnown=False)]:
+    h = G.wareHealth(lua.table(input=True,stock=0,**fields))
+    check("unavailable or zero consumption has no warning", h.severity == "ok")
+for stock in [0,990,1000,1100]:
+    h = G.wareHealth(lua.table(output=True,stock=stock,limit=1000,prodMax=100,prodKnown=True,consMax=100,consKnown=True))
+    check("output never warns, even with consumption data", h.severity == "ok" and h.hours is None)
+h = G.wareHealth(lua.table(stock=30,limit=30,prodMax=100,consMax=60,consKnown=True,input=True,output=True))
+check("dual role ignores full output", h.severity == "ok")
+h = G.wareHealth(lua.table(stock=10,limit=10,prodMax=100,consMax=60,consKnown=True,input=True,output=True))
+check("dual role uses input coverage", h.severity == "critical")
 
 print("\n=== station severity is the worst of its wares ===")
 stations = lua.table(
     station("s", "Mixed", {
-        "fine": dict(output=True, stock=10, limit=1000, production=1),
+        "fine": dict(output=True, stock=1000, limit=1000, production=1000),
         "dire": dict(input=True, stock=1, limit=1000, consumption=500)}),
     station("t", "Sink", {"fine": dict(input=True, stock=500, limit=1000, consumption=1)}),
 )
@@ -338,80 +309,19 @@ g = G.build(stations, lua.table())
 w = g.wareNodes["meds"]
 check("supply capacity sums prodMax over suppliers", w.supplyCap == 60000, f"got={w.supplyCap}")
 check("demand capacity sums consMax over consumers", w.demandCap == 20000, f"got={w.demandCap}")
-check("balance = supply capacity / demand capacity", abs(w.balance - 3.0) < 1e-9,
-      f"got={w.balance}")
-check("balance known, so no unknown flag", w.balanceUnknown is None)
-
-# The reported case: ONE supplier nearly empty, consumers sitting on big stocks. That reads
-# as a crisis in the detail panel, but capacity exceeds demand and nobody is running dry -
-# the supplier is empty because its output was shipped out. The bar must say so.
-check("a drained supplier with ample capacity is NOT a shortage", w.balance > 1)
-check("  ...and with no consumer near empty, urgency stays ok", w.severity == "ok",
-      f"severity={w.severity}")
-
-stations = lua.table(
-    # a mining hub: sells ore, has no production module, so no supply capacity figure
-    station("hub", "Mining Hub", {"ore": dict(output=True, stock=50000, prodMax=0)}),
-    station("ref", "Refinery", {"ore": dict(input=True, stock=100, consumption=500,
-                                            consMax=900)}),
-)
-g = G.build(stations, lua.table())
-w = g.wareNodes["ore"]
-check("no supplier module -> balance UNKNOWN, not zero", w.balance is None
-      and w.balanceUnknown == "supply", f"balance={w.balance} unknown={w.balanceUnknown}")
-
-stations = lua.table(
-    station("fac", "Factory", {"hull": dict(output=True, stock=900, prodMax=100)}),
-    # a shipyard's build queue has no consumption rate at all
-    station("yard", "Shipyard", {"hull": dict(input=True, stock=10, consMax=0)}),
-)
-g = G.build(stations, lua.table())
-w = g.wareNodes["hull"]
-check("no demand rate -> balance unknown on the demand side",
-      w.balance is None and w.balanceUnknown == "demand", f"unknown={w.balanceUnknown}")
-
-stations = lua.table(
-    station("fac", "Factory", {"x": dict(output=True, stock=10, prodMax=100)}),
-    station("big", "Big Consumer", {"x": dict(input=True, stock=10, consMax=400)}),
-)
-g = G.build(stations, lua.table())
-check("structural shortfall shows as balance below 1",
-      abs(g.wareNodes["x"].balance - 0.25) < 1e-9, f"got={g.wareNodes['x'].balance}")
-
-print("\n=== B: total stock (how much is banked?) ===")
-stations = lua.table(
-    station("s", "Supplier", {"y": dict(output=True, stock=1200, prodMax=10)}),
-    station("c1", "Consumer 1", {"y": dict(input=True, stock=300, consMax=5)}),
-    station("c2", "Consumer 2", {"y": dict(input=True, stock=500, consMax=5)}),
-)
-g = G.build(stations, lua.table())
-check("total stock = supplier stock + consumer stock", g.wareNodes["y"].totalStock == 2000,
-      f"got={g.wareNodes['y'].totalStock}")
-
-print("\n=== C: urgency from the consumer that runs dry FIRST ===")
-# Nine consumers sitting on huge stocks and one at minutes. The chain AVERAGE is hundreds of
-# hours - it said "healthy" - while one station was about to stall.
-many = [station("s", "Supplier", {"z": dict(output=True, stock=5000, prodMax=5000)})]
-for i in range(9):
-    many.append(station(f"rich{i}", f"Rich {i}", {"z": dict(input=True, stock=80000,
-                                                            consumption=100, consMax=100)}))
-many.append(station("poor", "Poor", {"z": dict(input=True, stock=20, consumption=100,
-                                               consMax=100)}))
-g = G.build(lua.table(*many), lua.table())
-w = g.wareNodes["z"]
-check("the chain AVERAGE looks healthy", w.coverHours > 100, f"avg={w.coverHours:.0f}h")
-check("but the worst consumer is found", w.worstConsumer == "poor", f"got={w.worstConsumer}")
-check("  ...with its own cover", abs(w.worstCover - 0.2) < 1e-9, f"got={w.worstCover}")
-check("  ...and IT decides the urgency: critical", w.severity == "critical",
-      f"severity={w.severity}")
-
-stations = lua.table(
-    station("s", "Supplier", {"q": dict(output=True, stock=10, prodMax=10)}),
-    station("y", "Yard", {"q": dict(input=True, stock=10, consumption=0, consMax=0)}),
-)
-g = G.build(stations, lua.table())
-check("no consumer draws at a rate -> no worst consumer, urgency ok",
-      g.wareNodes["q"].worstConsumer is None and g.wareNodes["q"].severity == "ok")
+check("signed maximum balance", w.netRate == 40000 and w.netKnown)
+check("stock remains inventory rather than production", w.storage.stock == 158000)
+check("supplier with output stock does not warn", g.stationNodes["fac"].severity == "ok")
+check("ample consumer stock does not warn", g.stationNodes["hab1"].severity == "ok")
+for supplier_known, consumer_known in [(False,True),(True,False),(True,True)]:
+    a = station("a","Supplier",{"ore":dict(output=True,stock=50,limit=100,prodMax=100)})
+    b = station("b","Consumer",{"ore":dict(input=True,stock=5,limit=100,consMax=400)})
+    a.wares.ore.prodKnown = supplier_known
+    b.wares.ore.consKnown = consumer_known
+    graph = G.build(lua.table(a,b),lua.table())
+    ware = graph.wareNodes.ore
+    check("incomplete rates suppress net only", (ware.netRate == -300) if supplier_known and consumer_known else ware.netRate is None)
+    check("inventory survives unknown rates", ware.storage.stock == 55 and ware.storage.capacity == 200)
 
 print("\n=== edge cases ===")
 empty = G.build(lua.table(), lua.table())

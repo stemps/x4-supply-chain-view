@@ -81,7 +81,7 @@ freshSupplier.wares.ore.incoming, freshSupplier.wares.ore.outgoing = 0, 100
 freshConsumer.wares.ore.stock, freshConsumer.wares.ore.limit = 800, 2000
 menu.publishMetrics({ freshSupplier, freshConsumer })
 assert(ware.storage.stock == 1200 and ware.storage.capacity == 3000)
-assert(ware.netRate == 100 and ware.balance == 2)
+assert(ware.netRate == 100 and ware.supplyCap == 200 and ware.demandCap == 100)
 assert(nativeWare.value == 1200 and nativeWare.max == 3000)
 assert(nativeWare.status == "+100/h (+100%)")
 assert(station.severity == "ok" and station.worstWare == nil)
@@ -106,8 +106,8 @@ freshSupplier.wares.ore.incoming, freshSupplier.wares.ore.outgoing = 0, 0
 freshSupplier.wares.ore.prodMax, freshConsumer.wares.ore.consMax = 0, 0
 freshSupplier.wares.ore.stock, freshConsumer.wares.ore.stock = 1, 2
 menu.publishMetrics({ freshSupplier, freshConsumer })
-assert(ware.netRate == 0 and ware.balance == nil and ware.balanceUnknown == "zero-demand")
-assert(ware.worstCover == nil and ware.worstConsumer == nil and ware.coverHours == nil)
+assert(ware.netRate == 0 and ware.netKnown and ware.demandCap == 0)
+assert(graph.stationNodes.consumer.severity == "ok")
 assert(popup.rows[supplierRow + 1][1].bar.start == popup.rows[supplierRow + 1][1].bar.current)
 assert(popup.rows[consumerRow + 3][1].text == "lasts ? / when full ?")
 assert(popup.rows[supplierRow + 3][1].text == "fills in ? / from empty ?")

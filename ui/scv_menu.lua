@@ -32,12 +32,6 @@ local config = {
 	stationNodeWidth       = 310,
 	wareNodeWidth          = 260,
 	nodeOffsetX            = 20,
-	-- Capacity balance bar runs 0 .. this; 1.0x (supply equals demand) sits in the middle so
-	-- a shortfall and a surplus get equal room.
-	balanceScale           = 2,
-	-- Net flow smaller than this fraction of demand capacity counts as flat, so the stock
-	-- figure does not flicker between green and red on a balanced ware.
-	trendDeadband          = 0.02,
 	savedVersion           = 2,
 	consumptionColor       = { r = 255, g = 150, b = 150, a = 100, glow = 0 },
 }
@@ -314,15 +308,6 @@ local function severityColor(severity)
 	return nil
 end
 
-local function severityIcon(severity)
-	if severity == "critical" then
-		return "lso_error"
-	elseif severity == "warning" then
-		return "lso_warning"
-	end
-	return nil
-end
-
 -- Compact amounts: a chain deals in tens of thousands, and "12400" in a node status is
 -- noise where "12.4k" is a number you can read at a glance.
 local function formatAmount(n)
@@ -364,19 +349,18 @@ end
 
 local function warningReason(name, health, context)
 	if not health or health.severity == "ok" then return nil end
-	local output = health.reason == "backedup"
 	local threshold = health.severity == "critical" and SCV_Graph.THRESHOLDS.criticalHours
 		or SCV_Graph.THRESHOLDS.warningHours
-	local lines = { name, T(output and 3091 or 3090), "",
-		T(output and 3093 or 3092, formatHours(health.hours)),
-		T(3094, T(health.severity == "critical" and 3067 or 3068), T(5000, string.format("%g", threshold))) }
+	local lines = { name, T(3090), "",
+		T(3092, formatHours(health.hours)),
+		T(3094, T(health.severity == "critical" and 3067 or 3068), formatHours(threshold)) }
 	if context and #context > 0 then
 		lines[#lines + 1] = ""
 		for _, line in ipairs(context) do lines[#lines + 1] = line end
 	end
 	lines[#lines + 1] = ""
-	lines[#lines + 1] = T(output and 3096 or 3095)
-	lines[#lines + 1] = T(output and 3098 or 3097)
+	lines[#lines + 1] = T(3095)
+	lines[#lines + 1] = T(3097)
 	return table.concat(lines, "\n")
 end
 
@@ -423,22 +407,9 @@ function menu.decorateNodes(graph)
 				statuscolor = severityColor(node.severity),
 				color       = (node.severity == "critical") and Color["lso_node_error"] or nil,
 			}
-			-- statusText and statusIcon are mutually exclusive in the render loop
-			-- (setStatusText wins), so only set the icon when there is no text.
-			-- The bare figure was ambiguous: "1m" meant time-to-EMPTY for a starved input
-			-- but time-to-FULL for a backed-up output - opposite meanings, identical glyph.
-			-- Prefixing it costs three characters and removes the guesswork.
 			if node.severity ~= "ok" then
-				local w = node.wares[node.worstWare]
-				local h = w and w.health
-				local hours = formatHours(h and h.hours)
-				if h and (h.reason == "backedup") then
-					node[1].statusText = T(3027, hours)     -- "full <t>"
-				else
-					node[1].statusText = T(3028, hours)     -- "dry <t>"
-				end
-			else
-				node[1].statusIcon = severityIcon(node.severity)
+				local h = node.wares[node.worstWare].health
+				node[1].statusText = T(3028, formatHours(h.hours))
 			end
 		else
 			-- Inventory fill and full-operation hourly balance are separate metrics.

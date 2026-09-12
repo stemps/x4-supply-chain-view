@@ -504,7 +504,6 @@ function SCV_Data.readStation(st)
 				-- reserved trades, for the detail panel's bars
 				incoming    = (reservations[ware] and reservations[ware].incoming) or 0,
 				outgoing    = (reservations[ware] and reservations[ware].outgoing) or 0,
-				inbound     = ((reservations[ware] and reservations[ware].incoming) or 0) > 0,
 				-- All displayed rates use this same full-operation basis.
 				workforce   = tonumber(workforce) or 0,
 				prodMax     = prodMax,

@@ -123,15 +123,15 @@ local consumer={id='B',name='B',wares={energycells={name='energycells',input=tru
     stock=120000,limit=200000,consMax=2400000,consKnown=true,consumption=0}}}
 graph=SCV_Graph.build({producer,consumer})
 local w=graph.wareNodes.energycells
-assert(w.balance == 2 and w.netRate == 2400000 and w.demandRate == 2400000)
-assert(w.worstCover == 0.05) -- idle consumer still needs full-rate stock coverage
+assert(w.supplyCap == 4800000 and w.netRate == 2400000 and w.demandCap == 2400000)
+assert(consumer.wares.energycells.health.cover == 0.05) -- idle consumer still needs full-rate stock coverage
 consumer.wares.energycells.consKnown=false
 local partial=SCV_Graph.build({producer,consumer}).wareNodes.energycells
-assert(partial.balance == nil and partial.netRate == nil and partial.demandCap == 2400000)
+assert(not partial.netKnown and partial.netRate == nil and partial.demandCap == 2400000)
 menu.decorateNodes(SCV_Graph.build({producer,consumer})) -- nil net must not crash rendering
 consumer.wares.energycells.consKnown=true
 consumer.wares.energycells.consMax=0
-assert(SCV_Graph.build({producer,consumer}).wareNodes.energycells.balanceUnknown == 'zero-demand')
+assert(SCV_Graph.build({producer,consumer}).wareNodes.energycells.demandCap == 0)
 
 -- Record actual widget calls to compare both popup entry points.
 function resolve(value)
@@ -206,6 +206,9 @@ function compareEntry(role, stationID)
     assert(a.rows[i][1].props.mouseOverText and b.rows[j][1].props.mouseOverText)
     local input = stationID == 'B'
     local data = graph.stationNodes[stationID].wares.energycells
+    local expectedLabel = data.health.severity == 'critical' and 'icon_error'
+        or (data.health.severity == 'warning' and 'icon_warning' or 'text_normal')
+    assert(a.rows[i][1].props.color == expectedLabel and b.rows[j][1].props.color == expectedLabel)
     if data.health.severity ~= 'ok' then
         assert(string.find(a.rows[i][1].props.mouseOverText,'threshold: below',1,true))
         assert(string.find(b.rows[j][1].props.mouseOverText,'threshold: below',1,true))
@@ -248,14 +251,13 @@ assert(inputRate == '-2.4M/h')
 consumer.wares.energycells.consKnown=false
 assert(select(2,compareEntry(true,'B')) == '? /h')
 
--- Output can have little stock but limited headroom measured in production hours.
+-- Output headroom remains informational, never a warning.
 local output={output=true,stock=3300,limit=18333,prodMax=28200,prodKnown=true}
 output.health=SCV_Graph.wareHealth(output)
-assert(output.health.severity=='critical' and output.health.reason=='backedup')
-assert(math.abs(output.health.tofull-(18333-3300)/28200)<1e-9)
+assert(output.health.severity=='ok' and output.health.reason==nil)
 local m=SCV_Graph.detailMetrics(output,false)
 assert(math.abs(m.stockHours-3300/28200)<1e-9 and math.abs(m.capacityHours-18333/28200)<1e-9)
-assert(math.abs(m.fillHours-output.health.tofull)<1e-9)
+assert(math.abs(m.fillHours-(18333-3300)/28200)<1e-9)
 local savedOutput=producer.wares.energycells
 producer.wares.energycells=output
 assert(select(3,compareEntry(false,'A'))=='fills in 31m / from empty 39m')
@@ -354,22 +356,23 @@ assert(w.storage.stock==950 and w[1].properties.value==500 and w[1].properties.m
 ''')
 lua.execute(r'''
 local station={id='warn',name='Factory',wares={
-    food={name='Terran MRE',input=true,stock=39,limit=100,consMax=60,consKnown=true},
+    food={name='Terran MRE',input=true,stock=10,limit=100,consMax=60,consKnown=true},
     ore={name='Ore',input=true,stock=0,consKnown=false},
     ice={name='Ice',input=true,stock=0,consKnown=false}}}
 local graph=SCV_Graph.build({station})
 menu.decorateNodes(graph)
 local text=graph.stationNodes.warn[1].properties.mouseOverText
-assert(text=='Terran MRE\nLow input buffer\n\nLasts: 39m\nRed threshold: below 1h\n\nInputs without supplier: 3\nSome metrics unavailable\n\nAssumes maximum consumption.\nExcludes deliveries/reservations.',text)
+assert(text=='Terran MRE\nLow input buffer\n\nLasts: 10m\nRed threshold: below 15m\n\nInputs without supplier: 3\nSome metrics unavailable\n\nAssumes maximum consumption.\nExcludes deliveries/reservations.',text)
 local output={id='out',name='Factory',wares={x={name='Product',output=true,stock=18,limit=50,prodMax=60,prodKnown=true}}}
 graph=SCV_Graph.build({output}); menu.decorateNodes(graph)
 text=graph.stationNodes.out[1].properties.mouseOverText
-assert(string.find(text,'Output storage risk\n\nFull in: 32m',1,true))
-assert(string.find(text,'Assumes maximum production.\nExcludes collections/reservations.',1,true))
+assert(not string.find(text,'Output storage risk',1,true))
+assert(graph.stationNodes.out.severity=='ok' and graph.stationNodes.out[1].statusText==nil)
+assert(graph.stationNodes.out[1].color==nil)
 assert(not string.find(text,'Some metrics unavailable',1,true))
-station.wares.food.stock=120
+station.wares.food.stock=20
 graph=SCV_Graph.build({station}); menu.decorateNodes(graph)
-assert(string.find(graph.stationNodes.warn[1].properties.mouseOverText,'Orange threshold: below 3h',1,true))
+assert(string.find(graph.stationNodes.warn[1].properties.mouseOverText,'Orange threshold: below 30m',1,true))
 ''')
 assert all(texts[key].isascii() for key in [3065,3066,*range(3090,3101)])
 for source in (root/'ui').glob('*.lua'):
