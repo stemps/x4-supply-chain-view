@@ -150,6 +150,8 @@ function menu.cleanup()
 	menu.refresh         = nil
 	menu.topLevelOffsetY = nil
 	menu.flowchart       = nil
+	menu.refreshState    = nil
+	menu.metricRevision  = 0
 end
 
 function menu.onShowMenu()
@@ -184,6 +186,8 @@ function menu.onShowMenu()
 	-- No galaxy-wide station scan here any more: chains resolve their own ids, and the
 	-- name-entry preview describes the ids the context menu handed over.
 	SCV_Data.invalidate()
+	menu.refreshState = nil
+	menu.metricRevision = 0
 	menu.scanDone = false
 
 	menu.display()
@@ -211,6 +215,10 @@ function menu.onUpdate()
 	if menu.refresh and (menu.refresh <= getElapsedTime()) then
 		menu.refresh = nil
 		menu.display()
+	end
+	if menu.scanDone and menu.refreshState and menu.graph and menu.mode == "chain" then
+		local snapshot = SCV_Data.refreshStep(menu.refreshState, getElapsedTime())
+		if snapshot then menu.publishMetrics(snapshot) end
 	end
 end
 
@@ -265,6 +273,8 @@ end
 
 function menu.markDirty()
 	SCV_Data.invalidate()
+	menu.refreshState = nil
+	menu.metricRevision = 0
 	menu.scanDone = false
 	menu.refresh = getElapsedTime() + 0.05
 end
@@ -357,6 +367,7 @@ end
 -- so these must be the very tables SCV_Graph linked together, not copies.
 function menu.decorateNodes(graph)
 	for _, node in ipairs(graph.nodes) do
+		local widget = node[1] and node[1].node
 		if node.scvkind == "station" then
 			local parts = {}
 			local warningName, warningHealth
@@ -438,6 +449,40 @@ function menu.decorateNodes(graph)
 			}
 
 		end
+		node[1].node = widget
+	end
+end
+
+function menu.publishMetrics(snapshot)
+	local started = SCV_Data.PROFILE_REFRESH and GetCurRealTime()
+	SCV_Graph.refreshMetrics(menu.graph, snapshot)
+	for _, st in ipairs(snapshot) do SCV_Data.cache[st.id] = st end
+	menu.metricRevision = (menu.metricRevision or 0) + 1
+	menu.decorateNodes(menu.graph)
+	for _, data in ipairs(menu.graph.nodes) do
+		local display = data[1]
+		local widget = display and display.node
+		if widget then
+			widget.customdata.moduledata = display
+			-- Passing explicit defaults clears a warning when a station recovers.
+			widget:updateOutlineColor(display.color or widget.scvDefaultOutline)
+			widget:updateText(data.text, display.color or widget.scvDefaultText)
+			widget:updateStatus(display.statusText, display.statusIcon, nil,
+				display.statuscolor or display.color or widget.scvDefaultStatus)
+			if data.scvkind == "ware" then
+				widget:updateMaxValue(display.properties.max)
+				widget:updateValue(display.properties.value)
+			end
+		end
+	end
+	-- Only a publication updates widgets. These callbacks format cached data; no
+	-- station reads or graph reconstruction happen in frame:update().
+	if menu.frame then menu.frame:update() end
+	if menu.expandedMenuFrame then menu.expandedMenuFrame:update() end
+	if started then
+		log(string.format("refresh: %d stations, reads %.2fms total / %.2fms max, publish %.2fms",
+			#snapshot, menu.refreshState.readSeconds * 1000,
+			menu.refreshState.maxReadSeconds * 1000, (GetCurRealTime() - started) * 1000))
 	end
 end
 
@@ -572,21 +617,6 @@ function menu.displayChainList(frame, x, y, width)
 		row[1]:setColSpan(3):createText(menu.notice, { wordwrap = true, color = Color["text_positive"] })
 	end
 
-	-- Chains may now contain other factions' stations, whose stock levels are scan-gated.
-	-- The LINKS are still correct - ware roles are public - but the numbers read zero, and
-	-- an unexplained zero looks like an empty warehouse rather than missing information.
-	local locked = 0
-	for _, st in ipairs(menu.currentMembers()) do
-		local cached = SCV_Data.cache[st.id]
-		if cached and cached.locked then
-			locked = locked + 1
-		end
-	end
-	if locked > 0 then
-		row = ftable:addRow(false, { fixed = true })
-		row[1]:setColSpan(3):createText(T(3023, tostring(locked)),
-			{ wordwrap = true, color = Color["text_inactive"] })
-	end
 
 	-- Say when a stored station no longer resolves. Dropping it silently would show a
 	-- shorter chain than the one that was built, which reads as the mod losing stations.
@@ -597,6 +627,16 @@ function menu.displayChainList(frame, x, y, width)
 	end
 
 	local chains = SCV_Store.chains()
+	-- Reserve the notice row so structural changes never require moving the chart.
+	row = ftable:addRow(false, { fixed = true })
+	row[1]:setColSpan(3):createText(function ()
+		local graph = menu.graph
+		if not graph then return " " end
+		if graph.structureChanged then return T(3101) end
+		if graph.refreshFailed then return T(3102) end
+		if (graph.lockedCount or 0) > 0 then return T(3023, tostring(graph.lockedCount)) end
+		return " "
+	end, { wordwrap = true, height = 3 * Helper.standardTextHeight, color = Color["text_warning"] })
 	local _, selectedIdx = SCV_Store.selected()
 
 	for i, chain in ipairs(chains) do
@@ -699,6 +739,7 @@ function menu.displayChain(frame, x, y, width)
 	if not graph then
 		return
 	end
+	menu.refreshState = SCV_Data.newRefresh(members, getElapsedTime())
 
 	menu.decorateNodes(graph)
 
@@ -816,9 +857,16 @@ function menu.renderFlowchart(graph, junctions)
 	for _, nodedata in ipairs(graph.nodes) do
 		local moduledata = nodedata[1]
 		if moduledata then
+			-- Function-valued mouseovers register with frame:update at creation.
+			local properties = {}
+			for key, value in pairs(moduledata.properties) do properties[key] = value end
+			properties.mouseOverText = function () return nodedata[1].properties.mouseOverText end
 			local node = menu.flowchart:addNode(nodedata.row, nodedata.col,
-				{ nodedata = nodedata, moduledata = moduledata }, moduledata.properties)
+				{ nodedata = nodedata, moduledata = moduledata }, properties)
 				:setText(nodedata.text)
+			node.scvDefaultOutline = node.properties.outlineColor
+			node.scvDefaultText = node.properties.text.color
+			node.scvDefaultStatus = node.properties.statusColor or node.properties.statustext.color
 
 			if moduledata.color then
 				node.properties.outlineColor = moduledata.color
@@ -920,33 +968,52 @@ end
 -- current = stock once every reserved exchange completes; a gain draws green, a loss in the
 -- dark orange vanilla uses for the same thing. `extra` is an optional line of context for
 -- the mouse-over, used for the full wording of the rate shown compactly beside the name.
+-- Native function-valued properties, formatted once per published snapshot.
+-- Open panels retain their widgets and scrolling; no callback reads the engine.
+local function liveFields(make)
+	local revision, values
+	return function (key)
+		return function ()
+			local current = menu.metricRevision or 0
+			if not values or revision ~= current then
+				values, revision = make(), current
+			end
+			return values[key]
+		end
+	end
+end
+
 local function barCell(cell, w, subject, extra)
-	local b = SCV_Graph.reservationBar(w)
-	local lines = {}
-	lines[#lines + 1] = subject
-	lines[#lines + 1] = T(3041, b.stockKnown and formatAmount(b.start) or "?", b.unknown and "?" or formatAmount(b.max))
-	if b.incoming > 0 then
-		lines[#lines + 1] = T(3042, formatAmount(b.incoming))
-	end
-	if b.outgoing > 0 then
-		lines[#lines + 1] = T(3043, formatAmount(b.outgoing))
-	end
-	if (b.incoming > 0) or (b.outgoing > 0) then
-		lines[#lines + 1] = T(3044, b.stockKnown and b.reservationsKnown and formatAmount(b.current) or "?")
-	end
-	if not b.reservationsKnown then lines[#lines + 1] = T(3064) end
-	if extra then
-		lines[#lines + 1] = extra
-	end
-	if b.unknown then
-		lines[#lines + 1] = T(3046)
-	elseif b.estimated then
-		lines[#lines + 1] = T(3045)
-	end
+	local fields = liveFields(function ()
+		local b = SCV_Graph.reservationBar(w)
+		local lines = {}
+		lines[#lines + 1] = subject
+		lines[#lines + 1] = T(3041, b.stockKnown and formatAmount(b.start) or "?", b.unknown and "?" or formatAmount(b.max))
+		if b.incoming > 0 then
+			lines[#lines + 1] = T(3042, formatAmount(b.incoming))
+		end
+		if b.outgoing > 0 then
+			lines[#lines + 1] = T(3043, formatAmount(b.outgoing))
+		end
+		if (b.incoming > 0) or (b.outgoing > 0) then
+			lines[#lines + 1] = T(3044, b.stockKnown and b.reservationsKnown and formatAmount(b.current) or "?")
+		end
+		if not b.reservationsKnown then lines[#lines + 1] = T(3064) end
+		if extra then
+			lines[#lines + 1] = type(extra) == "function" and extra() or extra
+		end
+		if b.unknown then
+			lines[#lines + 1] = T(3046)
+		elseif b.estimated then
+			lines[#lines + 1] = T(3045)
+		end
+		return { start = b.drawStart, current = b.drawCurrent, max = b.max,
+			tooltip = table.concat(lines, "\n") }
+	end)
 	cell:createStatusBar({
-		start          = b.drawStart,
-		current        = b.drawCurrent,
-		max            = b.max,
+		start          = fields("start"),
+		current        = fields("current"),
+		max            = fields("max"),
 		valueColor     = Color["slider_value"],
 		posChangeColor = Color["flowchart_slider_diff2"],
 		negChangeColor = Color["flowchart_slider_diff1"],
@@ -957,7 +1024,7 @@ local function barCell(cell, w, subject, extra)
 		-- explicit height is drawn 0px tall and the row collapses with it - the bars simply
 		-- vanished. Vanilla passes the text height for the same reason (menu_map.lua:20262).
 		height         = Helper.standardTextHeight,
-		mouseOverText  = table.concat(lines, "\n"),
+		mouseOverText  = fields("tooltip"),
 	})
 end
 
@@ -992,36 +1059,39 @@ end
 
 -- Shared renderer: only the label and role differ between station/ware popups.
 local function detailEntry(ftable, key, name, w, isInput)
-	local m = SCV_Graph.detailMetrics(w, isInput)
-	local b = m.bar
-	local rate = m.rateKnown and (m.sign .. formatRate(m.rate)) or "? /h"
-	local stock = b.stockKnown and formatAmount(b.start) or "?"
-	local capacity = ((w.limit or 0) > 0 or (w.capacityUnits or 0) > 0)
-		and ((b.estimated and "~" or "") .. formatAmount(b.max)) or "?"
-	local long = T(isInput and 3035 or 3036, rate)
-	if not m.rateKnown then long = T(3037) end
-	local reason = warningReason(name, w.health)
-	local labelTip = reason or long
-	-- Explicit row backgrounds need no group wrapper. Avoid its automatic padding;
-	-- the transparent 2px spacer below is the only gap between metric blocks.
+	local fields = liveFields(function ()
+		local m = SCV_Graph.detailMetrics(w, isInput)
+		local b = m.bar
+		local rate = m.rateKnown and (m.sign .. formatRate(m.rate)) or "? /h"
+		local stock = b.stockKnown and formatAmount(b.start) or "?"
+		local capacity = ((w.limit or 0) > 0 or (w.capacityUnits or 0) > 0)
+			and ((b.estimated and "~" or "") .. formatAmount(b.max)) or "?"
+		local long = m.rateKnown and T(isInput and 3035 or 3036, rate) or T(3037)
+		local fullTime = m.capacityHours and ((b.estimated and "~" or "") .. formatHours(m.capacityHours)) or "?"
+		local coverageTip = T(isInput and 3070 or 3071)
+		if b.estimated then coverageTip = coverageTip .. "\n" .. T(3045) end
+		return { rate = rate, amount = T(3060, stock, capacity), long = long,
+			labelTip = warningReason(name, w.health) or long,
+			labelColor = severityColor(m.severity) or Color["text_normal"],
+			amountTip = b.estimated and T(3045) or (b.unknown and T(3046) or ""),
+			rateColor = m.rateKnown and (m.rate or 0) > 0
+				and (isInput and config.consumptionColor or Color["text_positive"]) or Color["text_inactive"],
+			coverage = T(3069, m.stockHours and formatHours(m.stockHours) or "?", fullTime),
+			coverageTip = coverageTip }
+	end)
 	local function metricRow(rowkey)
 		return ftable:addRow(rowkey, { bgColor = Color["row_background_unselectable"], borderBelow = false })
 	end
 	local r = metricRow(key)
-	r[1]:setColSpan(2):createText(name, { wordwrap = true, color = severityColor(m.severity), mouseOverText = labelTip })
+	r[1]:setColSpan(2):createText(name, { wordwrap = true, color = fields("labelColor"), mouseOverText = fields("labelTip") })
 	r = metricRow(false)
-	barCell(r[1]:setColSpan(2), w, name, long)
+	barCell(r[1]:setColSpan(2), w, name, fields("long"))
 	r = metricRow(false)
-	r[1]:setBackgroundColSpan(2):createText(T(3060, stock, capacity), { wordwrap = true,
-		mouseOverText = b.estimated and T(3045) or (b.unknown and T(3046) or "") })
-	r[2]:createText(rate, { halign = "right", wordwrap = true, mouseOverText = long,
-		color = m.rateKnown and (m.rate or 0) > 0 and (isInput and config.consumptionColor or Color["text_positive"]) or Color["text_inactive"] })
+	r[1]:setBackgroundColSpan(2):createText(fields("amount"), { wordwrap = true, mouseOverText = fields("amountTip") })
+	r[2]:createText(fields("rate"), { halign = "right", wordwrap = true, mouseOverText = fields("long"), color = fields("rateColor") })
 	r = metricRow(false)
-	local fullTime = m.capacityHours and ((b.estimated and "~" or "") .. formatHours(m.capacityHours)) or "?"
-	local coverageTip = T(isInput and 3070 or 3071)
-	if b.estimated then coverageTip = coverageTip .. "\n" .. T(3045) end
-	r[1]:setColSpan(2):createText(T(3069, m.stockHours and formatHours(m.stockHours) or "?", fullTime),
-		{ wordwrap = true, mouseOverText = coverageTip, color = Color["text_inactive"] })
+	r[1]:setColSpan(2):createText(fields("coverage"),
+		{ wordwrap = true, mouseOverText = fields("coverageTip"), color = Color["text_inactive"] })
 	-- A small full-width spacer, following vanilla's explicit-height text rows.
 	r = ftable:addRow(false, { borderBelow = false })
 	r[1]:setColSpan(2):createText(" ", { fontsize = 1, height = 2 })
@@ -1082,23 +1152,29 @@ function menu.expandWare(node, frame, ftable, nodedata)
 	setupColumns(ftable)
 
 	sectionHeader(ftable, T(3080))
-	local storage = nodedata.storage
+	local fields = liveFields(function ()
+		local storage = nodedata.storage
+		return { amount = T(3060, formatPartial(storage.stock, storage.stockKnown),
+			(storage.estimated and "~" or "") .. formatPartial(storage.capacity, storage.capacityKnown)),
+			tip = storage.estimated and T(3045) or T(3083) }
+	end)
 	local totals = ftable:addRow("totals", { bgColor = Color["row_background_unselectable"], borderBelow = false })
-	totals[1]:setColSpan(2):createText(T(3060,
-		formatPartial(storage.stock, storage.stockKnown),
-		(storage.estimated and "~" or "") .. formatPartial(storage.capacity, storage.capacityKnown)),
-		{ wordwrap = true, mouseOverText = storage.estimated and T(3045) or T(3083) })
-	local function totalRate(label, amount, known, sign, color, tooltip)
-		local value = formatPartial(amount, known, true)
-		if known or amount > 0 then value = sign .. value end
-		local tip = T(tooltip)
-		if not known then tip = tip .. "\n" .. T(3088) end
+	totals[1]:setColSpan(2):createText(fields("amount"), { wordwrap = true, mouseOverText = fields("tip") })
+	local function totalRate(label, amountKey, knownKey, sign, color, tooltip)
+		local values = liveFields(function ()
+			local amount, known = nodedata[amountKey], nodedata[knownKey]
+			local value = formatPartial(amount, known, true)
+			if known or amount > 0 then value = sign .. value end
+			local tip = T(tooltip)
+			if not known then tip = tip .. "\n" .. T(3088) end
+			return { value = value, tip = tip }
+		end)
 		local row = ftable:addRow(false, { bgColor = Color["row_background_unselectable"], borderBelow = false })
-		row[1]:setBackgroundColSpan(2):createText(T(label), { mouseOverText = tip })
-		row[2]:createText(value, { halign = "right", wordwrap = true, color = color, mouseOverText = tip })
+		row[1]:setBackgroundColSpan(2):createText(T(label), { mouseOverText = values("tip") })
+		row[2]:createText(values("value"), { halign = "right", wordwrap = true, color = color, mouseOverText = values("tip") })
 	end
-	totalRate(3084, nodedata.supplyCap, nodedata.supplyKnown, "+", Color["text_positive"], 3086)
-	totalRate(3085, nodedata.demandCap, nodedata.demandKnown, "-", config.consumptionColor, 3087)
+	totalRate(3084, "supplyCap", "supplyKnown", "+", Color["text_positive"], 3086)
+	totalRate(3085, "demandCap", "demandKnown", "-", config.consumptionColor, 3087)
 
 	local graph = menu.graph
 	local function stationsFor(ids)

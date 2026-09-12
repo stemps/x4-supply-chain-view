@@ -309,6 +309,181 @@ end
 -- crosses between two members of the chain (an output of one, an input of another). Wares
 -- with no counterpart here are the chain's BOUNDARY, reported on the station node rather
 -- than drawn as dangling stubs.
+-- Recalculate only metrics. Node identity, roles and predecessors belong to the layout.
+function SCV_Graph.updateStationMetrics(node)
+	node.severity, node.healthKnown, node.worstWare = "ok", true, nil
+	for ware, w in pairs(node.wares) do
+		local h = SCV_Graph.wareHealth(w)
+		w.health = h
+		node.healthKnown = node.healthKnown and h.known
+		if SCV_Graph.severityRank(h.severity) > SCV_Graph.severityRank(node.severity) then
+			node.severity  = h.severity
+			node.worstWare = ware
+		end
+	end
+end
+
+function SCV_Graph.updateWareMetrics(wnode, stationNodes)
+	local ware, producers, consumers = wnode.scvware, wnode.producers, wnode.consumers
+	wnode.severity, wnode.inbound = "ok", false
+	wnode.supplyStock, wnode.demandStock, wnode.demandLimit = 0, 0, 0
+	wnode.supplyCap, wnode.demandCap = 0, 0
+	wnode.supplyKnown, wnode.demandKnown = true, true
+	wnode.supplyStockKnown, wnode.demandStockKnown = true, true
+	wnode.coverHours, wnode.worstCover, wnode.worstConsumer = nil, nil, nil
+	wnode.balance, wnode.balanceUnknown = nil, nil
+	-- CHAIN-WIDE totals, not one station's numbers.
+	--
+	-- Reporting the worst single station made "Offered 0/h, Stock 0" appear for a
+	-- ware whose suppliers were full: "offered" read the supplier's PRODUCTION rate
+	-- (zero for a mining hub, which supplies from stock) while "stock" read the
+	-- starving CONSUMER. Both were true of some station and neither described the
+	-- link. Supply and demand are now summed separately over their own ends.
+	for _, sid in ipairs(producers) do
+		local w = stationNodes[sid] and stationNodes[sid].wares[ware]
+		if w then
+			wnode.supplyStock = wnode.supplyStock + (w.stock or 0)
+			wnode.supplyKnown = wnode.supplyKnown and SCV_Graph.rateKnown(w, false)
+			wnode.supplyStockKnown = wnode.supplyStockKnown and w.stockKnown ~= false
+			wnode.supplyCap   = wnode.supplyCap + (w.prodMax or 0)
+		else
+			wnode.supplyKnown, wnode.supplyStockKnown = false, false
+		end
+	end
+	for _, sid in ipairs(consumers) do
+		local w = stationNodes[sid] and stationNodes[sid].wares[ware]
+		if w then
+			wnode.demandStock = wnode.demandStock + (w.stock or 0)
+			wnode.demandKnown = wnode.demandKnown and SCV_Graph.rateKnown(w, true)
+			wnode.demandStockKnown = wnode.demandStockKnown and w.stockKnown ~= false
+			wnode.demandCap   = wnode.demandCap + (w.consMax or 0)
+			-- The consumer that runs dry FIRST, judged on its own stock and draw.
+			local c = w.health and w.health.cover
+			if c and ((not wnode.worstCover) or (c < wnode.worstCover)) then
+				wnode.worstCover    = c
+				wnode.worstConsumer = sid
+			end
+			if (w.limit or 0) > 0 then
+				wnode.demandLimit = wnode.demandLimit + w.limit
+			end
+			if w.inbound then
+				wnode.inbound = true
+			end
+		else
+			wnode.demandKnown, wnode.demandStockKnown = false, false
+		end
+	end
+
+	wnode.supplyRate, wnode.demandRate = wnode.supplyCap, wnode.demandCap
+	wnode.netKnown = wnode.supplyKnown and wnode.demandKnown
+	wnode.netRate = wnode.netKnown and (wnode.supplyCap - wnode.demandCap) or nil
+
+	-- Hours the CHAIN can keep consuming this ware from what its consumers already
+	-- hold. nil when nothing draws it at a rate - notably a shipyard, whose build
+	-- queue has no measurable maximum consumption rate.
+	if wnode.demandKnown and wnode.demandStockKnown and wnode.demandRate > 0 then
+		wnode.coverHours = wnode.demandStock / wnode.demandRate
+	end
+
+	wnode.storage = SCV_Graph.storageTotals(stationNodes, ware, producers, consumers)
+	wnode.totalStock = wnode.storage.stock
+
+	-- URGENCY comes from the consumer that runs dry first, NOT from the chain average.
+	-- Average cover (total consumer stock / total draw) is dominated by the big
+	-- holders: ten stations sitting on 80k each hide the one that is down to minutes.
+	-- The average is kept in coverHours for the mouse-over; it just no longer decides
+	-- the colour.
+	if wnode.worstCover then
+		wnode.severity = SCV_Graph.severityFor(wnode.worstCover)
+	end
+
+	-- BALANCE: can the chain SUSTAIN this ware? Capacity, not the instantaneous
+	-- rates. Those drop to 0 whenever a module stalls, so a starving consumer stops
+	-- counting as demand exactly when it is starving - a shortage could make the
+	-- net look healthier. Capacity is what the stations would make and draw running
+	-- flat out, so it is stable and it separates a genuine structural shortfall from
+	-- a supplier that merely looks empty because its output was shipped out.
+	--
+	-- Unknown rather than zero when a side has no capacity figure: a supplier with
+	-- no production module (a mining hub - ships deliver its ore) has no supply
+	-- capacity to report, and a ratio of 0 would read as a total shortage.
+	if not wnode.supplyKnown then
+		wnode.balanceUnknown = "supply"
+	elseif not wnode.demandKnown then
+		wnode.balanceUnknown = "demand"
+	elseif wnode.demandCap == 0 then
+		wnode.balanceUnknown = "zero-demand"
+	else
+		wnode.balance = wnode.supplyCap / wnode.demandCap
+	end
+end
+
+-- Capture all source roles, including boundary wares and nodes hidden by the budget.
+-- This baseline is immutable until the user rebuilds the view.
+function SCV_Graph.captureStructure(stations)
+	local structure = {}
+	for _, st in ipairs(stations) do
+		local roles = {}
+		for ware, w in pairs(st.wares or {}) do
+			roles[ware] = { input = not not w.input, output = not not w.output }
+		end
+		structure[st.id] = roles
+	end
+	return structure
+end
+
+local function sameRole(w, role)
+	return w and (not not w.input == role.input) and (not not w.output == role.output)
+end
+
+local function unknownWare(w)
+	return { name = w.name, transport = w.transport, input = w.input, output = w.output,
+		stock = 0, limit = 0, capacityUnits = 0, prodMax = 0, consMax = 0,
+		production = 0, consumption = 0, workforce = 0, incoming = 0, outgoing = 0,
+		inbound = false, stockKnown = false, limitKnown = false, prodKnown = false,
+		consKnown = false, reservationsKnown = false }
+end
+
+-- Publish a whole sweep without touching topology or any widget/layout references.
+-- Ware tables remain stable too: an expanded panel may already reference them.
+function SCV_Graph.refreshMetrics(graph, stations)
+	local current = {}
+	for _, st in ipairs(stations) do current[st.id] = st end
+	local changed, failed, locked = false, false, 0
+	for id, roles in pairs(graph.sourceStructure) do
+		local st = current[id]
+		local available = st and not st.failed and not st.missing
+		failed = failed or not st or (st.failed == true)
+		if not st or st.missing then changed = true end
+		if st and st.locked then locked = locked + 1 end
+		if available then
+			for ware, role in pairs(roles) do
+				if not sameRole(st.wares[ware], role) then changed = true end
+			end
+			for ware in pairs(st.wares) do
+				if not roles[ware] then changed = true end
+			end
+		end
+		local node = graph.metricStations[id]
+		if node then
+			for ware, w in pairs(node.wares) do
+				local fresh = available and st.wares[ware]
+				if not sameRole(fresh, roles[ware]) then fresh = unknownWare(w) end
+				-- Preserve the displayed names, transport and role; only values change.
+				local name, transport, input, output = w.name, w.transport, w.input, w.output
+				if fresh ~= w then
+					for key in pairs(w) do w[key] = nil end
+					for key, value in pairs(fresh) do w[key] = value end
+				end
+				w.name, w.transport, w.input, w.output = name, transport, input, output
+			end
+			SCV_Graph.updateStationMetrics(node)
+		end
+	end
+	for _, node in pairs(graph.wareNodes) do SCV_Graph.updateWareMetrics(node, graph.metricStations) end
+	graph.structureChanged, graph.refreshFailed, graph.lockedCount = changed, failed, locked
+end
+
 function SCV_Graph.build(stations, options)
 	options = options or {}
 
@@ -338,15 +513,7 @@ function SCV_Graph.build(stations, options)
 			unsold    = {},    -- an output here, taken by nobody in the chain
 			collapsed = {},    -- common wares folded into a badge by applyBudget
 		}
-		for ware, w in pairs(node.wares) do
-			local h = SCV_Graph.wareHealth(w)
-			w.health = h
-			node.healthKnown = node.healthKnown and h.known
-			if SCV_Graph.severityRank(h.severity) > SCV_Graph.severityRank(node.severity) then
-				node.severity  = h.severity
-				node.worstWare = ware
-			end
-		end
+		SCV_Graph.updateStationMetrics(node)
 		nodes[#nodes + 1] = node
 		stationNodes[st.id] = node
 	end
@@ -421,86 +588,7 @@ function SCV_Graph.build(stations, options)
 				demandStockKnown = true,
 			}
 
-			-- CHAIN-WIDE totals, not one station's numbers.
-			--
-			-- Reporting the worst single station made "Offered 0/h, Stock 0" appear for a
-			-- ware whose suppliers were full: "offered" read the supplier's PRODUCTION rate
-			-- (zero for a mining hub, which supplies from stock) while "stock" read the
-			-- starving CONSUMER. Both were true of some station and neither described the
-			-- link. Supply and demand are now summed separately over their own ends.
-			for _, sid in ipairs(producers) do
-				local w = stationNodes[sid].wares[ware]
-				if w then
-					wnode.supplyStock = wnode.supplyStock + (w.stock or 0)
-					wnode.supplyKnown = wnode.supplyKnown and SCV_Graph.rateKnown(w, false)
-					wnode.supplyStockKnown = wnode.supplyStockKnown and w.stockKnown ~= false
-					wnode.supplyCap   = wnode.supplyCap + (w.prodMax or 0)
-				end
-			end
-			for _, sid in ipairs(consumers) do
-				local w = stationNodes[sid].wares[ware]
-				if w then
-					wnode.demandStock = wnode.demandStock + (w.stock or 0)
-					wnode.demandKnown = wnode.demandKnown and SCV_Graph.rateKnown(w, true)
-					wnode.demandStockKnown = wnode.demandStockKnown and w.stockKnown ~= false
-					wnode.demandCap   = wnode.demandCap + (w.consMax or 0)
-					-- The consumer that runs dry FIRST, judged on its own stock and draw.
-					local c = w.health and w.health.cover
-					if c and ((not wnode.worstCover) or (c < wnode.worstCover)) then
-						wnode.worstCover    = c
-						wnode.worstConsumer = sid
-					end
-					if (w.limit or 0) > 0 then
-						wnode.demandLimit = wnode.demandLimit + w.limit
-					end
-					if w.inbound then
-						wnode.inbound = true
-					end
-				end
-			end
-
-			wnode.supplyRate, wnode.demandRate = wnode.supplyCap, wnode.demandCap
-			wnode.netKnown = wnode.supplyKnown and wnode.demandKnown
-			wnode.netRate = wnode.netKnown and (wnode.supplyCap - wnode.demandCap) or nil
-
-			-- Hours the CHAIN can keep consuming this ware from what its consumers already
-			-- hold. nil when nothing draws it at a rate - notably a shipyard, whose build
-			-- queue has no measurable maximum consumption rate.
-			if wnode.demandKnown and wnode.demandStockKnown and wnode.demandRate > 0 then
-				wnode.coverHours = wnode.demandStock / wnode.demandRate
-			end
-
-			wnode.storage = SCV_Graph.storageTotals(stationNodes, ware, producers, consumers)
-			wnode.totalStock = wnode.storage.stock
-
-			-- URGENCY comes from the consumer that runs dry first, NOT from the chain average.
-			-- Average cover (total consumer stock / total draw) is dominated by the big
-			-- holders: ten stations sitting on 80k each hide the one that is down to minutes.
-			-- The average is kept in coverHours for the mouse-over; it just no longer decides
-			-- the colour.
-			if wnode.worstCover then
-				wnode.severity = SCV_Graph.severityFor(wnode.worstCover)
-			end
-
-			-- BALANCE: can the chain SUSTAIN this ware? Capacity, not the instantaneous
-			-- rates. Those drop to 0 whenever a module stalls, so a starving consumer stops
-			-- counting as demand exactly when it is starving - a shortage could make the
-			-- net look healthier. Capacity is what the stations would make and draw running
-			-- flat out, so it is stable and it separates a genuine structural shortfall from
-			-- a supplier that merely looks empty because its output was shipped out.
-			--
-			-- Unknown rather than zero when a side has no capacity figure: a supplier with
-			-- no production module (a mining hub - ships deliver its ore) has no supply
-			-- capacity to report, and a ratio of 0 would read as a total shortage.
-			if not wnode.supplyKnown then
-				wnode.balanceUnknown = "supply"
-			elseif not wnode.demandKnown then
-				wnode.balanceUnknown = "demand"
-			elseif wnode.demandCap == 0 then
-				wnode.balanceUnknown = "zero-demand"
-			else
-				wnode.balance = wnode.supplyCap / wnode.demandCap
-			end
+			SCV_Graph.updateWareMetrics(wnode, stationNodes)
 
 			nodes[#nodes + 1] = wnode
 			wareNodes[ware] = wnode
@@ -516,6 +604,7 @@ function SCV_Graph.build(stations, options)
 	end
 
 	local graph = {
+		sourceStructure = SCV_Graph.captureStructure(stations),
 		nodes           = nodes,
 		stationNodes    = stationNodes,
 		wareNodes       = wareNodes,
@@ -525,6 +614,14 @@ function SCV_Graph.build(stations, options)
 		droppedStations = {},
 	}
 
+	-- Budgeting removes visible nodes, but totals were calculated over every source
+	-- endpoint. Keep that same metric domain on refresh, including hidden stations.
+	graph.metricStations = {}
+	for id, node in pairs(stationNodes) do graph.metricStations[id] = node end
+	graph.lockedCount = 0
+	for _, st in ipairs(stations) do
+		if st.locked then graph.lockedCount = graph.lockedCount + 1 end
+	end
 	SCV_Graph.breakCycles(graph)
 	SCV_Graph.applyBudget(graph, options)
 	SCV_Graph.materializePredecessors(graph)

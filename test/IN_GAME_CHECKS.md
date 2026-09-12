@@ -45,3 +45,39 @@ estimated mode; the runtime comparisons above remain required.
 Conservative limitation: if a non-operational module may contaminate an aggregate maximum,
 its affected wares are unknown rather than reported as verified capacity. Other wares remain
 available. Missing scans, API failures and missing recipes also remain explicitly unknown.
+
+## Live refresh acceptance checks
+
+After relaunching with these changes, leave the selected chain open while the simulation
+runs. Initial loading still reads up to four stations per call. Subsequent sweeps start
+at least five seconds apart and read one station per 0.2-second callback. They publish
+only when complete: a 50-station chain updates about every ten seconds, with readings
+collected across that interval. The readings are not simultaneous engine measurements.
+
+1. Observe deliveries, pickups and reservation changes without reopening the view.
+   Node fill, stock totals, reservation bars, rates, coverage, warnings and tooltips
+   should update together at each publication. Warnings must clear when buffers recover.
+2. Keep a ware panel open and scrolled down through several sweeps; repeat with a station
+   panel. Neither panel should collapse, jump, duplicate rows or lose scroll position.
+   Test unknown-to-known values and increasing digit counts for wrapping/clipping.
+3. Finish another module producing an existing ware. Its maximum production should
+   update. Finish a module adding a new ware or changing its role: keep the original
+   graph and show the reopen-to-rebuild notice. Reopen to see the new relationships.
+4. Destroy or otherwise invalidate a member: retain its node, mark its contributions
+   unknown and show the structural notice. Scan-locked station data must not become
+   a false zero. Temporary read failures should recover on a subsequent sweep.
+5. Switch chains during a sweep, close the view, and reopen it. No old-chain result
+   should appear in the new view. Repeat on a chain with budget-hidden stations.
+6. Compare frame times with a normal chain, a 25+ station chain and the largest complex
+   available. Test with panels both closed and open. In `ui/scv_data.lua`, the diagnostic
+   `REFRESH_ENABLED` switch allows an enabled/disabled comparison after reloading the UI.
+   `PROFILE_REFRESH = true` logs total/max station-read time and publication time once
+   per completed sweep using the native real-time clock. Interpret measurements within
+   that clock's resolution; correlate them with observed frame times. Restore
+   `REFRESH_ENABLED = true` and `PROFILE_REFRESH = false` after testing.
+
+Acceptance: no repeatable refresh-related hitch or sustained frame-time regression,
+no graph movement/flicker, and no stale open-panel values after a completed sweep.
+Automated tests do not establish in-game performance or visual fit. If a single complex
+causes a hitch, spreading whole-station reads is insufficient; profile its reader before
+claiming this feature meets the performance requirement. Check debug.txt for UI errors.

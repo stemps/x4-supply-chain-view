@@ -134,6 +134,14 @@ consumer.wares.energycells.consMax=0
 assert(SCV_Graph.build({producer,consumer}).wareNodes.energycells.balanceUnknown == 'zero-demand')
 
 -- Record actual widget calls to compare both popup entry points.
+function resolve(value)
+    return type(value) == 'function' and value() or value
+end
+function resolveProperties(props)
+    local out={}
+    for key,value in pairs(props or {}) do out[key]=resolve(value) end
+    return out
+end
 function tableMock()
     local t={properties={},rows={},groups={}}
     function t:setColWidthPercent() end
@@ -154,8 +162,18 @@ function tableMock()
             local c={handlers={}}; r[i]=c
             function c:setColSpan(n) self.span=n; return self end
             function c:setBackgroundColSpan(n) self.bgspan=n; return self end
-            function c:createText(text, props) self.text=text; self.props=props; return self end
-            function c:createStatusBar(props) self.bar=props; return self end
+            function c:createText(text, props)
+                self.rawText=text; self.rawProps=props
+                self.text=resolve(text); self.props=resolveProperties(props); return self
+            end
+            function c:createStatusBar(props)
+                self.rawBar=props; self.bar=resolveProperties(props); return self
+            end
+            function c:update()
+                if self.rawText then self.text=resolve(self.rawText) end
+                if self.rawProps then self.props=resolveProperties(self.rawProps) end
+                if self.rawBar then self.bar=resolveProperties(self.rawBar) end
+            end
             function c:createButton(props) self.button=props; return self end
             function c:setText(text) self.text=text; return self end
         end
@@ -327,6 +345,7 @@ assert(string.find(graph.stationNodes.warn[1].properties.mouseOverText,'Orange t
 assert all(texts[key].isascii() for key in [3065,3066,*range(3090,3101)])
 for source in (root/'ui').glob('*.lua'):
     lua.execute('assert(load(...))', source.read_text(encoding='utf-8'))
+lua.execute((root/'test/test_refresh.lua').read_text(encoding='utf-8'))
 lua.execute('''
 -- Exercise the real chunked scanner and menu lifecycle. No graph may be built from
 -- a partial scan, including a refresh arriving while the scan is in progress.
@@ -373,4 +392,4 @@ menu.markDirty()
 menu.display()
 assert(menu.scanDone and SCV_Data.cache.failed.failed)
 ''')
-print('Reader, maximum-rate, unknown-data, paired popup, scroll, collapse, atomic graph and Lua syntax checks passed.')
+print('Reader, maximum-rate, unknown-data, paired popup, scroll, collapse, atomic graph, live refresh and Lua syntax checks passed.')

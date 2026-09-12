@@ -27,6 +27,10 @@ SCV_Data.cache = {}
 -- How many stations to (re)read per refresh tick. Small enough that a big chain spreads
 -- over a few frames instead of stalling one.
 SCV_Data.SCAN_CHUNK = 4
+SCV_Data.REFRESH_INTERVAL = 5
+SCV_Data.REFRESH_ENABLED = true
+-- Diagnostic switch for an in-game A/B performance check; normally silent.
+SCV_Data.PROFILE_REFRESH = false
 
 local function log(msg)
 	DebugError("SCV: " .. tostring(msg))
@@ -579,6 +583,53 @@ function SCV_Data.invalidate(id)
 	else
 		SCV_Data.cache = {}
 	end
+end
+
+-- The menu owns this short-lived state. Dropping it cancels the sweep, with no
+-- partial writes to the displayed records or shared cache. Keep a separate cursor:
+-- scanGroup(force=true) would repeatedly read the first SCAN_CHUNK members.
+function SCV_Data.newRefresh(members, now)
+	local copy = {}
+	for _, st in ipairs(members) do
+		copy[#copy + 1] = { id = st.id, id64 = st.id64, name = st.name, code = st.code }
+	end
+	return { members = copy, nextStart = now + SCV_Data.REFRESH_INTERVAL }
+end
+
+function SCV_Data.refreshStep(state, now)
+	if not SCV_Data.REFRESH_ENABLED or #state.members == 0 then return nil end
+	if not state.pending then
+		if now < state.nextStart then return nil end
+		state.pending, state.cursor = {}, 1
+		state.nextStart = now + SCV_Data.REFRESH_INTERVAL
+		state.readSeconds, state.maxReadSeconds = 0, 0
+	end
+	local st = state.members[state.cursor]
+	local started = SCV_Data.PROFILE_REFRESH and GetCurRealTime()
+	local ok, result = pcall(function ()
+		local live = SCV_Data.describe(st.id64 or st.id)
+		if not live or (st.code and live.code ~= st.code) then
+			return { id = st.id, name = st.name, wares = {}, missing = true }
+		end
+		return SCV_Data.readStation(st)
+	end)
+	if started then
+		local duration = GetCurRealTime() - started
+		state.readSeconds = state.readSeconds + duration
+		state.maxReadSeconds = math.max(state.maxReadSeconds, duration)
+	end
+	if not ok or not result then
+		warnOnce("refresh:" .. st.id, "refresh failed for station " .. tostring(st.name) .. ": " .. tostring(result))
+		result = { id = st.id, name = st.name, wares = {}, failed = true }
+	end
+	state.pending[#state.pending + 1] = result
+	state.cursor = state.cursor + 1
+	if state.cursor > #state.members then
+		local snapshot = state.pending
+		state.pending, state.cursor = nil, nil
+		return snapshot
+	end
+	return nil
 end
 
 local function init()

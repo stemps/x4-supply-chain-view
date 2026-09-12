@@ -13,6 +13,9 @@ just validate        # x4validate against base game + DLC
 ```
 
 Individual suites are available as `test-graph`, `test-metrics`, and `test-store`.
+`test-metrics` also runs `test_refresh.lua`: bounded sweeps through 50 stations,
+atomic publication, in-place native node/popup updates, missing-data recovery,
+structural-change detection and cancellation when switching or closing the view.
 `uv` supplies Python dependencies on demand; the first
 run may need network access. Windows recipes use PowerShell; other platforms
 use just's default shell.
