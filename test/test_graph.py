@@ -5,9 +5,10 @@ load-save cycle.
 Run:  uv run --with lupa python test/test_graph.py
 """
 import sys
+from pathlib import Path
 from lupa import LuaRuntime
 
-MOD = r"C:\Users\simon\projects\play\x4-claude-toolkit\dev\supply_chain_view\ui\scv_graph.lua"
+MOD = Path(__file__).resolve().parents[1] / "ui" / "scv_graph.lua"
 
 lua = LuaRuntime(unpack_returned_tuples=True)
 with open(MOD, encoding="utf-8") as fh:
