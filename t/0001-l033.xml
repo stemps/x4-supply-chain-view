@@ -13,8 +13,9 @@
     <t id="1015">%s stations</t>
     <t id="1016">Retirer de cette chaîne logistique</t>
     <t id="2000">Créer une chaîne logistique</t>
-    <t id="2002">%s (déjà incluse)</t>
-    <t id="2003">%s (+%s)</t>
+    <t id="2001">Ajouter à "%s"</t>
+    <t id="2002">%s \(déjà incluse\)</t>
+    <t id="2003">%s \(+%s\)</t>
     <t id="2004">%s autres non affichées</t>
     <t id="2005">Stations</t>
     <t id="2010">Nommez la nouvelle chaîne logistique. %s station(s) y seront ajoutées.</t>

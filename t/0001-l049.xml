@@ -13,8 +13,9 @@
     <t id="1015">%s Stationen</t>
     <t id="1016">Aus dieser Lieferkette entfernen</t>
     <t id="2000">Neue Lieferkette erstellen</t>
-    <t id="2002">%s (bereits enthalten)</t>
-    <t id="2003">%s (+%s)</t>
+    <t id="2001">Zu "%s" hinzufügen</t>
+    <t id="2002">%s \(bereits enthalten\)</t>
+    <t id="2003">%s \(+%s\)</t>
     <t id="2004">%s weitere nicht angezeigt</t>
     <t id="2005">Stationen</t>
     <t id="2010">Gib der neuen Lieferkette einen Namen. Ihr werden %s Stationen hinzugefügt.</t>

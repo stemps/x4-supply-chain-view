@@ -13,8 +13,9 @@
     <t id="1015">%s istasyon</t>
     <t id="1016">Bu tedarik zincirinden çıkar</t>
     <t id="2000">Yeni tedarik zinciri oluştur</t>
-    <t id="2002">%s (zaten dahil)</t>
-    <t id="2003">%s (+%s)</t>
+    <t id="2001">"%s" zincirine ekle</t>
+    <t id="2002">%s \(zaten dahil\)</t>
+    <t id="2003">%s \(+%s\)</t>
     <t id="2004">%s tane daha gösterilmiyor</t>
     <t id="2005">İstasyonlar</t>
     <t id="2010">Yeni tedarik zincirine ad verin. Zincire %s istasyon eklenecek.</t>

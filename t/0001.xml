@@ -20,8 +20,9 @@
 
     <!-- 2xxx: context menu and creation -->
     <t id="2000">Create new Supply Chain</t>
-    <t id="2002">%s (already in)</t>
-    <t id="2003">%s (+%s)</t>
+    <t id="2001">Add to "%s"</t>
+    <t id="2002">%s \(already in\)</t>
+    <t id="2003">%s \(+%s\)</t>
     <t id="2004">%s more not shown</t>
     <t id="2005">Stations</t>
     <t id="2010">Name the new supply chain. %s %s will be added to it.</t>

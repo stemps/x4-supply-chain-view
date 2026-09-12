@@ -13,8 +13,9 @@
     <t id="1015">%s estaciones</t>
     <t id="1016">Quitar de esta cadena de suministro</t>
     <t id="2000">Crear cadena de suministro</t>
-    <t id="2002">%s (ya incluida)</t>
-    <t id="2003">%s (+%s)</t>
+    <t id="2001">Añadir a "%s"</t>
+    <t id="2002">%s \(ya incluida\)</t>
+    <t id="2003">%s \(+%s\)</t>
     <t id="2004">%s más sin mostrar</t>
     <t id="2005">Estaciones</t>
     <t id="2010">Asigna un nombre a la nueva cadena. Se añadirán %s estaciones.</t>

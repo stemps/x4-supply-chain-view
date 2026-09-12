@@ -99,6 +99,8 @@ menu.mode='chain'; menu.display()
 local function toolbar() return frames[3].tables[1].rows[1] end
 local row=toolbar()
 for _,i in ipairs({1,2,3,4,5}) do assert(row[i].properties.active==false) end
+row[1].handlers.onClick(); row[3].handlers.onClick()
+assert(SCV_Store.count()==0)
 assert(row[2].options[1].id=='0')
 assert(graphRect.x==Helper.frameBorder)
 assert(graphRect.width==1280-45-5-5-2, 'graph uses all available width')
@@ -111,11 +113,24 @@ assert(menu.toolbarGeometry.anchorX>frames[3].properties.x and
 SCV_Store.create('A very long chain name '..string.rep('abc ',40),{{id='1',code='code1'}})
 menu.display(); row=toolbar()
 assert(not row[1].properties.active and not row[3].properties.active)
+local singleBuilds=builds
+row[1].handlers.onClick(); row[3].handlers.onClick()
+assert(select(2,SCV_Store.selected())==1 and builds==singleBuilds)
 assert(row[2].properties.mouseOverText==SCV_Store.get(1).name)
-for i=2,8 do SCV_Store.create('Chain '..i,{}) end
+SCV_Store.create('Chain 2',{})
+menu.display()
+for _,button in ipairs({1,3}) do
+    for _,expected in ipairs({1,2}) do
+        assert(toolbar()[button].properties.active)
+        toolbar()[button].handlers.onClick()
+        assert(select(2,SCV_Store.selected())==expected)
+        menu.display()
+    end
+end
+for i=3,8 do SCV_Store.create('Chain '..i,{}) end
 SCV_Store.select(1); menu.display(); row=toolbar()
 assert(#row[2].options==8 and row[2].options[8].text=='Chain 8')
-assert(not row[1].properties.active and row[3].properties.active)
+assert(row[1].properties.active and row[3].properties.active)
 
 local graph,flow,refresh,before=menu.graph,menu.flowchart,menu.refreshState,builds
 menu.expandedNode={collapse=function() collapsed=true end}
@@ -190,9 +205,20 @@ menu.display(); assert(menu.managementMode=='stations' and #SCV_Store.get(1).mem
 menu.closeManagement()
 toolbar()[2].handlers.onDropDownConfirmed(nil,'8')
 assert(select(2,SCV_Store.selected())==8 and menu.refreshState==nil)
-menu.display(); row=toolbar(); assert(row[1].properties.active and not row[3].properties.active)
-row[3].handlers.onClick(); assert(select(2,SCV_Store.selected())==8, 'no wrapping')
-row[1].handlers.onClick(); assert(select(2,SCV_Store.selected())==7)
+menu.display(); row=toolbar(); assert(row[1].properties.active and row[3].properties.active)
+menu.openManagement('stations')
+row[3].handlers.onClick()
+assert(select(2,SCV_Store.selected())==1, 'next wraps from last to first')
+assert(menu.managementMode==nil and menu.refreshState==nil)
+menu.display()
+toolbar()[1].handlers.onClick()
+assert(select(2,SCV_Store.selected())==8, 'previous wraps from first to last')
+menu.display()
+toolbar()[1].handlers.onClick(); assert(select(2,SCV_Store.selected())==7)
+menu.display()
+toolbar()[3].handlers.onClick(); assert(select(2,SCV_Store.selected())==8)
+menu.display()
+toolbar()[1].handlers.onClick(); assert(select(2,SCV_Store.selected())==7)
 menu.display()
 
 menu.openManagement('delete'); assert(SCV_Store.count()==8)

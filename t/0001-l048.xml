@@ -13,8 +13,9 @@
     <t id="1015">Stacje: %s</t>
     <t id="1016">Usuń z tego łańcucha dostaw</t>
     <t id="2000">Utwórz nowy łańcuch dostaw</t>
-    <t id="2002">%s (już należy)</t>
-    <t id="2003">%s (+%s)</t>
+    <t id="2001">Dodaj do "%s"</t>
+    <t id="2002">%s \(już należy\)</t>
+    <t id="2003">%s \(+%s\)</t>
     <t id="2004">Pozostałe niewyświetlone: %s</t>
     <t id="2005">Stacje</t>
     <t id="2010">Nazwij nowy łańcuch dostaw. Liczba stacji do dodania: %s.</t>

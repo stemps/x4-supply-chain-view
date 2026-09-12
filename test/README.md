@@ -5,7 +5,7 @@ Install `just` and `uv`, then run commands from the mod directory (or any subdir
 ```text
 just                 # list tasks
 just check           # all automated checks; fail fast
-just test            # all three behavioral suites
+just test            # all behavioral suites
 just lint            # undefined Lua globals
 just syntax          # compile all Lua files without executing them
 just xml             # XML parsing and UI addon schema validation
@@ -22,6 +22,9 @@ It also runs `test_management.py`: full-width graph geometry, arrow/dropdown nav
 independent overlay lifecycle, rename/delete/remove actions, graph identity, live refresh,
 visible status timing/ordering/height limits, cached graph redraws, large station
 lists, and localized deletion/missing-station placeholders.
+`test_interact.py` checks map action labels in all 16 languages, visible membership
+and count hints, selection deduplication, and station-add callbacks. Navigation
+checks include both wrap boundaries and zero-, one-, and two-chain states.
 `test-metrics` also runs `test_refresh.lua`: bounded sweeps through 50 stations,
 atomic publication, in-place native node/popup updates, missing-data recovery,
 structural-change detection and cancellation when switching or closing the view.

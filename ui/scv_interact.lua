@@ -186,11 +186,11 @@ function SCV_Interact.buildActions()
 					missing = missing + 1
 				end
 			end
-			local label = chain.name
+			local label = T(2001, chain.name)       -- Add to "<name>"
 			if missing == 0 then
-				label = T(2002, chain.name)          -- "<name> (already in)"
+				label = T(2002, label)              -- Add to "<name>" (already in)
 			elseif #stations > 1 then
-				label = T(2003, chain.name, tostring(missing))   -- "<name> (+n)"
+				label = T(2003, label, tostring(missing)) -- Add to "<name>" (+n)
 			end
 
 			m.insertInteractionContent(SECTION, {

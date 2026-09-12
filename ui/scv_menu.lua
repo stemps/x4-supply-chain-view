@@ -775,13 +775,17 @@ function menu.displayToolbar()
 	end
 	if #options == 0 then options[1] = { id = "0", text = T(1004), icon = "" } end
 	local row = ftable:addRow(true, { fixed = true })
-	row[1]:createButton({ active = chain ~= nil and index > 1 }):setText("<", { halign = "center" })
-	row[1].handlers.onClick = function () menu.selectChain(index - 1) end
+	row[1]:createButton({ active = chain ~= nil and #chains > 1 }):setText("<", { halign = "center" })
+	row[1].handlers.onClick = function ()
+		if chain and #chains > 1 then menu.selectChain(index > 1 and index - 1 or #chains) end
+	end
 	row[2]:createDropDown(options, { active = chain ~= nil, startOption = chain and tostring(index) or "0",
 		mouseOverText = chain and chain.name or T(1004) }):setTextProperties({ halign = "left" })
 	row[2].handlers.onDropDownConfirmed = function (_, id) menu.selectChain(tonumber(id)) end
-	row[3]:createButton({ active = chain ~= nil and index < #chains }):setText(">", { halign = "center" })
-	row[3].handlers.onClick = function () menu.selectChain(index + 1) end
+	row[3]:createButton({ active = chain ~= nil and #chains > 1 }):setText(">", { halign = "center" })
+	row[3].handlers.onClick = function ()
+		if chain and #chains > 1 then menu.selectChain(index < #chains and index + 1 or 1) end
+	end
 	row[4]:createButton({ active = chain ~= nil, mouseOverText = T(2005) })
 		:setText(T(2005) .. " (" .. tostring(chain and #chain.members or 0) .. ")", { halign = "center" })
 	row[4].handlers.onClick = function () menu.toggleManagement("stations") end

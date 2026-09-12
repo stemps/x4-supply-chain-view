@@ -13,8 +13,9 @@
     <t id="1015">%s stazioni</t>
     <t id="1016">Rimuovi da questa catena</t>
     <t id="2000">Crea nuova catena di approvvigionamento</t>
-    <t id="2002">%s (già presente)</t>
-    <t id="2003">%s (+%s)</t>
+    <t id="2001">Aggiungi a "%s"</t>
+    <t id="2002">%s \(già presente\)</t>
+    <t id="2003">%s \(+%s\)</t>
     <t id="2004">Altre %s non mostrate</t>
     <t id="2005">Stazioni</t>
     <t id="2010">Assegna un nome alla nuova catena. Verranno aggiunte %s stazioni.</t>

@@ -31,6 +31,7 @@ test-store:
     uv run --with lupa python test/test_store.py
     uv run --with lupa python test/test_name_entry.py
     uv run --with lupa python test/test_management.py
+    uv run --with lupa python test/test_interact.py
 
 # Flag undefined Lua globals and function calls.
 lint:

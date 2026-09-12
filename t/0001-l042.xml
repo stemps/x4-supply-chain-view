@@ -13,8 +13,9 @@
     <t id="1015">Počet stanic: %s</t>
     <t id="1016">Odebrat z tohoto řetězce</t>
     <t id="2000">Vytvořit dodavatelský řetězec</t>
-    <t id="2002">%s (již součástí)</t>
-    <t id="2003">%s (+%s)</t>
+    <t id="2001">Přidat do "%s"</t>
+    <t id="2002">%s \(již součástí\)</t>
+    <t id="2003">%s \(+%s\)</t>
     <t id="2004">Další nezobrazené: %s</t>
     <t id="2005">Stanice</t>
     <t id="2010">Pojmenujte nový dodavatelský řetězec. Počet přidaných stanic: %s.</t>

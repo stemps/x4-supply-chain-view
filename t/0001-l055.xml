@@ -13,8 +13,9 @@
     <t id="1015">%s estações</t>
     <t id="1016">Remover desta cadeia de suprimentos</t>
     <t id="2000">Criar cadeia de suprimentos</t>
-    <t id="2002">%s (já incluída)</t>
-    <t id="2003">%s (+%s)</t>
+    <t id="2001">Adicionar a "%s"</t>
+    <t id="2002">%s \(já incluída\)</t>
+    <t id="2003">%s \(+%s\)</t>
     <t id="2004">Mais %s não exibidas</t>
     <t id="2005">Estações</t>
     <t id="2010">Dê um nome à nova cadeia de suprimentos. Serão adicionadas %s estações.</t>
