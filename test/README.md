@@ -10,9 +10,12 @@ just lint            # undefined Lua globals
 just syntax          # compile all Lua files without executing them
 just xml             # XML parsing and UI addon schema validation
 just validate        # x4validate against base game + DLC
+just test-release    # release workflow against temporary local Git remotes
 ```
 
 Individual suites are available as `test-graph`, `test-metrics`, and `test-store`.
+`test-release` verifies preflight rejection, versioning, editable notes, ZIP
+membership, release tags, rollback and failed pushes. It never uses the real remote.
 `test-hotkey` covers absent/late API readiness, reload listener replacement,
 localized registration and menu-opening guards. It does not emulate the API's
 key assignment or the engine's keyboard dispatch; verify those in game.

@@ -12,7 +12,15 @@ default:
 check: test lint syntax xml validate
 
 # Run all behavioral suites in separate Python processes.
-test: test-graph test-metrics test-store test-hotkey
+test: test-graph test-metrics test-store test-hotkey test-release
+
+# Validate, record, push and package an interactive release from clean main.
+release:
+    uv run python scripts/release.py
+
+# Exercise releases using temporary repositories and local remotes only.
+test-release:
+    uv run python test/test_release.py
 
 # Optional API lifecycle and menu activation guards.
 test-hotkey:
