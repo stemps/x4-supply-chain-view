@@ -306,6 +306,16 @@ function SCV_Store.removeStation(index, stationId)
 	return false
 end
 
+function SCV_Store.rename(index, name)
+	local chain = SCV_Store.get(index)
+	if (not chain) or (type(name) ~= "string") then return false end
+	name = name:match("^%s*(.-)%s*$")
+	if name == "" then return false end
+	chain.name = name
+	SCV_Store.save()
+	return true
+end
+
 function SCV_Store.delete(index)
 	local list = SCV_Store.load()
 	if not list[index] then

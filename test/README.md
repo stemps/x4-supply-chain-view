@@ -13,6 +13,8 @@ just validate        # x4validate against base game + DLC
 ```
 
 Individual suites are available as `test-graph`, `test-metrics`, and `test-store`.
+`test-store` also checks creation/rename dialog callbacks, cancellation, blank names,
+singular/plural wording, and preservation of members and selection when renaming.
 `test-metrics` also runs `test_refresh.lua`: bounded sweeps through 50 stations,
 atomic publication, in-place native node/popup updates, missing-data recovery,
 structural-change detection and cancellation when switching or closing the view.

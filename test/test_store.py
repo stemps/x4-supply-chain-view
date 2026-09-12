@@ -236,6 +236,18 @@ for bad in ["__SCV_GROUPS = 42", "__SCV_GROUPS = {}",
         continue
     check(f"survives {bad}", True)
 
+print("\n=== rename preserves membership and selection across reload ===")
+S = fresh()
+S.create("First", recs(("10", "AAA-001")))
+S.create("Second", recs(("20", "BBB-002")))
+check("rename trims surrounding whitespace", S.rename(1, "  Renamed chain  "))
+check("blank name rejected", not S.rename(1, " \t "))
+check("missing chain rejected", not S.rename(99, "Missing"))
+S = reload_file()
+check("renamed name persisted", S.get(1).name == "Renamed chain")
+check("members unchanged", ids(S, 1) == ["10"] and codes(S, 1) == ["AAA-001"])
+check("selection and other chain unchanged", S.selected()[1] == 2 and S.get(2).name == "Second")
+
 print("\n" + "=" * 52)
 if fails:
     print(f"{len(fails)} FAILED:")

@@ -23,7 +23,7 @@
     <t id="2003">%s (+%s)</t>
     <t id="2004">%s more not shown</t>
     <t id="2005">Stations</t>
-    <t id="2010">Name the new supply chain. %s station(s) will be added to it.</t>
+    <t id="2010">Name the new supply chain. %s %s will be added to it.</t>
 
     <!-- 3xxx: diagram labels and status -->
     <t id="3003">stock coverage at full operation without deliveries:</t>
@@ -37,7 +37,7 @@
     <t id="3014">No stock coverage or capacity warning at full operation.</t>
     <t id="3015">%s supplying, %s taking</t>
     <t id="3020">Those stations were already in this supply chain.</t>
-    <t id="3021">Added %s station(s).</t>
+    <t id="3021">Added %s %s.</t>
     <t id="3022">%s station(s) in this chain no longer exist and are not shown.</t>
     <t id="3023">%s station(s) have unavailable storage information. Links remain visible; unavailable amounts show as ?.</t>
     <t id="3027">full %s</t>

@@ -36,7 +36,6 @@ local config = {
 	-- Net flow smaller than this fraction of demand capacity counts as flat, so the stock
 	-- figure does not flicker between green and red on a balanced ware.
 	trendDeadband          = 0.02,
-	nameFieldWidth         = 420,
 	savedVersion           = 2,
 	consumptionColor       = { r = 255, g = 150, b = 150, a = 100, glow = 0 },
 }
@@ -111,7 +110,7 @@ local function registerTopLevel()
 	table.insert(Helper.topLevelMenus, {
 		id              = config.topLevelId,
 		name            = T(1000),
-		icon            = "mapob_factory",
+		icon            = "stationbuildst_lsov",
 		shortcut        = "",
 		menu            = menu.name,
 		helpOverlayID   = "toplevel_" .. config.topLevelId,
@@ -144,6 +143,7 @@ function menu.cleanup()
 	menu.scanDone        = nil
 	menu.pendingStations = nil
 	menu.nameText        = nil
+	menu.renameIndex     = nil
 	menu.notice          = nil
 	menu.expandedNode    = nil
 	menu.expandedMenuFrame = nil
@@ -178,7 +178,7 @@ function menu.onShowMenu()
 			if (pending.added or 0) == 0 then
 				menu.notice = T(3020)                                   -- already in this chain
 			else
-				menu.notice = T(3021, tostring(pending.added))          -- added n station(s)
+				menu.notice = T(3021, tostring(pending.added), string.lower(ReadText(1001, pending.added == 1 and 3 or 4)))
 			end
 		end
 	end
@@ -532,31 +532,35 @@ function menu.display()
 	menu.frame:display()
 end
 
--- Naming a brand new chain. This is the only place the mod takes text input.
+-- Creation and renaming share the same cell-sized name field.
 function menu.displayNameEntry(frame, x, y, width)
 	local ftable = frame:addTable(2, { tabOrder = 1, width = math.min(width, Helper.scaleX(700)),
 		x = x, y = y, maxVisibleHeight = availableHeight(y) })
 	ftable:setColWidth(2, Helper.scaleX(140), false)
 
 	local row = ftable:addRow(false, { fixed = true })
-	row[1]:setColSpan(2):createText(T(2000), Helper.headerRowCenteredProperties)
+	row[1]:setColSpan(2):createText(menu.renameIndex and ReadText(1001, 1114) or T(2000), Helper.headerRowCenteredProperties)
 
-	row = ftable:addRow(false, { fixed = true })
-	row[1]:setColSpan(2):createText(T(2010, tostring(#(menu.pendingStations or {}))),
-		{ wordwrap = true })
+	if not menu.renameIndex then
+		local count = #(menu.pendingStations or {})
+		row = ftable:addRow(false, { fixed = true })
+		row[1]:setColSpan(2):createText(T(2010, tostring(count), string.lower(ReadText(1001, count == 1 and 3 or 4))),
+			{ wordwrap = true })
+	end
 
 	row = ftable:addRow(true, { fixed = true })
-	row[1]:createEditBox({ width = Helper.scaleX(config.nameFieldWidth) })
-		:setText(menu.nameText or "", { halign = "left" })
+	-- Let the cell supply its width; an explicit scaled width is scaled again by Helper.
+	row[1]:createEditBox({ description = menu.renameIndex and ReadText(1001, 1114) or T(2000) })
+		:setText(menu.nameText or "", { halign = "left", x = Helper.standardTextOffsetx })
 	-- Capture on deactivation, which is vanilla's own rename pattern (menu_map.lua:13756
 	-- does exactly this for renaming an object). Clicking the Create button moves focus and
 	-- therefore deactivates the box first, so the text is captured before onClick runs.
 	row[1].handlers.onEditBoxDeactivated = function (_, text, textchanged)
-		if textchanged and text and (text ~= "") then
+		if textchanged and text then
 			menu.nameText = text
 		end
 	end
-	row[2]:createButton():setText(T(1010), { halign = "center" })
+	row[2]:createButton():setText(menu.renameIndex and ReadText(1001, 1114) or T(1010), { halign = "center" })
 	row[2].handlers.onClick = menu.confirmName
 
 	row = ftable:addRow(true, { fixed = true })
@@ -564,6 +568,8 @@ function menu.displayNameEntry(frame, x, y, width)
 	row[1].handlers.onClick = function ()
 		menu.mode = "chain"
 		menu.pendingStations = nil
+		menu.renameIndex = nil
+		menu.nameText = nil
 		menu.refresh = getElapsedTime() + 0.05
 	end
 
@@ -583,7 +589,15 @@ function menu.displayNameEntry(frame, x, y, width)
 end
 
 function menu.confirmName()
-	local name = menu.nameText
+	local name = menu.nameText and menu.nameText:match("^%s*(.-)%s*$")
+	if menu.renameIndex then
+		if not SCV_Store.rename(menu.renameIndex, name) then return end
+		menu.renameIndex = nil
+		menu.nameText = nil
+		menu.mode = "chain"
+		menu.refresh = getElapsedTime() + 0.05
+		return
+	end
 	if (not name) or (name == "") then
 		name = T(1014, tostring(SCV_Store.count() + 1))
 	end
@@ -595,6 +609,15 @@ function menu.confirmName()
 end
 
 -- Left column: the chains, and the members of the selected one.
+local function setCenteredButtonIcon(button, icon)
+	-- Widget dimensions are already scaled pixels. Helper adds the button border
+	-- inset itself; fit a square to the whole button and center before that inset.
+	local width, height = button:getWidth(), button:getHeight(true)
+	local size = math.min(width, height)
+	button:setIcon(icon, { scaling = false, width = size, height = size,
+		x = (width - size) / 2, y = (height - size) / 2 })
+end
+
 function menu.displayChainList(frame, x, y, width)
 	-- Three columns: name | Logical Station Overview | remove. The overview link lives here
 	-- (and in each station's detail panel) because a flowchart node has no click event for
@@ -643,12 +666,21 @@ function menu.displayChainList(frame, x, y, width)
 		row = ftable:addRow(true, { fixed = false, bgColor = (i == selectedIdx)
 			and Color["row_background_selected"] or nil })
 		-- Interactive cells need real widgets; clicks do not fire on createText.
-		row[1]:setColSpan(2):createButton({ bgColor = Color["button_background_hidden"] })
+		row[1]:createButton({ bgColor = Color["button_background_hidden"] })
 			:setText(chain.name .. "  (" .. #chain.members .. ")", { halign = "left" })
 		row[1].handlers.onClick = function ()
 			SCV_Store.select(i)
 			menu.notice = nil
 			menu.markDirty()
+		end
+		row[2]:createButton({ mouseOverText = ReadText(1001, 1114) })
+		setCenteredButtonIcon(row[2], "menu_edit")
+		row[2].handlers.onClick = function ()
+			menu.renameIndex = i
+			menu.nameText = chain.name
+			menu.pendingStations = nil
+			menu.mode = "name"
+			menu.refresh = getElapsedTime() + 0.05
 		end
 		row[3]:createButton({ mouseOverText = T(1008) }):setText("x", { halign = "center" })
 		row[3].handlers.onClick = function ()
@@ -684,10 +716,10 @@ function menu.displayChainList(frame, x, y, width)
 				Helper.closeMenuAndOpenNewMenu(menu, "MapMenu", { 0, 0, true, st.id64 })
 				menu.cleanup()
 			end
-			-- "mapob_factory" is verified in libraries/icons.xml (it is also our top-level
-			-- tab icon); there is no dedicated overview icon - vanilla's own links to the
-			-- overview are text buttons.
-			row[2]:createButton({ mouseOverText = T(3030) }):setIcon("mapob_factory")
+			-- Vanilla uses stationbuildst_lsov for Logical Station Overview links.
+			-- Reuse it here and for our top-level supply chain tab.
+			row[2]:createButton({ mouseOverText = T(3030) })
+			setCenteredButtonIcon(row[2], "stationbuildst_lsov")
 			row[2].handlers.onClick = function ()
 				Helper.closeMenuAndOpenNewMenu(menu, "StationOverviewMenu", { 0, 0, st.id64 })
 				menu.cleanup()

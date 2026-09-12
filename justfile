@@ -25,6 +25,7 @@ test-metrics:
 # Persistence and station relinking.
 test-store:
     uv run --with lupa python test/test_store.py
+    uv run --with lupa python test/test_name_entry.py
 
 # Flag undefined Lua globals and function calls.
 lint:
