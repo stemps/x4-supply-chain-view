@@ -12,7 +12,11 @@ default:
 check: test lint syntax xml validate
 
 # Run all behavioral suites in separate Python processes.
-test: test-graph test-metrics test-store
+test: test-graph test-metrics test-store test-hotkey
+
+# Optional API lifecycle and menu activation guards.
+test-hotkey:
+    uv run --with lupa python test/test_hotkey.py
 
 # Graph construction, layout, cycles, and budgets.
 test-graph:

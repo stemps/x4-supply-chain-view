@@ -48,7 +48,7 @@ ENGINE_GLOBALS = {
     "IsMacroClass", "IsComponentConstruction", "IsKnownItem",
     "GetNPCBlackboard", "SetNPCBlackboard",
     "getElapsedTime", "GetCurRealTime",
-    "RegisterEvent", "AddUITriggeredEvent", "SetScript", "registerForEvent",
+    "RegisterEvent", "UnregisterEvent", "OpenMenu", "AddUITriggeredEvent", "SetScript", "registerForEvent",
     "unregisterForEvent", "getElement", "CallWidgetEventScripts",
     "GetEditBoxText", "SetSliderCellValue",
     # sn_mod_support_apis, probed with type() before use

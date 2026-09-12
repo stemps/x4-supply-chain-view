@@ -46,6 +46,7 @@
     <file name="ui/scv_graph.lua" />
     <file name="ui/scv_data.lua" />
     <file name="ui/scv_menu.lua" />
+    <file name="ui/scv_hotkey.lua" />
     <file name="ui/scv_interact.lua" />
     <dependency name="ego_detailmonitorhelper" />
     <dependency name="ego_detailmonitor" />

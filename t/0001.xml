@@ -6,6 +6,7 @@
   <page id="90210" voice="no">
     <!-- 1xxx: chrome -->
     <t id="1000">Supply Chain</t>
+    <t id="1001">Open Supply Chain View</t>
     <t id="1002">Supply Chains</t>
     <t id="1004">No supply chain selected</t>
     <t id="1005">Right-click one or more stations on the map - yours or another faction's - and choose Supply Chain to create one or add to an existing one.</t>

@@ -13,6 +13,9 @@ just validate        # x4validate against base game + DLC
 ```
 
 Individual suites are available as `test-graph`, `test-metrics`, and `test-store`.
+`test-hotkey` covers absent/late API readiness, reload listener replacement,
+localized registration and menu-opening guards. It does not emulate the API's
+key assignment or the engine's keyboard dispatch; verify those in game.
 `test-store` also checks creation/rename dialog callbacks, cancellation, blank names,
 singular/plural wording, and preservation of members and selection when renaming.
 It also runs `test_management.py`: full-width graph geometry, arrow/dropdown navigation,

@@ -6,7 +6,9 @@
      the savegame independently of the extension's save flag. Setting save="true" here would
      bake the extension into saves and make removing it a corruption risk, for no benefit.
 
-     BOTH dependencies are optional="true", and the mod works without either:
+     All dependencies are optional="true", and the mod works without them:
+       Native Hotkey API provides optional keyboard access. The action is registered
+         through its public Lua API and starts unassigned; players bind it themselves.
        kuertee UI Extensions provides the interact-menu custom-actions-group api that puts
          "Supply Chain" on the map right-click menu. Without it, the top-level Supply Chain
          tab is the way in. (The api lives in UIX, not in SirNukes' Interact Menu API -
@@ -50,4 +52,5 @@
   <text language="380" name="Огляд ланцюгів постачання" description="Клацніть правою кнопкою свої станції на мапі, щоб об'єднати їх у ланцюг постачання та побачити схему: хто кого постачає, які вхідні товари невдовзі закінчаться та які вихідні товари накопичуються, бо їх ніхто не забирає." />
   <dependency id="kuerteeUIExtensionsAndHUD" optional="true" name="kuertee UI Extensions and HUD"/>
   <dependency id="ws_2042901274" optional="true" name="SirNukes Mod Support APIs"/>
+  <dependency id="ws_3750545906" optional="true" name="Native Hotkey API"/>
 </content>
