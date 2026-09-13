@@ -42,6 +42,7 @@ ENGINE_GLOBALS = {
     "DebugError", "ReadText", "TraceBack",
     "GetComponentData", "GetWareData", "GetMacroData", "GetLibraryEntry",
     "GetContainedStationsByOwner", "GetProductionModules", "GetProductionModuleData",
+    "GetProcessingModuleData", "IsValidComponent",  # vanilla station overview processing reader
     # cluster -> station walk, as vanilla does it (menu_encyclopedia.lua:524 and :2727)
     "GetClusters", "GetContainedStations",
     "GetStorageData", "GetTradeList", "GetWareProductionLimit", "CheckSuitableTransportType",

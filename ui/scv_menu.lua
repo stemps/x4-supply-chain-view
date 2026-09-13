@@ -1284,6 +1284,23 @@ local function detailEntry(ftable, key, name, w, isInput)
 		local fillTime = m.fillHours and ((b.estimated and "~" or "")
 			.. (m.fillHours == 0 and T(5001, "0") or formatHours(m.fillHours))) or "?"
 		local coverageTip = T(isInput and 3070 or 3071)
+		if isInput and w.rateBasis == "continuousProcessing" then
+			coverageTip = coverageTip .. "\n" .. T(3127)
+			long = long .. "\n" .. T(3127)
+			local parts = w.consumptionParts
+			if parts then
+				local breakdown = T(3128, formatRate(parts.processing)) .. "\n"
+					.. T(3129, formatRate(parts.production))
+				if parts.workforce > 0 then breakdown = breakdown .. "\n" .. T(3130, formatRate(parts.workforce)) end
+				breakdown = breakdown .. "\n" .. T(3131, formatRate(parts.total))
+				long = long .. "\n" .. breakdown
+				coverageTip = coverageTip .. "\n" .. breakdown
+			end
+			if not m.rateKnown then
+				long = T(3126)
+				coverageTip = coverageTip .. "\n" .. T(3126)
+			end
+		end
 		if b.estimated then coverageTip = coverageTip .. "\n" .. T(3045) end
 		return { rate = rate, amount = T(3060, stock, capacity), long = long,
 			labelTip = warningReason(name, w.health) or long,

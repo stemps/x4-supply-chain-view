@@ -347,6 +347,7 @@ end
 
 local function unknownWare(w)
 	return { name = w.name, transport = w.transport, input = w.input, output = w.output,
+		rateBasis = w.rateBasis,
 		stock = 0, limit = 0, capacityUnits = 0, prodMax = 0, consMax = 0,
 		production = 0, consumption = 0, workforce = 0, incoming = 0, outgoing = 0,
 		stockKnown = false, limitKnown = false, prodKnown = false,

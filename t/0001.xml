@@ -113,6 +113,14 @@
     <t id="3072">Orange bar segment: maximum supply is below maximum demand by %s.</t>
     <t id="3073">Red stock number: maximum demand exceeds maximum supply beyond the balance tolerance. This colour describes production balance, not current inventory movement.</t>
 
+    <!-- Processor feedstocks and continuous-supply planning -->
+    <t id="3126">Maximum demand unavailable: complete production or processing rate data could not be read.</t>
+    <t id="3127">Maximum demand with all eligible production and processing modules running. Assumes continuous scrap supply. Coverage excludes deliveries and local production.</t>
+    <t id="3128">Scrap processing: %s</t>
+    <t id="3129">Recycling and other production: %s</t>
+    <t id="3130">Workforce: %s</t>
+    <t id="3131">Total: %s</t>
+
     <!-- 4xxx: limits and degradation -->
     <t id="4000">Chain too large to draw</t>
     <t id="4001">This chain needs %s nodes and %s edges; the game's diagram supports at most %s and %s. Common wares were collapsed and these stations were left out: %s</t>

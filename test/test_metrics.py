@@ -399,6 +399,7 @@ assert(string.find(graph.stationNodes.warn[1].properties.mouseOverText,'Orange t
 assert all(texts[key].isascii() for key in [3065,3066,*range(3090,3101)])
 for source in (root/'ui').glob('*.lua'):
     lua.execute('assert(load(...))', source.read_text(encoding='utf-8'))
+lua.execute((root/'test/test_processing.lua').read_text(encoding='utf-8'))
 lua.execute((root/'test/test_menu_lifecycle.lua').read_text(encoding='utf-8'))
 lua.execute((root/'test/test_refresh.lua').read_text(encoding='utf-8'))
 lua.execute('''

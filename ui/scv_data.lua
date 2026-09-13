@@ -343,9 +343,33 @@ end
 --
 -- Cache recipes per macro within one read; never cache station-specific engine modifiers
 -- by macro, because sunlight and workforce can differ between stations.
+-- Processor amountperhour describes full processing speed even while waiting for
+-- resources (engine capture 2026-09-13, recorded in the toolkit knowledgebase). Never turn
+-- missing or zero activity-shaped data into a claimed maximum. Scope failures
+-- per ware, and do not substitute unmodified recipe values.
+local function accumulateProcessingRates(entries, inventory, total, excluded)
+	local values, invalid = {}, {}
+	for _, entry in ipairs(type(entries) == "table" and entries or {}) do
+		local ware = entry.ware
+		if ware and inventory[ware] ~= nil then
+			if SCV_Graph.validRate(entry.amountperhour) and tonumber(entry.amountperhour) > 0 then
+				values[ware] = (values[ware] or 0) + tonumber(entry.amountperhour)
+			else
+				invalid[ware] = true
+			end
+		end
+	end
+	for ware in pairs(inventory) do
+		if not invalid[ware] and values[ware] ~= nil then total[ware] = (total[ware] or 0) + values[ware]
+		else excluded[ware] = true end
+	end
+end
+
 local function readTheoreticalRates(id64)
 	local prod, cons = {}, {}
 	local excludedProd, excludedCons = {}, {}
+	local processing = { feedstocks = {}, inputs = {}, outputs = {},
+		production = {}, consumption = {}, excludedProd = {}, excludedCons = {} }
 	local ok, err = pcall(function ()
 		local n = C.GetNumStationModules(id64, true, true)
 		if n <= 0 then
@@ -367,11 +391,59 @@ local function readTheoreticalRates(id64)
 						local lib = GetMacroData(macro, "infolibrary")
 						local md = lib and GetLibraryEntry(lib, macro)
 						assert(md and type(md.products) == "table", "module recipe unavailable: " .. tostring(macro))
-						local p, c = SCV_Graph.moduleRates(md and md.products)
+						local p, c = {}, {}
+						if isproc then
+							-- Vanilla omits ordinary queue arithmetic for processing
+							-- (menu_encyclopedia.lua:3090). Only inventory
+							-- membership is needed here; effective rates come from the engine.
+							for _, product in ipairs(md.products) do
+								if product.ware then p[product.ware] = 0 end
+								for _, resource in ipairs(product.resources or {}) do
+									if resource.ware then c[resource.ware] = 0 end
+								end
+							end
+						else
+							p, c = SCV_Graph.moduleRates(md.products)
+						end
 						rates = { p = p, c = c }
 						byMacro[macro] = rates
 					end
-					if C.IsComponentOperational(module) then
+					local operational = C.IsComponentOperational(module)
+					if isproc then
+						-- Match vanilla's validity and status checks, not its catch-all
+						-- 'producing' branch (station_overview.lua:2680 and :3044).
+						local valid = IsValidComponent(module)
+						local construction = IsComponentConstruction(module)
+						local functional = GetComponentData(module, "isfunctional")
+						local eligible = valid and not construction and functional == true
+						local unlocked = C.IsInfoUnlockedForPlayer(module, "production_rate")
+							and C.IsInfoUnlockedForPlayer(module, "production_resources")
+						-- IsRealComponentClass includes unfinished modules. Querying their
+						-- processing data logs an engine error every sweep (observed live).
+						local data = eligible and unlocked and safe(nil, GetProcessingModuleData, module) or nil
+						for w in pairs(rates.p) do processing.outputs[w] = true end
+						if eligible then
+							accumulateProcessingRates(type(data) == "table" and data.products, rates.p,
+								processing.production, processing.excludedProd)
+							accumulateProcessingRates(type(data) == "table" and data.resources, rates.c,
+								processing.consumption, processing.excludedCons)
+						elseif valid and not construction and (type(functional) ~= "boolean" or not unlocked) then
+							-- Unknown eligibility cannot establish a known zero contribution.
+							for w in pairs(rates.p) do processing.excludedProd[w] = true end
+							for w in pairs(rates.c) do processing.excludedCons[w] = true end
+						end
+						for w in pairs(rates.c) do
+							processing.inputs[w] = true
+							-- Same classification vanilla uses to suppress ordinary missing
+							-- resource warnings (station_overview.lua:4945).
+							if GetWareData(w, "isprocessed") == true then
+								processing.feedstocks[w] = true
+							end
+						end
+					end
+					-- Station-level rates cover ordinary production only. Processing
+					-- is summed separately above; unfinished processors cannot veto it.
+					if not isproc and operational then
 						for w, v in pairs(rates.p) do prod[w] = (prod[w] or 0) + v end
 						for w, v in pairs(rates.c) do cons[w] = (cons[w] or 0) + v end
 						-- Match vanilla's module-level rate/resource scan gates. Unknown
@@ -382,7 +454,7 @@ local function readTheoreticalRates(id64)
 						elseif not C.IsInfoUnlockedForPlayer(module, "production_resources") then
 							for w in pairs(rates.c) do excludedCons[w] = true end
 						end
-					else
+					elseif not isproc then
 						-- Do not claim an aggregate engine maximum excludes wrecks/construction
 						-- without evidence. Only affected wares lose a complete maximum.
 						for w in pairs(rates.p) do excludedProd[w] = true end
@@ -395,7 +467,7 @@ local function readTheoreticalRates(id64)
 		end
 	end)
 	if not ok then warnOnce(tostring(err), "module inventory failed: " .. tostring(err)) end
-	return prod, cons, ok, excludedProd, excludedCons
+	return prod, cons, ok, excludedProd, excludedCons, processing
 end
 
 -- Storage capacity by transport type (container / solid / liquid...), in VOLUME units.
@@ -435,9 +507,13 @@ function SCV_Data.readStation(st)
 
 	local outputs, inputs, candidates, _, buildwares = readWareRoles(id64)
 	local reservations, reservationsKnown = readReservations(id64)
-	local ratesOut, ratesIn, inventoryKnown, excludedProd, excludedCons = readTheoreticalRates(id64)
+	local ratesOut, ratesIn, inventoryKnown, excludedProd, excludedCons, processing = readTheoreticalRates(id64)
 	local capacity           = readCapacity(id64)
 	local cargo   = safe(nil, GetComponentData, id64, "cargo")
+	-- Raw scrap lives in the processing resource buffer, not cargo. Vanilla's
+	-- Helper.getResourceBufferAmount (helper.lua:12330) reads this exact property.
+	local resourcebuffer = next(processing.feedstocks) and safe(nil, GetComponentData, id64, "resourcebuffer") or nil
+	local bufferKnown = unlockedAmounts and type(resourcebuffer) == "table"
 	unlockedAmounts = unlockedAmounts and type(cargo) == "table"
 
 	local wares = {}
@@ -449,23 +525,24 @@ function SCV_Data.readStation(st)
 			local wname     = safe(ware, GetWareData, ware, "name")
 			local transport = safe("container", GetWareData, ware, "transport")
 
-			-- Native maximum rates include effective production modifiers and ignore
-			-- temporary input/output stalls. Recipes identify measurable activity only;
-			-- their unmodified amounts are NOT used as effective capacity.
+			-- Native station maxima exclude processing: measured with 16 running
+			-- scrap processors, 2 waiting Kha'ak processors, and 18 recyclers.
+			-- Add the non-overlapping per-processor rates, never recipe base rates.
 			local production = safe(nil, function () return C.GetContainerWareProduction(id64, ware, true) end)
 			local consumption = safe(nil, function () return C.GetContainerWareConsumption(id64, ware, true) end)
 			local workforce = safe(nil, Helper.getWorkforceConsumption, id64, ware)
-			local prodKnown = inventoryKnown and not excludedProd[ware] and ratesOut[ware] ~= nil and SCV_Graph.validRate(production)
-			local consKnown = inventoryKnown and not excludedCons[ware] and not buildwares[ware]
-				and (ratesIn[ware] ~= nil or (tonumber(workforce) or 0) > 0)
+			local prodKnown = inventoryKnown and not excludedProd[ware] and not processing.excludedProd[ware]
+				and (ratesOut[ware] ~= nil or processing.outputs[ware] == true) and SCV_Graph.validRate(production)
+			local consKnown = inventoryKnown and not excludedCons[ware] and not processing.excludedCons[ware] and not buildwares[ware]
+				and (ratesIn[ware] ~= nil or processing.inputs[ware] or (tonumber(workforce) or 0) > 0)
 				and SCV_Graph.validRate(consumption) and SCV_Graph.validRate(workforce)
-			local prodMax = prodKnown and tonumber(production) or 0
+			local prodMax = prodKnown and ((ratesOut[ware] ~= nil and tonumber(production) or 0)
+				+ (processing.production[ware] or 0)) or 0
 			local consMax = (inventoryKnown and not excludedCons[ware] and ratesIn[ware] ~= nil
 				and SCV_Graph.validRate(consumption) and tonumber(consumption) or 0)
+				+ (processing.consumption[ware] or 0)
 				+ (SCV_Graph.validRate(workforce) and tonumber(workforce) or 0)
-			if not SCV_Graph.validRate(production) or not SCV_Graph.validRate(consumption) then
-				warnOnce("rate:" .. ware, "maximum rate unavailable for " .. ware)
-			end
+			local feedstock = processing.feedstocks[ware]
 
 			-- The GLOBAL GetWareProductionLimit, not C.GetContainerStockLimit, which often
 			-- returns 0 (KNOWLEDGEBASE, field-tested).
@@ -478,8 +555,13 @@ function SCV_Data.readStation(st)
 			-- value and let consumers of this record decide what an unknown limit means.
 			local limit = tonumber(safe(0, GetWareProductionLimit, id64, ware)) or 0
 			local stock = tonumber((type(cargo) == "table") and cargo[ware] or 0) or 0
+			local stockKnown = unlockedAmounts
+			if feedstock then
+				stockKnown = bufferKnown
+				stock = tonumber(bufferKnown and resourcebuffer[ware] or 0) or 0
+			end
 
-			if not unlockedAmounts then stock = 0 end
+			if not stockKnown then stock = 0 end
 			if not unlockedCapacity then limit = 0 end    -- unknown, not zero-capacity
 
 			local capacityUnits = 0
@@ -492,6 +574,11 @@ function SCV_Data.readStation(st)
 			end
 
 			wares[ware] = {
+				rateBasis   = processing.inputs[ware] and "continuousProcessing" or nil,
+				consumptionParts = processing.inputs[ware] and consKnown and {
+					processing = processing.consumption[ware] or 0,
+					production = ratesIn[ware] ~= nil and tonumber(consumption) or 0,
+					workforce = tonumber(workforce), total = consMax } or nil,
 				name        = tostring(wname),
 				transport   = tostring(transport),
 				stock       = stock,
@@ -510,7 +597,7 @@ function SCV_Data.readStation(st)
 				consMax     = consMax,
 				prodKnown   = prodKnown,
 				consKnown   = consKnown,
-				stockKnown  = unlockedAmounts,
+				stockKnown  = stockKnown,
 				reservationsKnown = reservationsKnown,
 				-- bar fallback when no per-ware allocation exists: the whole capacity for
 				-- this transport type, converted from volume to units. Shared between every
