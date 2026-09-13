@@ -2,6 +2,7 @@
 <language id="90">
   <page id="90210" voice="no">
     <t id="1000">Tedarik zinciri</t>
+    <t id="1001">Tedarik zinciri görünümünü aç</t>
     <t id="1002">Tedarik zincirleri</t>
     <t id="1004">Tedarik zinciri seçilmedi</t>
     <t id="1005">Haritada size veya başka bir fraksiyona ait bir ya da daha fazla istasyona sağ tıklayın ve yeni zincir oluşturmak veya mevcut zincire eklemek için Tedarik zinciri seçeneğini seçin.</t>
@@ -86,6 +87,7 @@
     <t id="3100">Tüketicisi olmayan çıktılar: %s</t>
     <t id="3101">Zincir yapısı değişti. Yeniden oluşturmak için bu görünümü tekrar açın.</t>
     <t id="3102">Bazı istasyonlar yenilenemedi. Otomatik olarak yeniden deneniyor.</t>
+    <t id="3103">İnşa menüsünü aç</t>
     <t id="3067">Kırmızı</t>
     <t id="3068">Turuncu</t>
     <t id="3069">yeter %s / depo doluyken %s</t>
@@ -110,6 +112,7 @@
     <t id="3128">Hurda işleme: %s</t>
     <t id="3129">Diğer üretim: %s</t>
     <t id="3130">İş gücü: %s</t>
+    <t id="3131">Toplam: %s</t>
     <t id="3140">Tam kapasitede:</t>
     <t id="3141">Yeterli girdi ve ürün depolama alanı.</t>
     <t id="3142">Mevcut iş gücü dahil.</t>

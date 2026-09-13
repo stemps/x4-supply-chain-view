@@ -2,6 +2,7 @@
 <language id="42">
   <page id="90210" voice="no">
     <t id="1000">Dodavatelský řetězec</t>
+    <t id="1001">Otevřít přehled dodavatelských řetězců</t>
     <t id="1002">Dodavatelské řetězce</t>
     <t id="1004">Není vybrán žádný dodavatelský řetězec</t>
     <t id="1005">Klikněte pravým tlačítkem na jednu či více stanic na mapě, vlastních nebo jiné frakce, a zvolte Dodavatelský řetězec. Vytvoříte nový řetězec nebo stanice přidáte do stávajícího.</t>
@@ -86,6 +87,7 @@
     <t id="3100">Výstupy bez spotřebitele: %s</t>
     <t id="3101">Struktura řetězce se změnila. Pro nové sestavení znovu otevřete tento pohled.</t>
     <t id="3102">Některé stanice se nepodařilo aktualizovat. Automatický opakovaný pokus.</t>
+    <t id="3103">Otevřít nabídku stavby</t>
     <t id="3067">Červená</t>
     <t id="3068">Oranžová</t>
     <t id="3069">vydrží %s / při plném skladu %s</t>
@@ -110,6 +112,7 @@
     <t id="3128">Zpracování šrotu: %s</t>
     <t id="3129">Ostatní výroba: %s</t>
     <t id="3130">Pracovní síla: %s</t>
+    <t id="3131">Celkem: %s</t>
     <t id="3140">Při plném provozu:</t>
     <t id="3141">Dostatek vstupů a místa pro výstupy.</t>
     <t id="3142">Zahrnuje současnou pracovní sílu.</t>

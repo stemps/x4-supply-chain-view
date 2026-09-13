@@ -9,7 +9,12 @@ default:
     @just --list
 
 # Run every automated check (stops on the first failure).
-check: test lint syntax xml validate
+check: translations test lint syntax xml validate
+
+# Require every neutral entry in every supported language, across all pages.
+translations:
+    uv run python test/test_translations.py
+    uv run python test/check_sources.py translations
 
 # Run all behavioral suites in separate Python processes.
 test: test-graph test-metrics test-store test-hotkey test-release

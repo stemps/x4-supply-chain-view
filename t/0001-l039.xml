@@ -2,6 +2,7 @@
 <language id="39">
   <page id="90210" voice="no">
     <t id="1000">Catena di approvvigionamento</t>
+    <t id="1001">Apri la vista delle catene di approvvigionamento</t>
     <t id="1002">Catene di approvvigionamento</t>
     <t id="1004">Nessuna catena di approvvigionamento selezionata</t>
     <t id="1005">Fai clic destro su una o più stazioni della mappa, tue o di un'altra fazione, e scegli Catena di approvvigionamento per crearne una o aggiungerle a una esistente.</t>
@@ -86,6 +87,7 @@
     <t id="3100">Uscite senza consumatore: %s</t>
     <t id="3101">Struttura della catena modificata. Riapri questa vista per ricostruirla.</t>
     <t id="3102">Impossibile aggiornare alcune stazioni. Nuovo tentativo automatico.</t>
+    <t id="3103">Apri il menu di costruzione</t>
     <t id="3067">Rosso</t>
     <t id="3068">Arancione</t>
     <t id="3069">durata %s / a magazzino pieno %s</t>
@@ -110,6 +112,7 @@
     <t id="3128">Lavorazione rottami: %s</t>
     <t id="3129">Altra produzione: %s</t>
     <t id="3130">Forza lavoro: %s</t>
+    <t id="3131">Totale: %s</t>
     <t id="3140">A pieno regime:</t>
     <t id="3141">Risorse e spazio per i prodotti sufficienti.</t>
     <t id="3142">Include la forza lavoro attuale.</t>

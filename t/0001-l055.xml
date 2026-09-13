@@ -2,6 +2,7 @@
 <language id="55">
   <page id="90210" voice="no">
     <t id="1000">Cadeia de suprimentos</t>
+    <t id="1001">Abrir a visão das cadeias de suprimentos</t>
     <t id="1002">Cadeias de suprimentos</t>
     <t id="1004">Nenhuma cadeia de suprimentos selecionada</t>
     <t id="1005">Clique com o botão direito em uma ou mais estações no mapa, suas ou de outra facção, e escolha Cadeia de suprimentos para criar uma ou adicionar estações a uma existente.</t>
@@ -86,6 +87,7 @@
     <t id="3100">Saídas sem consumidor: %s</t>
     <t id="3101">A estrutura da cadeia mudou. Reabra esta visualização para reconstruí-la.</t>
     <t id="3102">Não foi possível atualizar algumas estações. Nova tentativa automática.</t>
+    <t id="3103">Abrir o menu de construção</t>
     <t id="3067">Vermelho</t>
     <t id="3068">Laranja</t>
     <t id="3069">dura %s / quando cheio %s</t>
@@ -110,6 +112,7 @@
     <t id="3128">Processamento de sucata: %s</t>
     <t id="3129">Outra produção: %s</t>
     <t id="3130">Força de trabalho: %s</t>
+    <t id="3131">Total: %s</t>
     <t id="3140">Em plena operação:</t>
     <t id="3141">Insumos e espaço para produtos suficientes.</t>
     <t id="3142">Inclui a força de trabalho atual.</t>

@@ -2,6 +2,7 @@
 <language id="33">
   <page id="90210" voice="no">
     <t id="1000">Chaîne logistique</t>
+    <t id="1001">Ouvrir la vue des chaînes logistiques</t>
     <t id="1002">Chaînes logistiques</t>
     <t id="1004">Aucune chaîne logistique sélectionnée</t>
     <t id="1005">Faites un clic droit sur une ou plusieurs stations de votre faction ou d'une autre sur la carte, puis choisissez Chaîne logistique pour en créer une ou compléter une chaîne existante.</t>
@@ -86,6 +87,7 @@
     <t id="3100">Sorties sans consommateur : %s</t>
     <t id="3101">Structure de la chaîne modifiée. Rouvrez cette vue pour la reconstruire.</t>
     <t id="3102">Certaines stations n'ont pas pu être actualisées. Nouvelle tentative automatique.</t>
+    <t id="3103">Ouvrir le menu de construction</t>
     <t id="3067">Rouge</t>
     <t id="3068">Orange</t>
     <t id="3069">autonomie %s / stockage plein %s</t>
@@ -110,6 +112,7 @@
     <t id="3128">Traitement de ferraille : %s</t>
     <t id="3129">Autre production : %s</t>
     <t id="3130">Main-d'œuvre : %s</t>
+    <t id="3131">Total : %s</t>
     <t id="3140">À plein régime :</t>
     <t id="3141">Intrants et espace de sortie suffisants.</t>
     <t id="3142">Inclut la main-d'œuvre actuelle.</t>

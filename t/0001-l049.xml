@@ -2,6 +2,7 @@
 <language id="49">
   <page id="90210" voice="no">
     <t id="1000">Lieferkette</t>
+    <t id="1001">Lieferkettenübersicht öffnen</t>
     <t id="1002">Lieferketten</t>
     <t id="1004">Keine Lieferkette ausgewählt</t>
     <t id="1005">Klicke auf der Karte mit der rechten Maustaste auf eine oder mehrere Stationen deiner oder einer anderen Fraktion und wähle Lieferkette, um eine zu erstellen oder Stationen einer bestehenden hinzuzufügen.</t>
@@ -86,6 +87,7 @@
     <t id="3100">Ausgangswaren ohne Abnehmer: %s</t>
     <t id="3101">Kettenstruktur geändert. Öffne diese Ansicht erneut, um sie neu aufzubauen.</t>
     <t id="3102">Einige Stationen konnten nicht aktualisiert werden. Automatischer Neuversuch.</t>
+    <t id="3103">Baumenü öffnen</t>
     <t id="3067">Rot</t>
     <t id="3068">Orange</t>
     <t id="3069">reicht %s / bei vollem Lager %s</t>
@@ -110,6 +112,7 @@
     <t id="3128">Schrottverarbeitung: %s</t>
     <t id="3129">Sonstige Produktion: %s</t>
     <t id="3130">Belegschaft: %s</t>
+    <t id="3131">Gesamt: %s</t>
     <t id="3140">Bei Vollbetrieb:</t>
     <t id="3141">Genügend Eingangswaren und Ausgangslagerplatz.</t>
     <t id="3142">Enthält die aktuelle Belegschaft.</t>

@@ -2,6 +2,7 @@
 <language id="48">
   <page id="90210" voice="no">
     <t id="1000">Łańcuch dostaw</t>
+    <t id="1001">Otwórz widok łańcuchów dostaw</t>
     <t id="1002">Łańcuchy dostaw</t>
     <t id="1004">Nie wybrano łańcucha dostaw</t>
     <t id="1005">Kliknij prawym przyciskiem jedną lub więcej stacji na mapie, własnych lub innej frakcji, i wybierz Łańcuch dostaw, aby utworzyć nowy lub dodać je do istniejącego.</t>
@@ -86,6 +87,7 @@
     <t id="3100">Wyjścia bez konsumenta: %s</t>
     <t id="3101">Struktura łańcucha uległa zmianie. Otwórz ponownie ten widok, aby go przebudować.</t>
     <t id="3102">Nie udało się odświeżyć niektórych stacji. Ponowna próba nastąpi automatycznie.</t>
+    <t id="3103">Otwórz menu budowy</t>
     <t id="3067">Czerwony</t>
     <t id="3068">Pomarańczowy</t>
     <t id="3069">wystarczy na %s / pełny magazyn %s</t>
@@ -110,6 +112,7 @@
     <t id="3128">Przetwarzanie złomu: %s</t>
     <t id="3129">Pozostała produkcja: %s</t>
     <t id="3130">Siła robocza: %s</t>
+    <t id="3131">Łącznie: %s</t>
     <t id="3140">Przy pełnej pracy:</t>
     <t id="3141">Wystarczające surowce i miejsce na produkty.</t>
     <t id="3142">Uwzględnia obecną siłę roboczą.</t>
