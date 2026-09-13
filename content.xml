@@ -16,7 +16,7 @@
 -->
 <content id="supply_chain_view"
          name="Supply Chain View"
-         author="Simon Stemplinger"
+         author="stemps"
          version="100"
          date="2026-09-12"
          save="false"
