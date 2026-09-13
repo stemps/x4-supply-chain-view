@@ -31,17 +31,18 @@
 -- __CORE_DETAILMONITOR_MAPFILTER_SAVE["searchsectors"] (menu_map.lua:29243):
 --
 --   __SCV_GROUPS = {
---     version  = 4,
+--     version  = 5,
 --     selected = 1,
 --     names    = { "Ore Chain", "Shipyard Feed" },
 --     members  = { "506813|HEA-485,501323|CXG-006", "422158|PHM-325" },
+--     ignoredWarnings = { "HEA-485|ore" },
 --   }
 --
 -- Confirmed in game: this shape survives both /reloadui and a real save + load.
 
 SCV_Store = {}
 
-local CURRENT_VERSION = 4
+local CURRENT_VERSION = 5
 local SEP_MEMBER = ","
 local SEP_FIELD  = "|"
 
@@ -54,6 +55,13 @@ end
 -- Rebuilt from __SCV_GROUPS once per Lua environment, then kept live.
 local chains = nil
 local selectedIdx = 1
+local ignoredWarnings = {}
+
+local function warningKey(code, ware)
+	if type(code) ~= "string" or code == "" or code:find("[|,]")
+		or type(ware) ~= "string" or ware == "" or ware:find("[|,]") then return nil end
+	return code .. "|" .. ware
+end
 
 -- Canonical id form. Accepts a string, a number, or an ffi id and always returns the same
 -- string for the same station.
@@ -150,6 +158,9 @@ end
 -- change that is not written is a change that vanishes on the next reload.
 function SCV_Store.save()
 	local names, members = {}, {}
+	local ignored = {}
+	for key in pairs(ignoredWarnings) do ignored[#ignored + 1] = key end
+	table.sort(ignored)
 	for i, chain in ipairs(chains or {}) do
 		names[i] = tostring(chain.name or "?")
 		members[i] = encodeMembers(chain.members or {})
@@ -159,18 +170,28 @@ function SCV_Store.save()
 		selected = selectedIdx,
 		names    = names,
 		members  = members,
+		ignoredWarnings = ignored,
 	}
 end
 
 local function rebuildFromStorage()
 	chains = {}
 	selectedIdx = 1
+	ignoredWarnings = {}
 
 	if type(__SCV_GROUPS) ~= "table" then
 		SCV_Store.save()
 		return
 	end
 
+	if type(__SCV_GROUPS.ignoredWarnings) == "table" then
+		for _, key in ipairs(__SCV_GROUPS.ignoredWarnings) do
+			if type(key) == "string" then
+				local code, ware = key:match("^([^|]+)|([^|]+)$")
+				if warningKey(code, ware) then ignoredWarnings[key] = true end
+			end
+		end
+	end
 	local legacy = 0
 	if type(__SCV_GROUPS.names) == "table" then
 		-- v3 and v4 share this shape; v3 member strings simply have no codes
@@ -224,6 +245,21 @@ end
 
 function SCV_Store.chains()
 	return SCV_Store.load()
+end
+
+function SCV_Store.isWarningIgnored(stationCode, wareId)
+	SCV_Store.load()
+	local key = warningKey(stationCode, wareId)
+	return key ~= nil and ignoredWarnings[key] == true
+end
+
+function SCV_Store.setWarningIgnored(stationCode, wareId, ignored)
+	SCV_Store.load()
+	local key = warningKey(stationCode, wareId)
+	if not key then return false end
+	ignoredWarnings[key] = ignored and true or nil
+	SCV_Store.save()
+	return true
 end
 
 function SCV_Store.get(index)

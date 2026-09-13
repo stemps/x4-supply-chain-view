@@ -123,5 +123,7 @@
     <t id="3150">Z prázdného skladu: %s</t>
     <t id="3151">Bilance: %s</t>
     <t id="3152">Zásoba neznámá.</t>
+    <t id="3153">Varování pro toto zboží na této stanici jsou zapnutá. Kliknutím je ignorujete.</t>
+    <t id="3154">Varování pro toto zboží na této stanici jsou ignorována. Kliknutím je zapnete.</t>
   </page>
 </language>

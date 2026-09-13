@@ -123,5 +123,7 @@
     <t id="3150">Depuis un stock vide : %s</t>
     <t id="3151">Solde : %s</t>
     <t id="3152">Stock inconnu.</t>
+    <t id="3153">Alertes activées pour cette marchandise dans cette station. Cliquez pour les ignorer.</t>
+    <t id="3154">Alertes ignorées pour cette marchandise dans cette station. Cliquez pour les activer.</t>
   </page>
 </language>

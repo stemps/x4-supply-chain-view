@@ -123,5 +123,7 @@
     <t id="3150">A partir do vazio: %s</t>
     <t id="3151">Saldo: %s</t>
     <t id="3152">Estoque desconhecido.</t>
+    <t id="3153">Avisos ativados para esta mercadoria nesta estação. Clique para ignorá-los.</t>
+    <t id="3154">Avisos ignorados para esta mercadoria nesta estação. Clique para ativá-los.</t>
   </page>
 </language>

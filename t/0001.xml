@@ -148,5 +148,7 @@
     <t id="3150">From empty: %s</t>
     <t id="3151">Balance: %s</t>
     <t id="3152">Stock unknown.</t>
+    <t id="3153">Warnings enabled for this ware at this station. Click to ignore.</t>
+    <t id="3154">Warnings ignored for this ware at this station. Click to enable.</t>
   </page>
 </language>

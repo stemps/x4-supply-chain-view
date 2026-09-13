@@ -123,5 +123,7 @@
     <t id="3150">Boştan doluma: %s</t>
     <t id="3151">Denge: %s</t>
     <t id="3152">Stok bilinmiyor.</t>
+    <t id="3153">Bu istasyondaki bu mal için uyarılar etkin. Yok saymak için tıklayın.</t>
+    <t id="3154">Bu istasyondaki bu mal için uyarılar yok sayılıyor. Etkinleştirmek için tıklayın.</t>
   </page>
 </language>

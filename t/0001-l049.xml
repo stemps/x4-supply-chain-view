@@ -123,5 +123,7 @@
     <t id="3150">Ab leerem Lager: %s</t>
     <t id="3151">Bilanz: %s</t>
     <t id="3152">Vorrat unbekannt.</t>
+    <t id="3153">Warnungen für diese Ware an dieser Station sind aktiviert. Klicken, um sie zu ignorieren.</t>
+    <t id="3154">Warnungen für diese Ware an dieser Station werden ignoriert. Klicken, um sie zu aktivieren.</t>
   </page>
 </language>

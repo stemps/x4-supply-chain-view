@@ -563,6 +563,15 @@ function menu.publishMetrics(snapshot)
 	local started = SCV_Data.PROFILE_REFRESH and GetCurRealTime()
 	SCV_Graph.refreshMetrics(menu.graph, snapshot)
 	for _, st in ipairs(snapshot) do SCV_Data.cache[st.id] = st end
+	menu.updateMetricDisplay()
+	if started then
+		log(string.format("refresh: %d stations, reads %.2fms total / %.2fms max, publish %.2fms",
+			#snapshot, menu.refreshState.readSeconds * 1000,
+			menu.refreshState.maxReadSeconds * 1000, (GetCurRealTime() - started) * 1000))
+	end
+end
+
+function menu.updateMetricDisplay()
 	menu.metricRevision = (menu.metricRevision or 0) + 1
 	menu.decorateNodes(menu.graph)
 	for _, data in ipairs(menu.graph.nodes) do
@@ -585,11 +594,15 @@ function menu.publishMetrics(snapshot)
 	-- station reads or graph reconstruction happen in frame:update().
 	if menu.frame then menu.frame:update() end
 	if menu.expandedMenuFrame then menu.expandedMenuFrame:update() end
-	if started then
-		log(string.format("refresh: %d stations, reads %.2fms total / %.2fms max, publish %.2fms",
-			#snapshot, menu.refreshState.readSeconds * 1000,
-			menu.refreshState.maxReadSeconds * 1000, (GetCurRealTime() - started) * 1000))
+end
+
+function menu.setWareWarnings(stationCode, ware, enabled)
+	if not SCV_Store.setWarningIgnored(stationCode, ware, not enabled) then return end
+	if not menu.graph then return end
+	for _, node in pairs(menu.graph.metricStations) do
+		SCV_Graph.updateStationMetrics(node)
 	end
+	menu.updateMetricDisplay()
 end
 
 -- ---------------------------------------------------------------------------------
@@ -1045,7 +1058,7 @@ function menu.displayChain(frame, x, y, width, reuseGraph)
 			return
 		end
 
-		graph = SCV_Graph.build(stations, {})
+		graph = SCV_Graph.build(stations, { isWarningIgnored = SCV_Store.isWarningIgnored })
 		menu.graph = graph
 		if not graph then
 			return
@@ -1149,7 +1162,7 @@ function menu.displayChain(frame, x, y, width, reuseGraph)
 	})
 	menu.flowchart:setDefaultNodeProperties({
 		expandedFrameLayer      = config.expandedMenuFrameLayer,
-		expandedTableNumColumns = 2,
+		expandedTableNumColumns = 4,
 		x     = config.nodeOffsetX,
 		-- per-node width overrides this; it is only the fallback
 		width = config.wareNodeWidth,
@@ -1332,26 +1345,28 @@ local function sortedWares(wares, predicate)
 	return out
 end
 
--- Two columns: a name on the left, a short figure on the right. Vanilla's own storage panel
--- splits its table the same way (Helper.onExpandLSOStorageNode: setColWidthPercent(2, 30)).
+-- Metrics keep the 68/32 split. Two narrow trailing columns hold the bell and
+-- checkbox; names span the first two, and right-hand metrics span the last three.
 local function setupColumns(ftable)
-	ftable:setColWidthPercent(2, 32)
+	ftable:setColWidthPercent(1, 68)
+	ftable:setColWidth(3, Helper.standardTextHeight)
+	ftable:setColWidth(4, Helper.standardTextHeight)
 	-- Keep selectable entry rows for native scrolling, but hide the focus rectangle.
 	ftable.properties.highlightMode = "off"
 end
 
 local function sectionHeader(ftable, text)
 	local row = ftable:addRow(false, { paddingTop = 8 })
-	row[1]:setColSpan(2):createText(text, Helper.headerRow1Properties)
+	row[1]:setColSpan(4):createText(text, Helper.headerRow1Properties)
 end
 
 local function noneRow(ftable)
 	local row = ftable:addRow(false, {})
-	row[1]:setColSpan(2):createText(T(3049), { color = Color["text_inactive"] })
+	row[1]:setColSpan(4):createText(T(3049), { color = Color["text_inactive"] })
 end
 
 -- Shared renderer: only the label and role differ between station/ware popups.
-local function detailEntry(ftable, key, name, w, isInput)
+local function detailEntry(ftable, key, name, w, isInput, stationCode, ware)
 	local fields = liveFields(function ()
 		local m = SCV_Graph.detailMetrics(w, isInput)
 		local b = m.bar
@@ -1378,18 +1393,34 @@ local function detailEntry(ftable, key, name, w, isInput)
 		return ftable:addRow(rowkey, { bgColor = Color["row_background_unselectable"], borderBelow = false })
 	end
 	local r = metricRow(key)
-	r[1]:setColSpan(2):createText(name, { wordwrap = true, color = fields("labelColor"), mouseOverText = fields("labelTip") })
+	local canToggle = isInput and stationCode ~= nil and stationCode ~= ""
+	r[1]:setBackgroundColSpan(4):setColSpan(canToggle and 2 or 4)
+	r[1]:createText(name, { wordwrap = true, color = fields("labelColor"), mouseOverText = fields("labelTip") })
+	if canToggle then
+		local size = Helper.scaleY(Helper.standardTextHeight)
+		-- Native ringing bell without a surrounding circle.
+		r[3]:createIcon("terraforming_xen_alert", {
+			scaling = false, width = size, height = size,
+			color = function () return Color[w.warningIgnored and "text_inactive" or "text_normal"] end,
+			mouseOverText = function () return T(w.warningIgnored and 3154 or 3153) end,
+		})
+		r[4]:createCheckBox(function () return not w.warningIgnored end, {
+			scaling = false, width = size, height = size, x = math.max(0, r[4]:getColSpanWidth() - size),
+			mouseOverText = function () return T(w.warningIgnored and 3154 or 3153) end,
+		})
+		r[4].handlers.onClick = function (_, checked) menu.setWareWarnings(stationCode, ware, checked) end
+	end
 	r = metricRow(false)
-	barCell(r[1]:setColSpan(2), w, name)
+	barCell(r[1]:setColSpan(4), w, name)
 	r = metricRow(false)
-	r[1]:setBackgroundColSpan(2):createText(fields("amount"), { wordwrap = true, mouseOverText = fields("amountTip") })
-	r[2]:createText(fields("rate"), { halign = "right", wordwrap = true, mouseOverText = fields("long"), color = fields("rateColor") })
+	r[1]:setBackgroundColSpan(4):createText(fields("amount"), { wordwrap = true, mouseOverText = fields("amountTip") })
+	r[2]:setColSpan(3):createText(fields("rate"), { halign = "right", wordwrap = true, mouseOverText = fields("long"), color = fields("rateColor") })
 	r = metricRow(false)
-	r[1]:setColSpan(2):createText(fields("coverage"),
+	r[1]:setColSpan(4):createText(fields("coverage"),
 		{ wordwrap = true, mouseOverText = fields("coverageTip"), color = Color["text_inactive"] })
 	-- A small full-width spacer, following vanilla's explicit-height text rows.
 	r = ftable:addRow(false, { borderBelow = false })
-	r[1]:setColSpan(2):createText(" ", { fontsize = 1, height = 2 })
+	r[1]:setColSpan(4):createText(" ", { fontsize = 1, height = 2 })
 end
 
 function menu.expandStation(node, frame, ftable, nodedata)
@@ -1403,14 +1434,14 @@ function menu.expandStation(node, frame, ftable, nodedata)
 	-- because the widget system dispatches only expand/collapse and slider events for a
 	-- flowchart node - there is no click event for an icon on its label.
 	local row = ftable:addRow(true, {})
-	row[1]:setColSpan(2):createButton({ mouseOverText = T(3030) })
+	row[1]:setColSpan(4):createButton({ mouseOverText = T(3030) })
 		:setText(T(3030), { halign = "center" })
 	local id64 = ConvertStringTo64Bit(nodedata.scvid)
 	row[1].handlers.onClick = function () openStationOverview(id64) end
 
 	-- Match the vanilla map's player-owned station configurator action.
 	row = ftable:addRow(true, {})
-	row[1]:setColSpan(2):createButton({ mouseOverText = T(3103), active = GetComponentData(id64, "isplayerowned") })
+	row[1]:setColSpan(4):createButton({ mouseOverText = T(3103), active = GetComponentData(id64, "isplayerowned") })
 		:setText(T(3103), { halign = "center" })
 	row[1].handlers.onClick = function ()
 		if not GetComponentData(id64, "isplayerowned") then return end
@@ -1419,7 +1450,7 @@ function menu.expandStation(node, frame, ftable, nodedata)
 
 	if (#inputs == 0) and (#outputs == 0) then
 		row = ftable:addRow(false, {})
-		row[1]:setColSpan(2):createText(T(3040), { wordwrap = true, color = Color["text_inactive"] })
+		row[1]:setColSpan(4):createText(T(3040), { wordwrap = true, color = Color["text_inactive"] })
 		return
 	end
 
@@ -1430,7 +1461,7 @@ function menu.expandStation(node, frame, ftable, nodedata)
 			return
 		end
 		for _, entry in ipairs(list) do
-			detailEntry(ftable, "ware:" .. entry.ware, entry.w.name or entry.ware, entry.w, isInput)
+			detailEntry(ftable, "ware:" .. entry.ware, entry.w.name or entry.ware, entry.w, isInput, nodedata.code, entry.ware)
 		end
 	end
 
@@ -1463,7 +1494,7 @@ function menu.expandWare(node, frame, ftable, nodedata)
 			tip = aggregateStockTooltip(nodedata.name, storage) }
 	end)
 	local totals = ftable:addRow("totals", { bgColor = Color["row_background_unselectable"], borderBelow = false })
-	totals[1]:setColSpan(2):createText(fields("amount"), { wordwrap = true, mouseOverText = fields("tip") })
+	totals[1]:setColSpan(4):createText(fields("amount"), { wordwrap = true, mouseOverText = fields("tip") })
 	local function totalRate(label, amountKey, knownKey, sign, color, tooltip)
 		local values = liveFields(function ()
 			local amount, known = nodedata[amountKey], nodedata[knownKey]
@@ -1476,8 +1507,8 @@ function menu.expandWare(node, frame, ftable, nodedata)
 			return { value = value, tip = tip }
 		end)
 		local row = ftable:addRow(false, { bgColor = Color["row_background_unselectable"], borderBelow = false })
-		row[1]:setBackgroundColSpan(2):createText(T(label), { mouseOverText = values("tip") })
-		row[2]:createText(values("value"), { halign = "right", wordwrap = true, color = color, mouseOverText = values("tip") })
+		row[1]:setBackgroundColSpan(4):createText(T(label), { mouseOverText = values("tip") })
+		row[2]:setColSpan(3):createText(values("value"), { halign = "right", wordwrap = true, color = color, mouseOverText = values("tip") })
 	end
 	totalRate(3084, "supplyCap", "supplyKnown", "+", Color["text_positive"], 3086)
 	totalRate(3085, "demandCap", "demandKnown", "-", config.consumptionColor, 3087)
@@ -1503,7 +1534,7 @@ function menu.expandWare(node, frame, ftable, nodedata)
 			return
 		end
 		for _, entry in ipairs(list) do
-			detailEntry(ftable, "station:" .. tostring(entry.node.scvid), entry.node.name or "?", entry.w, isInput)
+			detailEntry(ftable, "station:" .. tostring(entry.node.scvid), entry.node.name or "?", entry.w, isInput, entry.node.code, nodedata.scvware)
 		end
 	end
 

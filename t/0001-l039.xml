@@ -123,5 +123,7 @@
     <t id="3150">Da vuoto: %s</t>
     <t id="3151">Bilancio: %s</t>
     <t id="3152">Scorte sconosciute.</t>
+    <t id="3153">Avvisi attivi per questa merce in questa stazione. Clicca per ignorarli.</t>
+    <t id="3154">Avvisi ignorati per questa merce in questa stazione. Clicca per attivarli.</t>
   </page>
 </language>

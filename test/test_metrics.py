@@ -72,6 +72,7 @@ function GetWareData(ware, key)
     return key == 'transport' and 'container' or ware
 end
 Helper = { standardTextHeight=20, topLevelMenus={}, headerRow1Properties={},
+    scaleY=function(value) return value end,
     registerMenu=function() end, clearFrame=function() cleared=true end,
     getWorkforceConsumption=function(id, ware) return ware == 'food' and state.workforce or 0 end }
 Color = setmetatable({}, {__index=function(_, key) return key end})
@@ -83,6 +84,7 @@ g.menu = menu
 lua.execute('''
 function read() return SCV_Data.readStation({id='A', id64='A', name='A'}) end
 station = read()
+assert(station.code == 'idcode', 'reader must carry the durable station code into the graph')
 assert(station.wares.energycells.prodMax == 4800000) -- never the base recipe's 6000
 assert(station.wares.energycells.prodKnown)
 assert(station.wares.food.consMax == 100) -- workforce counted exactly once
@@ -146,6 +148,7 @@ end
 function tableMock()
     local t={properties={},rows={},groups={}}
     function t:setColWidthPercent() end
+    function t:setColWidth() end
     function t:addRowGroup(properties)
         local group={properties=properties,rows={}}
         self.groups[#self.groups+1]=group
@@ -159,9 +162,12 @@ function tableMock()
     end
     function t:addRow(key, props)
         local r={key=key,properties=props}; self.rows[#self.rows+1]=r
-        for i=1,2 do
+        for i=1,4 do
             local c={handlers={}}; r[i]=c
             function c:setColSpan(n) self.span=n; return self end
+            function c:createIcon(icon, props) self.icon=icon; self.iconProps=props; return self end
+            function c:getColSpanWidth() return 160 end
+            function c:createCheckBox(checked, props) self.checked=checked; self.checkbox=props; return self end
             function c:setBackgroundColSpan(n) self.bgspan=n; return self end
             function c:createText(text, props)
                 self.rawText=text; self.rawProps=props
@@ -202,7 +208,7 @@ function compareEntry(role, stationID)
     assert(a.rows[i+3][1].text == b.rows[j+3][1].text)
     assert(a.rows[i+4][1].props.height == 2 and b.rows[j+4][1].props.height == 2)
     assert(a.rows[i+4].properties.borderBelow == false)
-    assert(a.rows[i+2][1].bgspan == 2 and b.rows[j+2][1].bgspan == 2)
+    assert(a.rows[i+2][1].bgspan == 4 and b.rows[j+2][1].bgspan == 4)
     assert(a.rows[i+2][1].span == nil and a.rows[i+2][2].text ~= nil)
     assert(a.rows[i][1].props.mouseOverText and b.rows[j][1].props.mouseOverText)
     local input = stationID == 'B'
@@ -356,7 +362,7 @@ assert(t.rows[3][1].text=='Production' and t.rows[3][2].text=='+50/h')
 assert(t.rows[3][2].props.color=='text_positive')
 assert(t.rows[4][1].text=='Consumption' and t.rows[4][2].text=='-80/h')
 assert(t.rows[4][2].props.color.g==150)
-assert(t.rows[3][1].bgspan==2 and t.rows[4][1].bgspan==2)
+assert(t.rows[3][1].bgspan==4 and t.rows[4][1].bgspan==4)
 assert(t.rows[5][1].text=='Supplied by')
 local dedup=SCV_Graph.storageTotals(graph.stationNodes,'ore',{'a','a'},{'a','b'})
 assert(dedup.stock==150 and dedup.capacity==500)
@@ -407,6 +413,8 @@ for source in (root/'ui').glob('*.lua'):
     lua.execute('assert(load(...))', source.read_text(encoding='utf-8'))
 lua.execute((root/'test/test_tooltips.lua').read_text(encoding='utf-8'))
 lua.execute((root/'test/test_processing.lua').read_text(encoding='utf-8'))
+lua.execute((root/'ui/scv_store.lua').read_text(encoding='utf-8'))
+lua.execute((root/'test/test_warnings.lua').read_text(encoding='utf-8'))
 lua.execute((root/'test/test_menu_lifecycle.lua').read_text(encoding='utf-8'))
 lua.execute((root/'test/test_refresh.lua').read_text(encoding='utf-8'))
 lua.execute('''

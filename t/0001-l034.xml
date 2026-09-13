@@ -123,5 +123,7 @@
     <t id="3150">Desde vacío: %s</t>
     <t id="3151">Balance: %s</t>
     <t id="3152">Existencias desconocidas.</t>
+    <t id="3153">Avisos activados para esta mercancía en esta estación. Haz clic para ignorarlos.</t>
+    <t id="3154">Avisos ignorados para esta mercancía en esta estación. Haz clic para activarlos.</t>
   </page>
 </language>

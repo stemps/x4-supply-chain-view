@@ -612,6 +612,7 @@ function SCV_Data.readStation(st)
 		id         = st.id,
 		id64       = id64,
 		name       = desc.name or st.name,
+		code       = desc.code or st.code,
 		sectorname = desc.sectorname or "",
 		wares      = wares,
 		-- Not scanned far enough to read stock levels. The links are still right; the

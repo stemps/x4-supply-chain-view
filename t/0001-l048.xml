@@ -123,5 +123,7 @@
     <t id="3150">Od pustego: %s</t>
     <t id="3151">Bilans: %s</t>
     <t id="3152">Zapas nieznany.</t>
+    <t id="3153">Ostrzeżenia dla tego towaru na tej stacji są włączone. Kliknij, aby je ignorować.</t>
+    <t id="3154">Ostrzeżenia dla tego towaru na tej stacji są ignorowane. Kliknij, aby je włączyć.</t>
   </page>
 </language>

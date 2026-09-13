@@ -104,6 +104,7 @@ function SCV_Graph.wareHealth(w)
 	if cover then
 		severity, hours, reason = SCV_Graph.severityFor(cover), cover, "starved"
 	end
+	if w.warningIgnored then severity, reason = "ok", nil end
 
 	local role = "idle"
 	if w.output and w.input then
@@ -297,6 +298,7 @@ end
 function SCV_Graph.updateStationMetrics(node)
 	node.severity, node.healthKnown, node.worstWare = "ok", true, nil
 	for ware, w in pairs(node.wares) do
+		if node.warningPolicy then w.warningIgnored = node.warningPolicy(node.code, ware) end
 		local h = SCV_Graph.wareHealth(w)
 		w.health = h
 		node.healthKnown = node.healthKnown and h.known
@@ -413,6 +415,8 @@ function SCV_Graph.build(stations, options)
 		local node = {
 			scvkind   = "station",
 			scvid     = st.id,
+			code      = st.code,
+			warningPolicy = options.isWarningIgnored,
 			name      = st.name,
 			type      = "container",
 			wares     = st.wares or {},
