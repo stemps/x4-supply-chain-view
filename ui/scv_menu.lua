@@ -19,11 +19,12 @@ local menu = {
 }
 
 local config = {
+	-- Lower layers draw in front: dialogs, node details, status, navigation, graph.
 	mainFrameLayer         = 5,
-	expandedMenuFrameLayer = 4,
-	toolbarFrameLayer      = 3,
+	expandedMenuFrameLayer = 2,
+	toolbarFrameLayer      = 4,
 	managementFrameLayer   = 1,
-	statusFrameLayer       = 2,
+	statusFrameLayer       = 3,
 	topLevelId             = "scv_supplychain",
 	textPage               = 90210,
 	-- Station names run long ("2 - Factory - Asteroid Belt - Computronic Substrate") and the

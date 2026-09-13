@@ -96,7 +96,7 @@ function menu.displayChain(_,x,y,width,reuse)
     menu.graph={stationNodes={}}; menu.flowchart={}; menu.refreshState={}; menu.scanDone=true
 end
 menu.mode='chain'; menu.display()
-local function toolbar() return frames[3].tables[1].rows[1] end
+local function toolbar() return frames[4].tables[1].rows[1] end
 local row=toolbar()
 for _,i in ipairs({1,2,3,4,5}) do assert(row[i].properties.active==false) end
 row[1].handlers.onClick(); row[3].handlers.onClick()
@@ -104,11 +104,11 @@ assert(SCV_Store.count()==0)
 assert(row[2].options[1].id=='0')
 assert(graphRect.x==Helper.frameBorder)
 assert(graphRect.width==1280-45-5-5-2, 'graph uses all available width')
-assert(frames[3].properties.width==graphRect.width/2, 'toolbar matches LSO half-width proportions')
-assert(frames[3].properties.x==graphRect.x+graphRect.width/4, 'toolbar is centered')
-assert(frames[3].tables[1].widths[1]==frames[3].properties.height, 'navigation buttons are square')
-assert(menu.toolbarGeometry.anchorX>frames[3].properties.x and
-    menu.toolbarGeometry.anchorX<frames[3].properties.x+frames[3].properties.width)
+assert(frames[4].properties.width==graphRect.width/2, 'toolbar matches LSO half-width proportions')
+assert(frames[4].properties.x==graphRect.x+graphRect.width/4, 'toolbar is centered')
+assert(frames[4].tables[1].widths[1]==frames[4].properties.height, 'navigation buttons are square')
+assert(menu.toolbarGeometry.anchorX>frames[4].properties.x and
+    menu.toolbarGeometry.anchorX<frames[4].properties.x+frames[4].properties.width)
 
 SCV_Store.create('A very long chain name '..string.rep('abc ',40),{{id='1',code='code1'}})
 menu.display(); row=toolbar()
@@ -165,35 +165,35 @@ menu.onCloseElement('back',1); assert(menu.renameIndex==nil and closed==0)
 menu.notice='Added 7 stations.'; menu.missingMembers=2
 menu.graph.structureChanged=true; menu.graph.refreshFailed=true; menu.graph.lockedCount=3
 menu.updateStatusStrip()
-assert(#toolbar()==5 and frames[2])
-local status=frames[2].tables[1]
+assert(#toolbar()==5 and frames[3])
+local status=frames[3].tables[1]
 assert(#status.rows==5 and status.rows[1][1].text:find('could not be found',1,true))
 assert(status.rows[5][1].text=='Added 7 stations.')
 assert(status.rows[1][1].textprops.color=='text_warning')
 assert(status.rows[5][1].textprops.color=='text_positive')
-assert(frames[2].properties.height<=status.properties.maxVisibleHeight)
+assert(frames[3].properties.height<=status.properties.maxVisibleHeight)
 assert(menu.graph==graph and menu.refreshState==refresh and builds==before)
-assert(graphRect.y>=frames[2].properties.y+frames[2].properties.height)
+assert(graphRect.y>=frames[3].properties.y+frames[3].properties.height)
 local nativeFrame=menu.frame
 menu.graph.lockedCount=4; menu.updateStatusStrip()
 assert(menu.frame==nativeFrame, 'same height leaves graph widgets alone')
 now=15.9; menu.updateStatusStrip(); assert(menu.notice)
-now=16; menu.updateStatusStrip(); assert(menu.notice==nil and #frames[2].tables[1].rows==4)
+now=16; menu.updateStatusStrip(); assert(menu.notice==nil and #frames[3].tables[1].rows==4)
 menu.graph.structureChanged=nil; menu.graph.refreshFailed=nil; menu.graph.lockedCount=0
 menu.missingMembers=1; menu.updateStatusStrip()
-assert(frames[2].tables[1].rows[1][1].text=='1 station could not be found and is not shown.')
-menu.missingMembers=0; menu.updateStatusStrip(); assert(not frames[2] and menu.statusHeight==0)
+assert(frames[3].tables[1].rows[1][1].text=='1 station could not be found and is not shown.')
+menu.missingMembers=0; menu.updateStatusStrip(); assert(not frames[3] and menu.statusHeight==0)
 assert(menu.graph==graph and menu.refreshState==refresh and builds==before)
 menu.openManagement('rename')
 local renameFrame=frames[1]
 menu.nameText='Unsaved draft'; menu.notice='Those stations were already in this supply chain.'
 now=30; menu.updateStatusStrip(); assert(frames[1]==renameFrame and menu.nameText=='Unsaved draft')
 assert(menu.noticeUntil==36)
-now=36; menu.updateStatusStrip(); assert(not frames[2] and frames[1]==renameFrame and menu.nameText=='Unsaved draft')
+now=36; menu.updateStatusStrip(); assert(not frames[3] and frames[1]==renameFrame and menu.nameText=='Unsaved draft')
 menu.closeManagement()
 menu.notice=string.rep('Long translated feedback ',100); menu.updateStatusStrip()
-assert(frames[2].tables[1]:getFullHeight()>frames[2].properties.height)
-assert(frames[2].properties.height==frames[2].tables[1].properties.maxVisibleHeight)
+assert(frames[3].tables[1]:getFullHeight()>frames[3].properties.height)
+assert(frames[3].properties.height==frames[3].tables[1].properties.maxVisibleHeight)
 menu.notice=nil; menu.noticeUntil=nil; menu.updateStatusStrip()
 menu.openManagement('stations')
 assert(#frames[1].tables[1].rows==3, 'no duplicate status block')
