@@ -1,41 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Supply Chain View — UI addon manifest.
-
-     LOAD ORDER IS THE DEPENDENCY GRAPH. Each file publishes one global and the later ones
-     read it, so the order below is load-bearing, not cosmetic:
-       scv_store    -> SCV_Store    the chain registry. No dependencies.
-       scv_graph    -> SCV_Graph    pure model (bipartite graph, cycle break, health math).
-                                    Makes NO game API calls.
-       scv_data     -> SCV_Data     the live reader (trade offers, module recipes, stock).
-       scv_menu     -> (registers)  the screen. Reads the three above.
-       scv_interact -> SCV_Interact the map context menu. Reads the store, opens the screen.
-     A file listed before the one it needs finds a nil global and goes inert QUIETLY - that
-     silent-inert failure is exactly what this ordering prevents.
-
-     THE ENGINE LOADS THESE FILES BUT DOES NOT CALL YOUR INIT. Each file calls its own
-     init() as its last statement.
-
-     DEPENDENCIES are load-order control, and addon.xsd has NO optional flag - a missing
-     dependency prevents this addon loading at all. Required addons:
-       ego_detailmonitorhelper  Helper.*, the entire widget/style surface.
-       ego_detailmonitor        owns the menus we sit alongside and borrow patterns from,
-                                and declares the ffi cdefs we reuse (GetStationModules,
-                                GetContainerWareConsumption and friends).
-       kuertee_ui_extensions    provides the required context-menu custom-actions-group API.
-     The extension requirement lives in content.xml; this UI dependency also ensures the
-     provider addon loads before SCV. Runtime API probes remain for incompatible versions.
-     sn_mod_support_apis is optional and therefore has no UI-addon dependency here.
-
-     THREE REGEX CONSTRAINTS in ../../ui/core/addon.xsd, all of which fail SILENTLY at load
-     rather than erroring:
-       - addon name must not start with "ego_"            (xsd line 5)
-       - savedvariable name must not start with "__CORE"  (xsd line 15)
-       - <file name> must contain a directory component   (.+(/|\\).+\.lua)
-
-     storage="savegame" (not "userdata"): a chain refers to specific stations in a specific
-     game, so it belongs to the save. Vanilla precedent for exactly this split is
-     ego_detailmonitor's __CORE_DETAILMONITOR_MAPFILTER (userdata) versus
-     __CORE_DETAILMONITOR_MAPFILTER_SAVE (savegame). -->
+<!-- Supply Chain View — UI addon manifest. -->
 <addon name="scv_supplychain"
        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xsi:noNamespaceSchemaLocation="../../ui/core/addon.xsd">

@@ -1,10 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Supply Chain View.
 
-     save="false" — this mod stores NO game state. The supply chains live in a UI
-     <savedvariable storage="savegame"> declared in ui.xml, which the engine serialises into
-     the savegame independently of the extension's save flag. Setting save="true" here would
-     bake the extension into saves and make removing it a corruption risk, for no benefit.
+     This mod saves UI data, but doesn't require the extension for loading a save. It should be safe to remove.
 
      kuertee UI Extensions and HUD is required for the core map context-menu workflow.
      Other integrations remain optional:
@@ -16,14 +13,7 @@
        SirNukes Mod Support APIs is used only for Register_OnLoad_Init, a convenience for
          retrying the interact-menu registration once the game is up. scv_interact retries
          on menu open instead when it is absent.
-     For the optional integrations, optional="true" preserves load ORDER without making them
-     requirements. The dependency id is the TARGET'S CONTENT ID, not its folder name: the
-     folders are kuertee_ui_extensions and sn_mod_support_apis while the ids are below.
-
-     The UI-level requirements (ego_detailmonitorhelper, ego_detailmonitor) are part of the
-     BASE GAME and live in the .cat archives, not extensions/ — they are declared as UI-addon
-     dependencies in ui.xml instead. Extension-level <dependency> and ui.xml <dependency> are
-     different mechanisms: the former orders EXTENSIONS, the latter orders UI ADDONS. -->
+-->
 <content id="supply_chain_view"
          name="Supply Chain View"
          author="Simon Stemplinger"
