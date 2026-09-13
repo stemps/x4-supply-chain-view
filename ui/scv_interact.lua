@@ -16,10 +16,9 @@
 -- galaxy_trader, kuertee_surface_element_targeting and kuertee_ui_trade_analytics all use
 -- the same mechanism, so it is well-trodden rather than exotic.
 --
--- OPTIONAL AT RUNTIME. UIX is not declared as a hard dependency: if it is absent, or an
--- older build without this api is installed, every entry point below simply does not
--- register and the top-level "Supply Chain" tab remains the way in. That is why each api
--- function is probed with type(...) == "function" rather than assumed.
+-- UIX is required by both manifests. Keep runtime API probes so an incompatible build
+-- does not throw during registration; the top-level tab remains available if an API
+-- function is missing.
 --
 -- The "actions_" id prefix confines the group to the Custom ACTIONS sub-menu rather than
 -- also appearing under Custom Orders (UIX README point 6). Stations are not given fleet
@@ -229,8 +228,7 @@ function SCV_Interact.tryRegister()
 		return false
 	end
 
-	-- Probe rather than assume. Without kuertee UI Extensions these are nil and the mod
-	-- falls back to the top-level tab, which is why UIX is not a hard dependency.
+	-- The provider is required, but an incompatible version may lack these functions.
 	if (type(m.Add_Custom_Actions_Group) ~= "function")
 			or (type(m.registerCallback) ~= "function")
 			or (type(m.insertInteractionContent) ~= "function") then

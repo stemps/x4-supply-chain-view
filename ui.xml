@@ -16,17 +16,15 @@
      init() as its last statement.
 
      DEPENDENCIES are load-order control, and addon.xsd has NO optional flag - a missing
-     dependency may stop this addon loading at all. Only the two that are part of the GAME
-     are listed, and both are genuinely required:
+     dependency prevents this addon loading at all. Required addons:
        ego_detailmonitorhelper  Helper.*, the entire widget/style surface.
        ego_detailmonitor        owns the menus we sit alongside and borrow patterns from,
                                 and declares the ffi cdefs we reuse (GetStationModules,
                                 GetContainerWareConsumption and friends).
-     kuertee_ui_extensions is deliberately NOT listed even though scv_interact needs its
-     custom-actions-group api: because a ui.xml dependency cannot be optional, listing it
-     would stop this WHOLE addon loading on an install without it - the screen included,
-     not merely the context menu. scv_interact probes for the api at runtime instead and
-     goes quiet if it is absent. Same reasoning for sn_mod_support_apis.
+       kuertee_ui_extensions    provides the required context-menu custom-actions-group API.
+     The extension requirement lives in content.xml; this UI dependency also ensures the
+     provider addon loads before SCV. Runtime API probes remain for incompatible versions.
+     sn_mod_support_apis is optional and therefore has no UI-addon dependency here.
 
      THREE REGEX CONSTRAINTS in ../../ui/core/addon.xsd, all of which fail SILENTLY at load
      rather than erroring:
@@ -50,6 +48,7 @@
     <file name="ui/scv_interact.lua" />
     <dependency name="ego_detailmonitorhelper" />
     <dependency name="ego_detailmonitor" />
+    <dependency name="kuertee_ui_extensions" />
     <savedvariable name="__SCV_GROUPS" storage="savegame" />
   </environment>
 </addon>

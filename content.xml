@@ -6,17 +6,17 @@
      the savegame independently of the extension's save flag. Setting save="true" here would
      bake the extension into saves and make removing it a corruption risk, for no benefit.
 
-     All dependencies are optional="true", and the mod works without them:
+     kuertee UI Extensions and HUD is required for the core map context-menu workflow.
+     Other integrations remain optional:
        Native Hotkey API provides optional keyboard access. The action is registered
          through its public Lua API and starts unassigned; players bind it themselves.
        kuertee UI Extensions provides the interact-menu custom-actions-group api that puts
-         "Supply Chain" on the map right-click menu. Without it, the top-level Supply Chain
-         tab is the way in. (The api lives in UIX, not in SirNukes' Interact Menu API -
+         "Supply Chain" on the map right-click menu. (The api lives in UIX, not in SirNukes' Interact Menu API -
          that one cannot create new subsections, by its own documentation.)
        SirNukes Mod Support APIs is used only for Register_OnLoad_Init, a convenience for
          retrying the interact-menu registration once the game is up. scv_interact retries
          on menu open instead when it is absent.
-     optional="true" preserves load ORDER when they are installed without making them
+     For the optional integrations, optional="true" preserves load ORDER without making them
      requirements. The dependency id is the TARGET'S CONTENT ID, not its folder name: the
      folders are kuertee_ui_extensions and sn_mod_support_apis while the ids are below.
 
@@ -50,7 +50,7 @@
   <text language="90" name="Tedarik zinciri görünümü" description="Haritada kendi istasyonlarınıza sağ tıklayarak onları bir tedarik zincirinde gruplayın ve şema olarak görün: kimin kime tedarik sağladığını, hangi girdilerin tükenmek üzere olduğunu ve hangi çıktıların kimse almadığı için biriktiğini izleyin." />
   <text language="359" name="Преглед на веригите за доставки" description="Щракнете с десния бутон върху своите станции на картата, за да ги групирате във верига за доставки и да я видите като диаграма: кой кого снабдява, кои входящи стоки скоро ще свършат и кои изходящи стоки се натрупват, защото никой не ги взема." />
   <text language="380" name="Огляд ланцюгів постачання" description="Клацніть правою кнопкою свої станції на мапі, щоб об'єднати їх у ланцюг постачання та побачити схему: хто кого постачає, які вхідні товари невдовзі закінчаться та які вихідні товари накопичуються, бо їх ніхто не забирає." />
-  <dependency id="kuerteeUIExtensionsAndHUD" optional="true" name="kuertee UI Extensions and HUD"/>
+  <dependency id="kuerteeUIExtensionsAndHUD" optional="false" name="kuertee UI Extensions and HUD"/>
   <dependency id="ws_2042901274" optional="true" name="SirNukes Mod Support APIs"/>
   <dependency id="ws_3750545906" optional="true" name="Native Hotkey API"/>
 </content>
