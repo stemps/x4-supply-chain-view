@@ -30,22 +30,20 @@ just syntax          # compile all Lua files without executing them
 just xml             # XML parsing and UI addon schema validation
 just validate        # x4validate against base game + DLC
 just test-release    # release workflow against temporary local Git remotes
+just build-zip       # package current working files for local testing
 ```
 
 Windows recipes use PowerShell; other platforms use just's default shell.
 
-## Making a release
+## Building a local test ZIP
 
-Run `just release` after committing and pushing all work to `origin/main`.
-The task requires clean `main`, including no untracked files, and fetches the
-remote to check that local and remote commits match before asking any questions.
+Run `just build-zip` to create `dist/Supply-Chain-View-local.zip`. This accepts
+uncommitted edits, untracked runtime files (unless ignored), any branch, and
+unpushed commits. It omits deleted files and requires both manifests. The old
+local ZIP is replaced only after the new archive passes integrity/content checks.
 
-Accept the suggested version or enter a stable `major.minor.patch` version.
-Minor and patch values must be below 100. X4's manifest integer is encoded as
-`major * 10000 + minor * 100 + patch` (so `0.1.0` is `100`).
-
-The release script updates `VERSION`, `CHANGELOG.md`, and the manifest's version/date,
-runs `just check`, and verifies the ZIP. It then commits the metadata, creates an
-annotated `vX.Y.Z` tag and atomically pushes main and the tag to origin. Success
-produces `dist/Supply-Chain-View-X.Y.Z.zip`, containing only the manifests, Lua
-files and translations under `supply_chain_view/`. Upload that ZIP manually.
+This task packages only: run `just check` separately before in-game testing.
+It does not update version metadata, create commits or tags, contact Nexus, or
+require an API key. Both ZIP tasks include only `content.xml`, `ui.xml`,
+`ui/**/*.lua`, and `t/**/*.xml`, under `supply_chain_view/`. Documentation,
+promotional images, scripts, and tests are excluded. Runtime symlinks are rejected.

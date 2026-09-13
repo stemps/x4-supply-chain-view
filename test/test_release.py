@@ -7,6 +7,9 @@ import tempfile
 import unittest
 from unittest.mock import patch
 import zipfile
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
 
 spec = importlib.util.spec_from_file_location("scv_release", Path(__file__).resolve().parents[1] / "scripts/release.py")
 release = importlib.util.module_from_spec(spec)
@@ -149,6 +152,18 @@ class ReleaseTests(unittest.TestCase):
             with self.assertRaises(release.ReleaseError): self.run_release()
         self.assertEqual(self.cmd("status", "--porcelain"), "")
         self.assertEqual(self.cmd("tag", "--list"), "")
+
+    def test_nexus_preflight_failure_precedes_metadata_changes(self):
+        from unittest.mock import Mock
+        publisher = Mock()
+        publisher.preflight.side_effect = release.ReleaseError('Nexus rejected credentials')
+        original = (self.root / 'content.xml').read_bytes()
+        with self.assertRaisesRegex(release.ReleaseError, 'credentials'):
+            self.runner.run(ask=lambda _: '0.1.0', check=lambda: None, publisher=publisher)
+        publisher.preflight.assert_called_once_with('0.1.0', '- Initial mod')
+        self.assertEqual((self.root / 'content.xml').read_bytes(), original)
+        self.assertFalse((self.root / 'VERSION').exists())
+        self.assertEqual(self.cmd('status', '--porcelain'), '')
 
     def test_commit_failure_unstages_and_rolls_back(self):
         self.write(".git/hooks/pre-commit", "#!/bin/sh\nexit 1\n")

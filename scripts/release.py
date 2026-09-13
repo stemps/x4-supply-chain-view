@@ -10,9 +10,7 @@ import sys
 import tempfile
 import zipfile
 
-
-class ReleaseError(Exception):
-    pass
+from release_archive import ReleaseError, working_files, write_zip, git_bytes
 
 
 def version_tuple(value):
@@ -123,28 +121,10 @@ class Release:
         return {"VERSION": (version + "\n").encode(), "CHANGELOG.md": new.encode(), "content.xml": manifest}
 
     def runtime_files(self):
-        files = self.git("ls-files", "-z").split("\0")
-        selected = [p for p in files if p in ("content.xml", "ui.xml")
-                    or (p.startswith("ui/") and p.endswith(".lua"))
-                    or (p.startswith("t/") and p.endswith(".xml"))]
-        if not all(p in selected for p in ("content.xml", "ui.xml")):
-            raise ReleaseError("Missing tracked mod manifests.")
-        for p in selected:
-            if (self.root / p).is_symlink():
-                raise ReleaseError(f"Runtime symlinks cannot be released: {p}")
-        return sorted(selected)
+        return working_files(self.root)
 
     def build_zip(self, path, files):
-        with zipfile.ZipFile(path, "x", zipfile.ZIP_DEFLATED) as archive:
-            for name in files:
-                archive.write(self.root / name, "supply_chain_view/" + name)
-        with zipfile.ZipFile(path) as archive:
-            expected = ["supply_chain_view/" + name for name in files]
-            if archive.namelist() != expected or archive.testzip():
-                raise ReleaseError("Archive integrity or membership verification failed.")
-            for name in files:
-                if archive.read("supply_chain_view/" + name) != (self.root / name).read_bytes():
-                    raise ReleaseError(f"Archive differs from working file: {name}")
+        write_zip(path, files, lambda name: (self.root / name).read_bytes())
 
     def check_unchanged(self, head, written):
         if self.git("branch", "--show-current") != "main" or self.git("rev-parse", "HEAD") != head:
@@ -160,7 +140,7 @@ class Release:
             if (self.root / name).read_bytes() != data:
                 raise ReleaseError(f"Concurrent modification to {name}.")
 
-    def run(self, ask=input, check=None):
+    def run(self, ask=input, check=None, publisher=None):
         head = self.preflight()
         previous, suggested = self.previous()
         version = ask(f"Next version [{suggested}]: ").strip() or suggested
@@ -174,6 +154,8 @@ class Release:
         if final.exists():
             raise ReleaseError(f"Archive already exists: {final}")
         notes = self.notes(previous)
+        if publisher:
+            publisher.preflight(version, notes)
         written = self.updated_metadata(version, notes)
         self.check_unchanged(head, {})
         originals = {p: (self.root / p).read_bytes() if (self.root / p).exists() else None for p in written}
@@ -212,6 +194,11 @@ class Release:
                                                 capture_output=True, check=True).stdout.decode().strip()
                         if digest != self.git("rev-parse", f"HEAD:{name}"):
                             raise ReleaseError(f"Committed file differs from archive: {name}")
+                # Public archives use canonical committed bytes so a missing ZIP
+                # can be reconstructed identically, including on Windows.
+                canonical = Path(directory) / ('canonical-' + final.name)
+                write_zip(canonical, files, lambda name: git_bytes(self.root, 'show', f'{commit}:{name}'))
+                archive = canonical
                 note_file = Path(directory) / "tag-notes.md"
                 note_file.write_text(notes + "\n", encoding="utf-8")
                 self.git("tag", "-a", tag, "-F", str(note_file), commit)
@@ -240,9 +227,49 @@ class Release:
             raise
 
 
+def main():
+    import argparse
+    from release_archive import local_zip, tagged_zip
+    from nexus_publish import Publisher
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('command', choices=['release', 'build-zip', 'publish-nexus'], nargs='?', default='release')
+    parser.add_argument('tag', nargs='?')
+    parser.add_argument('--adopt-version', help='Verified Nexus version ID after an uncertain creation')
+    parser.add_argument('--retry-version', action='store_true', help='Confirm uncertain creation failed, then retry')
+    parser.add_argument('--changelog-status', choices=['posted', 'not-posted'], help='Resolve an uncertain changelog submission')
+    args = parser.parse_args()
+    if args.command != 'publish-nexus' and (args.adopt_version or args.retry_version or args.changelog_status):
+        parser.error('Recovery flags are only valid with publish-nexus')
+    if args.adopt_version and args.retry_version:
+        parser.error('--adopt-version and --retry-version are mutually exclusive')
+    root = Path(__file__).resolve().parents[1]
+    if args.command == 'build-zip':
+        if args.tag:
+            parser.error('build-zip takes no tag')
+        local_zip(root)
+        return
+    publisher = Publisher(root)
+    if args.command == 'release':
+        if args.tag:
+            parser.error('release takes no tag')
+        archive = Release(root).run(publisher=publisher)
+        tag = 'v' + archive.stem.removeprefix('Supply-Chain-View-')
+    else:
+        if not args.tag:
+            parser.error('publish-nexus requires a tag')
+        tag = args.tag
+    try:
+        archive, commit, notes = tagged_zip(root, tag)
+        publisher.publish(tag, commit, archive, notes, adopt_version=args.adopt_version,
+                          retry_version=args.retry_version, changelog_status=args.changelog_status)
+    except (ReleaseError, OSError, ValueError, KeyError, zipfile.BadZipFile) as error:
+        raise ReleaseError(f'Nexus publication incomplete: {error}\n'
+                           f'Git release retained. Resume: just publish-nexus {tag}') from None
+
+
 if __name__ == "__main__":
     try:
-        Release(Path(__file__).resolve().parents[1]).run()
-    except (ReleaseError, subprocess.CalledProcessError, OSError, KeyboardInterrupt, EOFError) as error:
+        main()
+    except (ReleaseError, subprocess.CalledProcessError, OSError, ValueError, KeyboardInterrupt, EOFError) as error:
         print(f"Release aborted: {error}", file=sys.stderr)
         sys.exit(1)

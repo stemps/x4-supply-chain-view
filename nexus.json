@@ -1,0 +1,11 @@
+{
+  "game": "x4foundations",
+  "mod_id": 2371,
+  "file_id": null,
+  "create_new_file": false,
+  "display_name": "Supply Chain View",
+  "description": "Supply Chain View for X4 Foundations. Requires kuertee UI Extensions and HUD.",
+  "category": "main",
+  "archive_existing_file": false,
+  "update_mod_version": true
+}
