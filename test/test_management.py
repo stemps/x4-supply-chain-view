@@ -23,6 +23,10 @@ Helper={topLevelMenus={}, registerMenu=function() end, viewWidth=1280, viewHeigh
     clearFrame=function(_,layer) frames[layer]=nil end,
     clearDataForRefresh=function() end, closeMenu=function() closed=closed+1 end,
     createTopLevelTab=function() return 45 end}
+function Helper.sortNameAndObjectID(a,b)
+    if a.name==b.name then return a.objectid<b.objectid end
+    return a.name<b.name
+end
 function Helper.createFrameHandle(_, props)
     local frame={properties=props,tables={}}
     function frame:setBackground() end

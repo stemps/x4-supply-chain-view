@@ -843,6 +843,10 @@ end
 
 function menu.displayStations(ftable, chain, index)
 	local members = menu.currentMembers()
+	-- Match the map's ascending name order, with station code breaking name ties.
+	-- Reconciliation returns a fresh display list, separate from saved membership.
+	for _, st in ipairs(members) do st.objectid = st.code or "" end
+	table.sort(members, Helper.sortNameAndObjectID)
 	local row = ftable:addRow(false, { fixed = false })
 	row[1]:setColSpan(3):createText(T(2005) .. " (" .. #chain.members .. ")", Helper.headerRow1Properties)
 	if #members == 0 then
