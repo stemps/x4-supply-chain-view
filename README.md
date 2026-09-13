@@ -5,6 +5,8 @@
 X4 mod that allows to view ware flow, stock levels, supply/demand ratios,
 bottlenecks, ... across your station networks.
 
+Download from [Nexusmods](https://www.nexusmods.com/x4foundations/mods/2371)
+
 ## Documentation
 
 - [User Manual](/docs/MANUAL.md)
