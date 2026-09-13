@@ -1309,6 +1309,16 @@ function menu.expandStation(node, frame, ftable, nodedata)
 	local id64 = ConvertStringTo64Bit(nodedata.scvid)
 	row[1].handlers.onClick = function () openStationOverview(id64) end
 
+	-- Match the vanilla map's player-owned station configurator action.
+	row = ftable:addRow(true, {})
+	row[1]:setColSpan(2):createButton({ mouseOverText = T(3103), active = GetComponentData(id64, "isplayerowned") })
+		:setText(T(3103), { halign = "center" })
+	row[1].handlers.onClick = function ()
+		if not GetComponentData(id64, "isplayerowned") then return end
+		Helper.closeMenuAndOpenNewMenu(menu, "StationConfigurationMenu", { 0, 0, id64 })
+		menu.cleanup()
+	end
+
 	if (#inputs == 0) and (#outputs == 0) then
 		row = ftable:addRow(false, {})
 		row[1]:setColSpan(2):createText(T(3040), { wordwrap = true, color = Color["text_inactive"] })

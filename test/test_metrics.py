@@ -54,6 +54,7 @@ end
 function C.GetContainerWareIsSellable() return true end
 function C.GetContainerWareIsBuyable() return true end
 function GetComponentData(id, key)
+    if key == 'isplayerowned' then return not state.npcStation end
     if key == 'availableproducts' then return {'energycells'} end
     if key == 'pureresources' then return {'food'} end
     if key == 'tradewares' then return {'energycells'} end
@@ -301,7 +302,28 @@ local t=tableMock()
 menu.expandStation(nil,{properties={height=220}},t,yard)
 local selectable=0
 for _,row in ipairs(t.rows) do if row.key then selectable=selectable+1 end end
-assert(selectable==61 and t.properties.maxVisibleHeight==220)
+assert(selectable==62 and t.properties.maxVisibleHeight==220)
+assert(t.rows[1][1].text == 'Open Logical Station Overview')
+assert(t.rows[2][1].text == 'Open Build Menu' and t.rows[2][1].button.active == true)
+local savedOpen, savedCleanup = Helper.closeMenuAndOpenNewMenu, menu.cleanup
+local opened, cleaned
+Helper.closeMenuAndOpenNewMenu = function(source, target, params)
+    assert(source == menu and target == 'StationConfigurationMenu')
+    assert(params[1] == 0 and params[2] == 0 and params[3] == 'yard')
+    opened = true
+end
+menu.cleanup = function() cleaned = true end
+t.rows[2][1].handlers.onClick()
+assert(opened and cleaned)
+state.npcStation = true
+opened, cleaned = false, false
+t.rows[2][1].handlers.onClick()
+assert(not opened and not cleaned, 'ownership is rechecked when clicked')
+local npc = tableMock()
+menu.expandStation(nil,{properties={height=220}},npc,{scvid='npc',wares={}})
+assert(npc.rows[2][1].button.active == false)
+state.npcStation = nil
+Helper.closeMenuAndOpenNewMenu, menu.cleanup = savedOpen, savedCleanup
 local node,frame={},{}
 menu.expandedNode=node; menu.expandedMenuFrame=frame
 menu.onFlowchartNodeCollapsed({},frame)

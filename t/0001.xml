@@ -103,6 +103,7 @@
     <t id="3100">Outputs without consumer: %s</t>
     <t id="3101">Chain structure changed. Reopen this view to rebuild.</t>
     <t id="3102">Some stations could not be refreshed. Retrying automatically.</t>
+    <t id="3103">Open Build Menu</t>
     <t id="3067">Red</t>
     <t id="3068">Orange</t>
     <t id="3069">lasts %s / when full %s</t>
