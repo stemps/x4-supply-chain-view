@@ -230,7 +230,13 @@ function compareEntry(role, stationID)
     end
     assert(a.rows[i+4].group==nil) -- gap is outside the background
     assert(string.find(a.rows[i+3][1].text,input and 'lasts ' or 'fills in ',1,true)==1)
-    assert(a.rows[i+3][1].props.mouseOverText == b.rows[j+3][1].props.mouseOverText)
+    local function withoutSubject(tip) return tip:sub(tip:find(string.char(10),1,true)+1) end
+    for _, offset in ipairs({1,2,3}) do
+        local left = offset == 1 and a.rows[i+offset][1].bar.mouseOverText or a.rows[i+offset][1].props.mouseOverText
+        local right = offset == 1 and b.rows[j+offset][1].bar.mouseOverText or b.rows[j+offset][1].props.mouseOverText
+        assert(withoutSubject(left) == withoutSubject(right))
+    end
+    assert(withoutSubject(a.rows[i+2][2].props.mouseOverText) == withoutSubject(b.rows[j+2][2].props.mouseOverText))
     assert(a.rows[i][1].props.wordwrap and b.rows[j][1].props.wordwrap)
     assert(a.properties.maxVisibleHeight==220 and b.properties.maxVisibleHeight==220)
     assert(a.properties.highlightMode=='off' and b.properties.highlightMode=='off')
@@ -399,6 +405,7 @@ assert(string.find(graph.stationNodes.warn[1].properties.mouseOverText,'Orange t
 assert all(texts[key].isascii() for key in [3065,3066,*range(3090,3101)])
 for source in (root/'ui').glob('*.lua'):
     lua.execute('assert(load(...))', source.read_text(encoding='utf-8'))
+lua.execute((root/'test/test_tooltips.lua').read_text(encoding='utf-8'))
 lua.execute((root/'test/test_processing.lua').read_text(encoding='utf-8'))
 lua.execute((root/'test/test_menu_lifecycle.lua').read_text(encoding='utf-8'))
 lua.execute((root/'test/test_refresh.lua').read_text(encoding='utf-8'))

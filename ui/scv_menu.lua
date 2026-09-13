@@ -358,6 +358,110 @@ local function formatHours(hours)
 	return T(5000, string.format("%.1f", hours))
 end
 
+-- Native mouseovers use explicit newlines. Keep qualifications beside the metric
+-- they qualify, with operating assumptions in a separate final block.
+local function rateAssumptions(isInput, continuous)
+	local lines = { T(3140), T(3141) }
+	if continuous then lines[#lines + 1] = T(3127) end
+	lines[#lines + 1] = T(isInput and 3142 or 3143)
+	return table.concat(lines, "\n")
+end
+
+local function stockTooltip(subject, w, b)
+	local capacityKnown = (w.limit or 0) > 0 or (w.capacityUnits or 0) > 0
+	local capacity = capacityKnown and ((b.estimated and "~" or "") .. formatAmount(b.max)) or "?"
+	local lines = { subject, "", T(3041, b.stockKnown and formatAmount(b.start) or "?", capacity) }
+	if not b.stockKnown then lines[#lines + 1] = T(3152) end
+	if not capacityKnown then
+		lines[#lines + 1] = T(3046)
+	elseif b.estimated then
+		lines[#lines + 1] = T(3045)
+		lines[#lines + 1] = T(3146)
+	end
+	if b.incoming > 0 then lines[#lines + 1] = T(3042, formatAmount(b.incoming)) end
+	if b.outgoing > 0 then lines[#lines + 1] = T(3043, formatAmount(b.outgoing)) end
+	if b.incoming > 0 or b.outgoing > 0 then
+		lines[#lines + 1] = T(3044, b.stockKnown and b.reservationsKnown and formatAmount(b.current) or "?")
+	end
+	if not b.reservationsKnown then lines[#lines + 1] = T(3064) end
+	return table.concat(lines, "\n")
+end
+
+local function aggregateStockTooltip(subject, storage)
+	local lines = { subject, "", T(3041, formatPartial(storage.stock, storage.stockKnown),
+		(storage.estimated and "~" or "") .. formatPartial(storage.capacity, storage.capacityKnown)) }
+	if not storage.stockKnown or not storage.capacityKnown or storage.capacity <= 0 then
+		lines[#lines + 1] = T(3082)
+		lines[#lines + 1] = T(3088)
+	end
+	if storage.estimated then
+		lines[#lines + 1] = T(3045)
+		lines[#lines + 1] = T(3146)
+	end
+	lines[#lines + 1] = ""
+	lines[#lines + 1] = T(3083)
+	lines[#lines + 1] = T(3147)
+	return table.concat(lines, "\n")
+end
+
+local function aggregateRateLine(value, known, isInput)
+	local line = T(isInput and 3035 or 3036, formatPartial(value, known, true))
+	if not known then line = line .. "\n" .. T(3088) end
+	return line
+end
+
+local function hasContinuousDemand(graph, node)
+	for _, sid in ipairs(node.consumers or {}) do
+		local station = graph and graph.stationNodes[sid]
+		local ware = station and station.wares[node.scvware]
+		if ware and ware.rateBasis == "continuousProcessing" then return true end
+	end
+	return false
+end
+
+local function rateTooltip(subject, w, m, isInput)
+	local continuous = isInput and w.rateBasis == "continuousProcessing"
+	local lines = { subject, "", T(isInput and 3035 or 3036,
+		m.rateKnown and formatRate(m.rate) or T(5003, "? ")) }
+	if not m.rateKnown then
+		lines[#lines + 1] = T(continuous and 3126 or 3037)
+		return table.concat(lines, "\n")
+	end
+	local parts = continuous and w.consumptionParts
+	if parts then
+		lines[#lines + 1] = "  " .. T(3128, formatRate(parts.processing))
+		lines[#lines + 1] = "  " .. T(3129, formatRate(parts.production))
+		if parts.workforce > 0 then lines[#lines + 1] = "  " .. T(3130, formatRate(parts.workforce)) end
+	end
+	lines[#lines + 1] = ""
+	lines[#lines + 1] = rateAssumptions(isInput, continuous)
+	return table.concat(lines, "\n")
+end
+
+local function coverageTooltip(subject, w, m, isInput, fullTime, fillTime)
+	local continuous = isInput and w.rateBasis == "continuousProcessing"
+	local lines = { subject, "", T(isInput and 3070 or 3071) }
+	if isInput then
+		lines[#lines + 1] = T(3092, m.stockHours and formatHours(m.stockHours) or "?")
+		lines[#lines + 1] = T(3149, fullTime)
+	else
+		lines[#lines + 1] = T(3093, fillTime)
+		lines[#lines + 1] = T(3150, fullTime)
+	end
+	if not m.rateKnown then lines[#lines + 1] = T(continuous and 3126 or 3037) end
+	if not m.bar.stockKnown then lines[#lines + 1] = T(3152) end
+	if (w.limit or 0) <= 0 and (w.capacityUnits or 0) <= 0 then
+		lines[#lines + 1] = T(3046)
+	elseif m.bar.estimated then
+		lines[#lines + 1] = T(3045)
+		lines[#lines + 1] = T(3146)
+	end
+	lines[#lines + 1] = ""
+	lines[#lines + 1] = rateAssumptions(isInput, continuous)
+	lines[#lines + 1] = T(isInput and 3148 or 3098)
+	return table.concat(lines, "\n")
+end
+
 local function warningReason(name, health, context)
 	if not health or health.severity == "ok" then return nil end
 	local threshold = health.severity == "critical" and SCV_Graph.THRESHOLDS.criticalHours
@@ -426,13 +530,11 @@ function menu.decorateNodes(graph)
 			-- Inventory fill and full-operation hourly balance are separate metrics.
 			local storage = node.storage
 			local known = storage.stockKnown and storage.capacityKnown and storage.capacity > 0
-			local amount = T(3060, formatPartial(storage.stock, storage.stockKnown),
-				(storage.estimated and "~" or "") .. formatPartial(storage.capacity, storage.capacityKnown))
-			local lines = { amount, T(3081,
-				formatPartial(node.supplyCap, node.supplyKnown, true),
-				formatPartial(node.demandCap, node.demandKnown, true), formatSigned(node.netRate)) }
-			if storage.estimated then lines[#lines + 1] = T(3045) end
-			if not known then lines[#lines + 1] = T(3082) end
+			local lines = { aggregateStockTooltip(node.name, storage), "",
+				aggregateRateLine(node.supplyCap, node.supplyKnown, false),
+				aggregateRateLine(node.demandCap, node.demandKnown, true),
+				T(3151, formatSigned(node.netRate)), "",
+				rateAssumptions(true, hasContinuousDemand(graph, node)), T(3143), T(3144) }
 			local rateColor = Color["text_inactive"]
 			if node.netKnown and node.netRate > 0 then rateColor = Color["text_positive"]
 			elseif node.netKnown and node.netRate < 0 then rateColor = config.consumptionColor end
@@ -1179,8 +1281,7 @@ end
 
 -- One stock bar, vanilla trade-menu style (menu_map.lua:31054): start = stock now,
 -- current = stock once every reserved exchange completes; a gain draws green, a loss in the
--- dark orange vanilla uses for the same thing. `extra` is an optional line of context for
--- the mouse-over, used for the full wording of the rate shown compactly beside the name.
+-- dark orange vanilla uses for the same thing. Its hover explains inventory only.
 -- Native function-valued properties, formatted once per published snapshot.
 -- Open panels retain their widgets and scrolling; no callback reads the engine.
 local function liveFields(make)
@@ -1196,32 +1297,11 @@ local function liveFields(make)
 	end
 end
 
-local function barCell(cell, w, subject, extra)
+local function barCell(cell, w, subject)
 	local fields = liveFields(function ()
 		local b = SCV_Graph.reservationBar(w)
-		local lines = {}
-		lines[#lines + 1] = subject
-		lines[#lines + 1] = T(3041, b.stockKnown and formatAmount(b.start) or "?", b.unknown and "?" or formatAmount(b.max))
-		if b.incoming > 0 then
-			lines[#lines + 1] = T(3042, formatAmount(b.incoming))
-		end
-		if b.outgoing > 0 then
-			lines[#lines + 1] = T(3043, formatAmount(b.outgoing))
-		end
-		if (b.incoming > 0) or (b.outgoing > 0) then
-			lines[#lines + 1] = T(3044, b.stockKnown and b.reservationsKnown and formatAmount(b.current) or "?")
-		end
-		if not b.reservationsKnown then lines[#lines + 1] = T(3064) end
-		if extra then
-			lines[#lines + 1] = type(extra) == "function" and extra() or extra
-		end
-		if b.unknown then
-			lines[#lines + 1] = T(3046)
-		elseif b.estimated then
-			lines[#lines + 1] = T(3045)
-		end
 		return { start = b.drawStart, current = b.drawCurrent, max = b.max,
-			tooltip = table.concat(lines, "\n") }
+			tooltip = stockTooltip(subject, w, b) }
 	end)
 	cell:createStatusBar({
 		start          = fields("start"),
@@ -1279,33 +1359,15 @@ local function detailEntry(ftable, key, name, w, isInput)
 		local stock = b.stockKnown and formatAmount(b.start) or "?"
 		local capacity = ((w.limit or 0) > 0 or (w.capacityUnits or 0) > 0)
 			and ((b.estimated and "~" or "") .. formatAmount(b.max)) or "?"
-		local long = m.rateKnown and T(isInput and 3035 or 3036, rate) or T(3037)
+		local long = rateTooltip(name, w, m, isInput)
 		local fullTime = m.capacityHours and ((b.estimated and "~" or "") .. formatHours(m.capacityHours)) or "?"
 		local fillTime = m.fillHours and ((b.estimated and "~" or "")
 			.. (m.fillHours == 0 and T(5001, "0") or formatHours(m.fillHours))) or "?"
-		local coverageTip = T(isInput and 3070 or 3071)
-		if isInput and w.rateBasis == "continuousProcessing" then
-			coverageTip = coverageTip .. "\n" .. T(3127)
-			long = long .. "\n" .. T(3127)
-			local parts = w.consumptionParts
-			if parts then
-				local breakdown = T(3128, formatRate(parts.processing)) .. "\n"
-					.. T(3129, formatRate(parts.production))
-				if parts.workforce > 0 then breakdown = breakdown .. "\n" .. T(3130, formatRate(parts.workforce)) end
-				breakdown = breakdown .. "\n" .. T(3131, formatRate(parts.total))
-				long = long .. "\n" .. breakdown
-				coverageTip = coverageTip .. "\n" .. breakdown
-			end
-			if not m.rateKnown then
-				long = T(3126)
-				coverageTip = coverageTip .. "\n" .. T(3126)
-			end
-		end
-		if b.estimated then coverageTip = coverageTip .. "\n" .. T(3045) end
+		local coverageTip = coverageTooltip(name, w, m, isInput, fullTime, fillTime)
 		return { rate = rate, amount = T(3060, stock, capacity), long = long,
 			labelTip = warningReason(name, w.health) or long,
 			labelColor = severityColor(m.severity) or Color["text_normal"],
-			amountTip = b.estimated and T(3045) or (b.unknown and T(3046) or ""),
+			amountTip = stockTooltip(name, w, b),
 			rateColor = m.rateKnown and (m.rate or 0) > 0
 				and (isInput and config.consumptionColor or Color["text_positive"]) or Color["text_inactive"],
 			coverage = isInput and T(3069, m.stockHours and formatHours(m.stockHours) or "?", fullTime)
@@ -1318,7 +1380,7 @@ local function detailEntry(ftable, key, name, w, isInput)
 	local r = metricRow(key)
 	r[1]:setColSpan(2):createText(name, { wordwrap = true, color = fields("labelColor"), mouseOverText = fields("labelTip") })
 	r = metricRow(false)
-	barCell(r[1]:setColSpan(2), w, name, fields("long"))
+	barCell(r[1]:setColSpan(2), w, name)
 	r = metricRow(false)
 	r[1]:setBackgroundColSpan(2):createText(fields("amount"), { wordwrap = true, mouseOverText = fields("amountTip") })
 	r[2]:createText(fields("rate"), { halign = "right", wordwrap = true, mouseOverText = fields("long"), color = fields("rateColor") })
@@ -1398,7 +1460,7 @@ function menu.expandWare(node, frame, ftable, nodedata)
 		local storage = nodedata.storage
 		return { amount = T(3060, formatPartial(storage.stock, storage.stockKnown),
 			(storage.estimated and "~" or "") .. formatPartial(storage.capacity, storage.capacityKnown)),
-			tip = storage.estimated and T(3045) or T(3083) }
+			tip = aggregateStockTooltip(nodedata.name, storage) }
 	end)
 	local totals = ftable:addRow("totals", { bgColor = Color["row_background_unselectable"], borderBelow = false })
 	totals[1]:setColSpan(2):createText(fields("amount"), { wordwrap = true, mouseOverText = fields("tip") })
@@ -1407,8 +1469,10 @@ function menu.expandWare(node, frame, ftable, nodedata)
 			local amount, known = nodedata[amountKey], nodedata[knownKey]
 			local value = formatPartial(amount, known, true)
 			if known or amount > 0 then value = sign .. value end
-			local tip = T(tooltip)
-			if not known then tip = tip .. "\n" .. T(3088) end
+			local isInput = amountKey == "demandCap"
+			local continuous = isInput and hasContinuousDemand(menu.graph, nodedata)
+			local tip = table.concat({ nodedata.name, "", aggregateRateLine(amount, known, isInput),
+				T(tooltip), "", rateAssumptions(isInput, continuous), T(isInput and 3145 or 3144) }, "\n")
 			return { value = value, tip = tip }
 		end)
 		local row = ftable:addRow(false, { bgColor = Color["row_background_unselectable"], borderBelow = false })

@@ -53,15 +53,15 @@
     <t id="3033">Supplied by</t>
     <t id="3034">Taken by</t>
     <!-- 3035/3036: effective maximum rates under current station conditions. -->
-    <t id="3035">At full operation: %s consumed, including current workforce. Assumes sufficient inputs and output space.</t>
-    <t id="3036">At full operation: %s produced, including current production modifiers. Assumes sufficient inputs and output space.</t>
-    <t id="3037">Maximum hourly rate unknown: unmeasured mining/trading, shipbuilding demand, or unavailable module data.</t>
+    <t id="3035">Maximum consumption: %s</t>
+    <t id="3036">Maximum production: %s</t>
+    <t id="3037">Rate unknown: mining/trade, shipbuilding or module data unmeasured.</t>
     <t id="3040">This station has no input or output wares under the chain's rules.</t>
-    <t id="3041">Stock %s of %s</t>
-    <t id="3042">Incoming (reserved): %s</t>
-    <t id="3043">Outgoing (reserved): %s</t>
+    <t id="3041">Stock: %s / %s</t>
+    <t id="3042">Reserved incoming: %s</t>
+    <t id="3043">Reserved outgoing: %s</t>
     <t id="3044">After reserved trades: %s</t>
-    <t id="3045">Capacity is an estimate: the station's total storage for this transport type, shared with other wares.</t>
+    <t id="3045">Estimated capacity: shared storage of this type.</t>
     <t id="3046">Storage capacity unknown.</t>
     <!-- 3047: the compact rate beside a ware name; the section header says whether it is
          consumption or production, and 3035/3036 give the full wording on mouse-over -->
@@ -79,15 +79,15 @@
     <t id="3060">Amount %s / %s</t>
     <t id="3080">Totals</t>
     <t id="3081">At full operation: production %s, consumption %s, balance %s. Includes current workforce consumption; excludes mining deliveries and trades.</t>
-    <t id="3082">Combined stock or storage capacity is incomplete; the fill bar is unavailable. Known subtotals are shown with ?.</t>
-    <t id="3083">Combined current stock / storage allocation across suppliers and consumers, counting each station once. Reservations are not added to current stock.</t>
+    <t id="3082">Incomplete stock or capacity; fill bar unavailable.</t>
+    <t id="3083">Each supplier/consumer station counted once.</t>
     <t id="3084">Production</t>
     <t id="3085">Consumption</t>
-    <t id="3086">Combined maximum hourly production at supplier stations, with current production modifiers and sufficient inputs and output space. Excludes mining deliveries and trades.</t>
-    <t id="3087">Combined maximum hourly consumption at consumer stations, including current workforce consumption, with sufficient inputs and output space. Excludes trade orders.</t>
-    <t id="3088">The total is incomplete. Any displayed number is the known subtotal; ? marks additional unmeasured contributions.</t>
+    <t id="3086">Supplier stations combined.</t>
+    <t id="3087">Consumer stations combined.</t>
+    <t id="3088">Incomplete total: known subtotal + ?.</t>
     <t id="3063">Maximum consumption is zero; supply/demand ratio is not applicable.</t>
-    <t id="3064">Reserved trades unavailable; expected fill is unknown.</t>
+    <t id="3064">Reserved trades unknown; expected stock unknown.</t>
     <t id="3065">Some metrics unavailable</t>
     <t id="3066">%s: %s %s. %s threshold: below %s.</t>
     <t id="3090">Low input buffer</t>
@@ -107,17 +107,17 @@
     <t id="3067">Red</t>
     <t id="3068">Orange</t>
     <t id="3069">lasts %s / when full %s</t>
-    <t id="3070">Current stock / full storage, expressed as hours of maximum consumption including current workforce. Assumes no deliveries; reservations are not included. The second value describes the buffer when fully stocked.</t>
-    <t id="3071">Time until storage is full / time to fill it from empty, at maximum production with sufficient inputs. Collections and reservations are excluded. When capacity is estimated, both times use the shared storage upper bound; other wares may reduce the available space.</t>
+    <t id="3070">Stock coverage at maximum consumption</t>
+    <t id="3071">Storage fill time at maximum production</t>
     <t id="3074">fills in %s / from empty %s</t>
     <t id="3072">Orange bar segment: maximum supply is below maximum demand by %s.</t>
     <t id="3073">Red stock number: maximum demand exceeds maximum supply beyond the balance tolerance. This colour describes production balance, not current inventory movement.</t>
 
     <!-- Processor feedstocks and continuous-supply planning -->
-    <t id="3126">Maximum demand unavailable: complete production or processing rate data could not be read.</t>
-    <t id="3127">Maximum demand with all eligible production and processing modules running. Assumes continuous scrap supply. Coverage excludes deliveries and local production.</t>
+    <t id="3126">Maximum demand unknown: missing rate data.</t>
+    <t id="3127">Continuous scrap supply.</t>
     <t id="3128">Scrap processing: %s</t>
-    <t id="3129">Recycling and other production: %s</t>
+    <t id="3129">Other production: %s</t>
     <t id="3130">Workforce: %s</t>
     <t id="3131">Total: %s</t>
 
@@ -135,5 +135,18 @@
     <t id="5002">never</t>
     <t id="5003">%s/h</t>
     <t id="2020">Delete supply chain "%s"? The stations themselves will not be affected.</t>
+    <t id="3140">At full operation:</t>
+    <t id="3141">Enough inputs and output space.</t>
+    <t id="3142">Includes current workforce.</t>
+    <t id="3143">Includes current production modifiers.</t>
+    <t id="3144">Excludes mining deliveries and trades.</t>
+    <t id="3145">Excludes trade orders.</t>
+    <t id="3146">Other wares share this storage; available space may be lower.</t>
+    <t id="3147">Reservations are not added to stock.</t>
+    <t id="3148">Excludes deliveries, reservations and local production.</t>
+    <t id="3149">When full: %s</t>
+    <t id="3150">From empty: %s</t>
+    <t id="3151">Balance: %s</t>
+    <t id="3152">Stock unknown.</t>
   </page>
 </language>
