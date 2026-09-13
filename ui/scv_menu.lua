@@ -135,6 +135,7 @@ local function init()
 end
 
 function menu.cleanup()
+	menu.closed = true
 	if menu.statusFrame then Helper.clearFrame(menu, config.statusFrameLayer) end
 	menu.statusFrame, menu.statusKey, menu.statusHeight, menu.noticeUntil = nil, nil, nil, nil
 	menu.graphLayout = nil
@@ -160,7 +161,15 @@ function menu.cleanup()
 	menu.metricRevision  = 0
 end
 
+-- Helper.clearFrame unregisters a GLOBAL Helper<layer> view. Do all of our
+-- cleanup before another menu can reuse those layers (vanilla LSO uses 4/5).
+function menu.openMenu(name, params)
+	menu.cleanup()
+	Helper.closeMenuAndOpenNewMenu(menu, name, params)
+end
+
 function menu.onShowMenu()
+	menu.closed = false
 	SCV_Store.load()
 
 	-- The InteractMenu may not have existed in the Menus registry when scv_interact loaded.
@@ -203,6 +212,7 @@ end
 menu.updateInterval = 0.2
 
 function menu.onUpdate()
+	if menu.closed then return end
 	-- Chunked scanning: pull stations in a few at a time until the chain is fully read,
 	-- then redraw once. A full rescan inside one callback is the crash risk this avoids.
 	-- Do not destroy an active editbox when an initial scan/queued redraw completes.
@@ -243,8 +253,8 @@ function menu.onCloseElement(dueToClose, layer)
 		menu.expandedNode:collapse()
 		return
 	end
-	Helper.closeMenu(menu, dueToClose)
 	menu.cleanup()
+	Helper.closeMenu(menu, dueToClose)
 end
 
 function menu.createTopLevel(frame)
@@ -502,8 +512,8 @@ function menu.display(presentationOnly)
 		if menu.toolbarFrame then Helper.clearFrame(menu, config.toolbarFrameLayer) end
 		menu.toolbarFrame = nil
 	end
-	Helper.clearDataForRefresh(menu, config.mainFrameLayer)
 	if menu.expandedNode then menu.expandedNode:collapse() end
+	Helper.clearDataForRefresh(menu, config.mainFrameLayer)
 	-- A redraw destroys any open detail panel along with everything else; holding on to the
 	-- node would make the next close try to collapse a node that no longer exists.
 	menu.expandedNode = nil
@@ -866,19 +876,18 @@ function menu.displayStations(ftable, chain, index)
 			return st.name .. "\n" .. (reason and (reason .. "\n") or "") .. T(1013)
 		end }):setText(st.name, { halign = "left", color = function () local color = stationStyle(); return color end })
 		row[1].handlers.onClick = function ()
-			Helper.closeMenuAndOpenNewMenu(menu, "MapMenu", { 0, 0, true, st.id64 }); menu.cleanup()
+			menu.openMenu("MapMenu", { 0, 0, true, st.id64 })
 		end
 		row[2]:createButton({ mouseOverText = T(3030) })
 		setCenteredButtonIcon(row[2], "stationbuildst_lsov")
 		row[2].handlers.onClick = function ()
-			Helper.closeMenuAndOpenNewMenu(menu, "StationOverviewMenu", { 0, 0, st.id64 }); menu.cleanup()
+			menu.openMenu("StationOverviewMenu", { 0, 0, st.id64 })
 		end
 		row[3]:createButton({ mouseOverText = T(3103), active = GetComponentData(st.id64, "isplayerowned") })
 		setCenteredButtonIcon(row[3], "mapst_plotmanagement")
 		row[3].handlers.onClick = function ()
 			if not GetComponentData(st.id64, "isplayerowned") then return end
-			Helper.closeMenuAndOpenNewMenu(menu, "StationConfigurationMenu", { 0, 0, st.id64 })
-			menu.cleanup()
+			menu.openMenu("StationConfigurationMenu", { 0, 0, st.id64 })
 		end
 		row[4]:createButton({ mouseOverText = T(1016) }):setText("-", { halign = "center" })
 		row[4].handlers.onClick = function ()
@@ -1140,8 +1149,7 @@ local function openStationOverview(id64)
 	if not id64 then
 		return
 	end
-	Helper.closeMenuAndOpenNewMenu(menu, "StationOverviewMenu", { 0, 0, id64 })
-	menu.cleanup()
+	menu.openMenu("StationOverviewMenu", { 0, 0, id64 })
 end
 
 -- WHY THE PANEL IS NODE-WIDTH, AND STAYS THAT WAY.
@@ -1327,8 +1335,7 @@ function menu.expandStation(node, frame, ftable, nodedata)
 		:setText(T(3103), { halign = "center" })
 	row[1].handlers.onClick = function ()
 		if not GetComponentData(id64, "isplayerowned") then return end
-		Helper.closeMenuAndOpenNewMenu(menu, "StationConfigurationMenu", { 0, 0, id64 })
-		menu.cleanup()
+		menu.openMenu("StationConfigurationMenu", { 0, 0, id64 })
 	end
 
 	if (#inputs == 0) and (#outputs == 0) then

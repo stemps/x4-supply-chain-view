@@ -399,11 +399,13 @@ assert(string.find(graph.stationNodes.warn[1].properties.mouseOverText,'Orange t
 assert all(texts[key].isascii() for key in [3065,3066,*range(3090,3101)])
 for source in (root/'ui').glob('*.lua'):
     lua.execute('assert(load(...))', source.read_text(encoding='utf-8'))
+lua.execute((root/'test/test_menu_lifecycle.lua').read_text(encoding='utf-8'))
 lua.execute((root/'test/test_refresh.lua').read_text(encoding='utf-8'))
 lua.execute('''
 -- Exercise the real chunked scanner and menu lifecycle. No graph may be built from
 -- a partial scan, including a refresh arriving while the scan is in progress.
 local reads, builds, displays = 0, 0, 0
+menu.closed = false -- simulate reopening after the preceding cleanup test
 local members = {}
 SCV_Store = { selected=function() return {} end }
 menu.currentMembers = function() return members end
