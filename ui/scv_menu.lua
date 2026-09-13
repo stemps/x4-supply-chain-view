@@ -19,10 +19,12 @@ local menu = {
 }
 
 local config = {
-	-- Lower layers draw in front: dialogs, node details, status, navigation, graph.
+	-- Lower layers draw in front: dialogs, navigation, status, node details, graph.
 	mainFrameLayer         = 5,
-	expandedMenuFrameLayer = 2,
-	toolbarFrameLayer      = 4,
+	-- Match vanilla LSO's 5 -> 4 node expansion. The native central fill and
+	-- background are coplanar; layer 2 produces hover-dependent fill occlusion.
+	expandedMenuFrameLayer = 4,
+	toolbarFrameLayer      = 2,
 	managementFrameLayer   = 1,
 	statusFrameLayer       = 3,
 	topLevelId             = "scv_supplychain",
