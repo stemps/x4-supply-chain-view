@@ -127,6 +127,17 @@ function SCV_Graph.validRate(value)
 	return n ~= nil and n == n and n >= 0 and n < math.huge
 end
 
+-- Zero fallback capacity requires an explicit successful read. Older records can
+-- establish positive capacity without a flag, but cannot establish known zero.
+function SCV_Graph.effectiveCapacity(w)
+	local limit = tonumber(w.limit)
+	if SCV_Graph.validRate(limit) and limit > 0 then return limit, true, false end
+	local capacity = tonumber(w.capacityUnits)
+	local known = SCV_Graph.validRate(capacity) and w.capacityUnitsKnown ~= false
+		and (capacity > 0 or w.capacityUnitsKnown == true)
+	return known and capacity or 0, known, known and capacity > 0
+end
+
 -- Storage is a union of participating stations, never one copy per edge/role.
 function SCV_Graph.storageTotals(stations, ware, producers, consumers)
 	local total = { stock = 0, capacity = 0, stockKnown = true, capacityKnown = true, estimated = false }
@@ -139,9 +150,9 @@ function SCV_Graph.storageTotals(stations, ware, producers, consumers)
 				if w then
 					if w.stockKnown ~= false then total.stock = total.stock + (w.stock or 0)
 					else total.stockKnown = false end
-					local cap = w.limit or 0
-					if cap <= 0 then cap = w.capacityUnits or 0; total.estimated = total.estimated or cap > 0 end
-					if cap > 0 then total.capacity = total.capacity + cap else total.capacityKnown = false end
+					local cap, known, estimated = SCV_Graph.effectiveCapacity(w)
+					total.estimated = total.estimated or estimated
+					if known then total.capacity = total.capacity + cap else total.capacityKnown = false end
 				else total.stockKnown = false; total.capacityKnown = false end
 			end
 		end
@@ -223,34 +234,28 @@ function SCV_Graph.reservationBar(w)
 		future = 0
 	end
 
-	local limit = tonumber(w.limit) or 0
-	local estimated = false
-	local maxv = limit
-	if maxv <= 0 then
-		maxv = tonumber(w.capacityUnits) or 0
-		estimated = true
-	end
-	local capacityKnown = maxv > 0
+	local capacity, capacityKnown, estimated = SCV_Graph.effectiveCapacity(w)
+	local drawable = capacityKnown and capacity > 0
+	local maxv = drawable and capacity or 1
 	local stockKnown = w.stockKnown ~= false
 	local reservationsKnown = w.reservationsKnown ~= false
-	if maxv <= 0 then
-		maxv = 1
-	end
 
 	return {
 		start     = stock,
 		current   = future,
 		max       = maxv,
+		capacity  = capacity,
+		capacityKnown = capacityKnown,
 		incoming  = incoming,
 		outgoing  = outgoing,
 		estimated = estimated,
 		unknown   = not capacityKnown or not stockKnown,
 		stockKnown = stockKnown,
 		reservationsKnown = reservationsKnown,
-		percent = capacityKnown and stockKnown and stock / maxv * 100 or nil,
-		futurePercent = capacityKnown and stockKnown and reservationsKnown and future / maxv * 100 or nil,
-		drawStart = capacityKnown and stockKnown and math.min(stock, maxv) or 0,
-		drawCurrent = capacityKnown and stockKnown and math.min(reservationsKnown and future or stock, maxv) or 0,
+		percent = drawable and stockKnown and stock / capacity * 100 or nil,
+		futurePercent = drawable and stockKnown and reservationsKnown and future / capacity * 100 or nil,
+		drawStart = drawable and stockKnown and math.min(stock, capacity) or 0,
+		drawCurrent = drawable and stockKnown and math.min(reservationsKnown and future or stock, capacity) or 0,
 	}
 end
 
@@ -260,15 +265,15 @@ function SCV_Graph.detailMetrics(w, isInput)
 	local rate = isInput and w.consMax or w.prodMax
 	local known = SCV_Graph.rateKnown(w, isInput)
 	local measurable = known and (rate or 0) > 0
-	local capacityKnown = (w.limit or 0) > 0 or (w.capacityUnits or 0) > 0
+	local positiveCapacity = bar.capacityKnown and bar.capacity > 0
 	return {
 		bar = bar,
 		rate = rate,
 		rateKnown = known,
 		stockHours = measurable and bar.stockKnown and bar.start / rate or nil,
-		fillHours = not isInput and measurable and bar.stockKnown and capacityKnown
-			and hoursToFull(bar.start, bar.max, rate) or nil,
-		capacityHours = measurable and capacityKnown and bar.max / rate or nil,
+		fillHours = not isInput and measurable and bar.stockKnown and positiveCapacity
+			and hoursToFull(bar.start, bar.capacity, rate) or nil,
+		capacityHours = measurable and positiveCapacity and bar.capacity / rate or nil,
 		sign = isInput and "-" or "+",
 		severity = w.health and w.health.severity or "ok",
 	}
@@ -352,7 +357,7 @@ local function unknownWare(w)
 		rateBasis = w.rateBasis,
 		stock = 0, limit = 0, capacityUnits = 0, prodMax = 0, consMax = 0,
 		production = 0, consumption = 0, workforce = 0, incoming = 0, outgoing = 0,
-		stockKnown = false, limitKnown = false, prodKnown = false,
+		stockKnown = false, limitKnown = false, capacityUnitsKnown = false, prodKnown = false,
 		consKnown = false, reservationsKnown = false }
 end
 

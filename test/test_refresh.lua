@@ -135,6 +135,29 @@ assert(not graph.refreshFailed and ware.demandKnown and ware.storage.stock == 11
 assert(nativeStation.outline == "lso_node_error")
 
 -- New modules update existing maximum rates; new wares/roles await a rebuild.
+-- Storage construction and failed reads update an already open panel in place.
+freshConsumer = copy(consumer)
+freshConsumer.wares.ore.stock, freshConsumer.wares.ore.limit = 0, 0
+freshConsumer.wares.ore.capacityUnits, freshConsumer.wares.ore.capacityUnitsKnown = 0, true
+menu.publishMetrics({ copy(supplier), freshConsumer })
+assert(station.wares.ore == record and record.capacityUnitsKnown)
+assert(ware.storage.capacityKnown and ware.storage.capacity == 1000)
+assert(nativeWare.value == 100 and nativeWare.max == 1000)
+assert(popup.rows[consumerRow + 2][1].text == 'Amount 0 / 0')
+freshConsumer.wares.ore.capacityUnits = 500
+menu.publishMetrics({ copy(supplier), freshConsumer })
+assert(ware.storage.capacity == 1500 and nativeWare.max == 1500)
+assert(popup.rows[consumerRow + 2][1].text == 'Amount 0 / ~500')
+menu.publishMetrics({ copy(supplier), {id='consumer', failed=true, wares={}} })
+assert(not record.capacityUnitsKnown and not ware.storage.capacityKnown)
+assert(popup.rows[consumerRow + 2][1].text == 'Amount ? / ?')
+freshConsumer.wares.ore.capacityUnits = 0
+menu.publishMetrics({ copy(supplier), freshConsumer })
+assert(record.capacityUnitsKnown and ware.storage.capacityKnown and ware.storage.capacity == 1000)
+assert(popup.rows[consumerRow + 2][1].text == 'Amount 0 / 0')
+assert(station.wares.ore == record and menu.expandedMenuFrame == panel and panel.scroll == 73)
+assert(nodeCreates == 3 and #popup.rows == rows)
+
 freshSupplier = copy(supplier)
 freshSupplier.wares.ore.prodMax = 300
 freshSupplier.wares.food = { input = true, stock = 50, consMax = 20, consKnown = true }

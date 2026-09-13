@@ -476,18 +476,30 @@ end
 -- `transporttype`.
 local function readCapacity(id64)
 	local cap = {}
-	pcall(function ()
+	local ok = pcall(function ()
 		local n = C.GetNumCargoTransportTypes(id64, true)
-		if n <= 0 then
+		assert(SCV_Graph.validRate(n) and n == math.floor(n), "invalid storage count")
+		if n == 0 then
 			return
 		end
 		local buf = ffi.new("StorageInfo[?]", n)
-		n = C.GetCargoTransportTypes(buf, n, id64, true, false)
+		local count = C.GetCargoTransportTypes(buf, n, id64, true, false)
+		assert(count == n, "incomplete storage read")
 		for i = 0, n - 1 do
-			cap[ffi.string(buf[i].transport)] = tonumber(buf[i].capacity) or 0
+			-- Vanilla transport strings may contain several tags (universal storage).
+			local tags = ffi.string(buf[i].transport)
+			local amount = tonumber(buf[i].capacity)
+			assert(string.find(tags, "%S") and SCV_Graph.validRate(amount), "invalid storage entry")
+			local seen = {}
+			for tag in string.gmatch(tags, "%S+") do
+				if not seen[tag] then
+					cap[tag] = (cap[tag] or 0) + amount
+					seen[tag] = true
+				end
+			end
 		end
 	end)
-	return cap
+	return cap, ok
 end
 
 -- ---------------------------------------------------------------------------------
@@ -508,7 +520,7 @@ function SCV_Data.readStation(st)
 	local outputs, inputs, candidates, _, buildwares = readWareRoles(id64)
 	local reservations, reservationsKnown = readReservations(id64)
 	local ratesOut, ratesIn, inventoryKnown, excludedProd, excludedCons, processing = readTheoreticalRates(id64)
-	local capacity           = readCapacity(id64)
+	local capacity, capacityRead = readCapacity(id64)
 	local cargo   = safe(nil, GetComponentData, id64, "cargo")
 	-- Raw scrap lives in the processing resource buffer, not cargo. Vanilla's
 	-- Helper.getResourceBufferAmount (helper.lua:12330) reads this exact property.
@@ -523,7 +535,7 @@ function SCV_Data.readStation(st)
 
 		if output or input then
 			local wname     = safe(ware, GetWareData, ware, "name")
-			local transport = safe("container", GetWareData, ware, "transport")
+			local transport = safe(nil, GetWareData, ware, "transport")
 
 			-- Native station maxima exclude processing: measured with 16 running
 			-- scrap processors, 2 waiting Kha'ak processors, and 18 recyclers.
@@ -565,12 +577,13 @@ function SCV_Data.readStation(st)
 			if not unlockedCapacity then limit = 0 end    -- unknown, not zero-capacity
 
 			local capacityUnits = 0
-			if unlockedCapacity then
-				local volume = tonumber(safe(0, GetWareData, ware, "volume")) or 0
+			local volume = tonumber(safe(nil, GetWareData, ware, "volume"))
+			local capacityUnitsKnown = unlockedCapacity and capacityRead
+				and type(transport) == "string" and string.match(transport, "^%S+$") ~= nil
+				and SCV_Graph.validRate(volume) and volume > 0
+			if capacityUnitsKnown then
 				local cap = capacity[tostring(transport)] or 0
-				if (volume > 0) and (cap > 0) then
-					capacityUnits = math.floor(cap / volume)
-				end
+				capacityUnits = math.floor(cap / volume)
 			end
 
 			wares[ware] = {
@@ -603,6 +616,7 @@ function SCV_Data.readStation(st)
 				-- this transport type, converted from volume to units. Shared between every
 				-- ware of that type, so it is an upper bound and the panel says so.
 				capacityUnits = capacityUnits,
+				capacityUnitsKnown = capacityUnitsKnown,
 			}
 		end
 	end

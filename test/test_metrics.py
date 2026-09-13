@@ -412,6 +412,7 @@ assert all(texts[key].isascii() for key in [3065,3066,*range(3090,3101)])
 for source in (root/'ui').glob('*.lua'):
     lua.execute('assert(load(...))', source.read_text(encoding='utf-8'))
 lua.execute((root/'test/test_tooltips.lua').read_text(encoding='utf-8'))
+lua.execute((root/'test/test_capacity.lua').read_text(encoding='utf-8'))
 lua.execute((root/'test/test_processing.lua').read_text(encoding='utf-8'))
 lua.execute((root/'ui/scv_store.lua').read_text(encoding='utf-8'))
 lua.execute((root/'test/test_warnings.lua').read_text(encoding='utf-8'))

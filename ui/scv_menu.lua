@@ -366,8 +366,8 @@ local function rateAssumptions(isInput, continuous)
 end
 
 local function stockTooltip(subject, w, b)
-	local capacityKnown = (w.limit or 0) > 0 or (w.capacityUnits or 0) > 0
-	local capacity = capacityKnown and ((b.estimated and "~" or "") .. formatAmount(b.max)) or "?"
+	local capacityKnown = b.capacityKnown
+	local capacity = capacityKnown and ((b.estimated and "~" or "") .. formatAmount(b.capacity)) or "?"
 	local lines = { subject, "", T(3041, b.stockKnown and formatAmount(b.start) or "?", capacity) }
 	if not b.stockKnown then lines[#lines + 1] = T(3152) end
 	if not capacityKnown then
@@ -388,7 +388,7 @@ end
 local function aggregateStockTooltip(subject, storage)
 	local lines = { subject, "", T(3041, formatPartial(storage.stock, storage.stockKnown),
 		(storage.estimated and "~" or "") .. formatPartial(storage.capacity, storage.capacityKnown)) }
-	if not storage.stockKnown or not storage.capacityKnown or storage.capacity <= 0 then
+	if not storage.stockKnown or not storage.capacityKnown then
 		lines[#lines + 1] = T(3082)
 		lines[#lines + 1] = T(3088)
 	end
@@ -448,7 +448,7 @@ local function coverageTooltip(subject, w, m, isInput, fullTime, fillTime)
 	end
 	if not m.rateKnown then lines[#lines + 1] = T(continuous and 3126 or 3037) end
 	if not m.bar.stockKnown then lines[#lines + 1] = T(3152) end
-	if (w.limit or 0) <= 0 and (w.capacityUnits or 0) <= 0 then
+	if not m.bar.capacityKnown then
 		lines[#lines + 1] = T(3046)
 	elseif m.bar.estimated then
 		lines[#lines + 1] = T(3045)
@@ -1364,8 +1364,8 @@ local function detailEntry(ftable, key, name, w, isInput, stationCode, ware)
 		local b = m.bar
 		local rate = m.rateKnown and (m.sign .. formatRate(m.rate)) or T(5003, "? ")
 		local stock = b.stockKnown and formatAmount(b.start) or "?"
-		local capacity = ((w.limit or 0) > 0 or (w.capacityUnits or 0) > 0)
-			and ((b.estimated and "~" or "") .. formatAmount(b.max)) or "?"
+		local capacity = b.capacityKnown
+			and ((b.estimated and "~" or "") .. formatAmount(b.capacity)) or "?"
 		local long = rateTooltip(name, w, m, isInput)
 		local fullTime = m.capacityHours and ((b.estimated and "~" or "") .. formatHours(m.capacityHours)) or "?"
 		local fillTime = m.fillHours and ((b.estimated and "~" or "")
