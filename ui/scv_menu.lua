@@ -808,14 +808,14 @@ function menu.openManagement(mode)
 		menu.displayNameEntry(frame, border, border, width - 2 * border)
 		frame.properties.height = math.min(height, frame:getUsedHeight() + 2 * border)
 	else
-		local ftable = frame:addTable(3, { tabOrder = 1, x = border, y = border,
+		local columns = mode == "stations" and 4 or 3
+		local ftable = frame:addTable(columns, { tabOrder = 1, x = border, y = border,
 			width = width - 2 * border, maxVisibleHeight = height - 2 * border })
-		ftable:setColWidth(2, Helper.scaleX(30), false)
-		ftable:setColWidth(3, Helper.scaleX(30), false)
+		for column = 2, columns do ftable:setColWidth(column, Helper.scaleX(30), false) end
 		local row = ftable:addRow(true, { fixed = true })
-		row[1]:setColSpan(2):createText(chain.name, { wordwrap = true })
-		row[3]:createButton({ mouseOverText = ReadText(1001, 2670) }):setText("x", { halign = "center" })
-		row[3].handlers.onClick = menu.closeManagement
+		row[1]:setColSpan(columns - 1):createText(chain.name, { wordwrap = true })
+		row[columns]:createButton({ mouseOverText = ReadText(1001, 2670) }):setText("x", { halign = "center" })
+		row[columns].handlers.onClick = menu.closeManagement
 		if mode == "stations" then
 			menu.displayStations(ftable, chain, index)
 		elseif mode == "actions" then
@@ -848,10 +848,10 @@ function menu.displayStations(ftable, chain, index)
 	for _, st in ipairs(members) do st.objectid = st.code or "" end
 	table.sort(members, Helper.sortNameAndObjectID)
 	local row = ftable:addRow(false, { fixed = false })
-	row[1]:setColSpan(3):createText(T(2005) .. " (" .. #chain.members .. ")", Helper.headerRow1Properties)
+	row[1]:setColSpan(4):createText(T(2005) .. " (" .. #chain.members .. ")", Helper.headerRow1Properties)
 	if #members == 0 then
 		row = ftable:addRow(false, { fixed = false })
-		row[1]:setColSpan(3):createText(T(1005), { wordwrap = true })
+		row[1]:setColSpan(4):createText(T(1005), { wordwrap = true })
 	end
 	for _, st in ipairs(members) do
 		local function stationStyle()
@@ -873,8 +873,15 @@ function menu.displayStations(ftable, chain, index)
 		row[2].handlers.onClick = function ()
 			Helper.closeMenuAndOpenNewMenu(menu, "StationOverviewMenu", { 0, 0, st.id64 }); menu.cleanup()
 		end
-		row[3]:createButton({ mouseOverText = T(1016) }):setText("-", { halign = "center" })
+		row[3]:createButton({ mouseOverText = T(3103), active = GetComponentData(st.id64, "isplayerowned") })
+		setCenteredButtonIcon(row[3], "mapst_plotmanagement")
 		row[3].handlers.onClick = function ()
+			if not GetComponentData(st.id64, "isplayerowned") then return end
+			Helper.closeMenuAndOpenNewMenu(menu, "StationConfigurationMenu", { 0, 0, st.id64 })
+			menu.cleanup()
+		end
+		row[4]:createButton({ mouseOverText = T(1016) }):setText("-", { halign = "center" })
+		row[4].handlers.onClick = function ()
 			local selected = SCV_Store.selected()
 			if selected ~= chain then return end
 			SCV_Store.removeStation(index, st.id)

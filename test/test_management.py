@@ -8,6 +8,7 @@ lua = LuaRuntime(unpack_returned_tuples=True)
 lua.globals().texts = lua.table_from({int(t.attrib['id']): t.text for t in ET.parse(root/'t/0001.xml').iter('t')})
 lua.execute('''
 function DebugError() end
+function GetComponentData(_, key) return key == 'isplayerowned' end
 now=10
 function getElapsedTime() return now end
 function ReadText(page,id) return page == 90210 and texts[id] or tostring(id) end
@@ -204,7 +205,7 @@ assert(#frames[1].tables[1].rows==3, 'no duplicate status block')
 
 -- Remove a member, rebuild once, and restore the panel. No chain deletion occurs.
 local rows=frames[1].tables[1].rows
-rows[#rows][3].handlers.onClick(); assert(menu.managementMode=='stations' and menu.refreshState==nil)
+rows[#rows][4].handlers.onClick(); assert(menu.managementMode=='stations' and menu.refreshState==nil)
 menu.display(); assert(menu.managementMode=='stations' and #SCV_Store.get(1).members==0)
 menu.closeManagement()
 toolbar()[2].handlers.onDropDownConfirmed(nil,'8')
