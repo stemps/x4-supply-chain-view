@@ -101,7 +101,8 @@ function menu.displayChain(_,x,y,width,reuse)
     menu.graph={stationNodes={}}; menu.flowchart={}; menu.refreshState={}; menu.scanDone=true
 end
 menu.mode='chain'; menu.display()
-local function toolbar() return frames[2].tables[1].rows[1] end
+local function toolbarTable() return frames[5].tables[1] end
+local function toolbar() return toolbarTable().rows[1] end
 local row=toolbar()
 for _,i in ipairs({1,2,3,4,5}) do assert(row[i].properties.active==false) end
 row[1].handlers.onClick(); row[3].handlers.onClick()
@@ -109,11 +110,12 @@ assert(SCV_Store.count()==0)
 assert(row[2].options[1].id=='0')
 assert(graphRect.x==Helper.frameBorder)
 assert(graphRect.width==1280-45-5-5-2, 'graph uses all available width')
-assert(frames[2].properties.width==graphRect.width/2, 'toolbar matches LSO half-width proportions')
-assert(frames[2].properties.x==graphRect.x+graphRect.width/4, 'toolbar is centered')
-assert(frames[2].tables[1].widths[1]==frames[2].properties.height, 'navigation buttons are square')
-assert(menu.toolbarGeometry.anchorX>frames[2].properties.x and
-    menu.toolbarGeometry.anchorX<frames[2].properties.x+frames[2].properties.width)
+assert(not frames[2], 'toolbar must not create a foreground frame over expanded nodes')
+assert(toolbarTable().properties.width==graphRect.width/2, 'toolbar matches LSO half-width proportions')
+assert(toolbarTable().properties.x==graphRect.x+graphRect.width/4, 'toolbar is centered')
+assert(toolbarTable().widths[1]==Helper.scaleY(Helper.standardButtonHeight), 'navigation buttons are square')
+assert(menu.toolbarGeometry.anchorX>toolbarTable().properties.x and
+    menu.toolbarGeometry.anchorX<toolbarTable().properties.x+toolbarTable().properties.width)
 
 SCV_Store.create('A very long chain name '..string.rep('abc ',40),{{id='1',code='code1'}})
 menu.display(); row=toolbar()

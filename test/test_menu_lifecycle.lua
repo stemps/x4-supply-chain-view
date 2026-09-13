@@ -9,7 +9,7 @@ function Helper.clearFrame(_, layer)
 end
 function Helper.closeMenuAndOpenNewMenu(_, name, params)
 	assert(menu.graph == nil and menu.refreshState == nil and menu.closed)
-	assert(clears == 3, "clear status, management and toolbar before opening")
+	assert(clears == 2, "clear status and management before opening; toolbar shares main frame")
 	opened = name
 	destinationFrames = { [1] = "new management", [3] = "new status", [4] = "new toolbar" }
 	assert(params[3] == "station")
@@ -17,7 +17,7 @@ end
 local function prepare()
 	opened, clears = nil, 0
 	menu.closed = false
-	menu.statusFrame, menu.managementFrame, menu.toolbarFrame = {}, {}, {}
+	menu.statusFrame, menu.managementFrame = {}, {}
 	menu.graph, menu.refreshState = {}, {}
 	menu.managementMode = "stations"
 	menu.expandedNode, menu.expandedMenuFrame = nil, nil
@@ -35,7 +35,7 @@ end
 prepare()
 menu.managementMode = nil
 function Helper.closeMenu()
-	assert(clears == 3 and menu.closed, "clean up before returning to another menu")
+	assert(clears == 2 and menu.closed, "clean up before returning to another menu")
 	opened = "previous menu"
 end
 menu.onCloseElement("back", 5)

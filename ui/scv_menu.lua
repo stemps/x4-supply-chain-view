@@ -19,12 +19,11 @@ local menu = {
 }
 
 local config = {
-	-- Lower layers draw in front: dialogs, navigation, status, node details, graph.
+	-- Lower layers draw in front: dialogs, status, node details, graph/toolbar.
 	mainFrameLayer         = 5,
 	-- Match vanilla LSO's 5 -> 4 node expansion. The native central fill and
 	-- background are coplanar; layer 2 produces hover-dependent fill occlusion.
 	expandedMenuFrameLayer = 4,
-	toolbarFrameLayer      = 2,
 	managementFrameLayer   = 1,
 	statusFrameLayer       = 3,
 	topLevelId             = "scv_supplychain",
@@ -144,8 +143,6 @@ function menu.cleanup()
 	menu.chainPlaceholder = nil
 	menu.missingMembers = 0
 	menu.closeManagement()
-	if menu.toolbarFrame then Helper.clearFrame(menu, config.toolbarFrameLayer) end
-	menu.toolbarFrame = nil
 	menu.toolbarGeometry = nil
 	menu.mode            = "chain"
 	menu.graph           = nil
@@ -241,7 +238,6 @@ function menu.onUpdate()
 		local snapshot = SCV_Data.refreshStep(menu.refreshState, getElapsedTime())
 		if snapshot then menu.publishMetrics(snapshot) end
 	end
-	if menu.toolbarFrame then menu.toolbarFrame:update() end
 	menu.updateStatusStrip()
 	if menu.managementFrame then menu.managementFrame:update() end
 end
@@ -626,8 +622,6 @@ function menu.display(presentationOnly)
 	local managementMode = menu.managementMode
 	if not presentationOnly then
 		menu.closeManagement()
-		if menu.toolbarFrame then Helper.clearFrame(menu, config.toolbarFrameLayer) end
-		menu.toolbarFrame = nil
 	end
 	if menu.expandedNode then menu.expandedNode:collapse() end
 	Helper.clearDataForRefresh(menu, config.mainFrameLayer)
@@ -653,6 +647,7 @@ function menu.display(presentationOnly)
 		menu.displayNameEntry(menu.frame, Helper.frameBorder, topY, contentWidth)
 	else
 		if not presentationOnly then menu.toolbarGeometry = { x = Helper.frameBorder, y = topY, width = contentWidth } end
+		menu.displayToolbar(menu.frame)
 		menu.displayChain(menu.frame, Helper.frameBorder,
 			topY + Helper.scaleY(Helper.standardButtonHeight) + Helper.borderSize + (menu.statusHeight or 0), contentWidth, presentationOnly)
 	end
@@ -660,7 +655,6 @@ function menu.display(presentationOnly)
 	menu.frame:display()
 	if menu.mode == "chain" then
 		if not presentationOnly then
-			menu.displayToolbar()
 			if managementMode == "stations" then menu.openManagement("stations") end
 			menu.updateStatusStrip()
 		end
@@ -730,7 +724,7 @@ function menu.confirmName()
 		if not SCV_Store.rename(menu.renameIndex, name) then return end
 		if menu.managementMode == "rename" then
 			menu.closeManagement()
-			menu.displayToolbar()
+			menu.display(true)
 			return
 		end
 		menu.renameIndex = nil
@@ -850,19 +844,16 @@ function menu.selectChain(index)
 	menu.markDirty()
 end
 
-function menu.displayToolbar()
+function menu.displayToolbar(frame)
 	local geo = menu.toolbarGeometry
 	if not geo then return end
-	if menu.toolbarFrame then Helper.clearFrame(menu, config.toolbarFrameLayer) end
 	-- UIX's Logical Overview selector leaves 25% margins on both sides.
 	-- Keep this local to the toolbar: the graph still uses the entire content width.
 	local toolbarWidth = geo.width * 0.5
 	local toolbarX = geo.x + (geo.width - toolbarWidth) / 2
-	local frame = Helper.createFrameHandle(menu, { layer = config.toolbarFrameLayer,
-		standardButtons = {}, -- Embedded toolbar: no automatic Back/Close over its controls.
-		x = toolbarX, y = geo.y, width = toolbarWidth, height = Helper.scaleY(Helper.standardButtonHeight) })
-	menu.toolbarFrame = frame
-	local ftable = frame:addTable(5, { tabOrder = 1, width = toolbarWidth, x = 0, y = 0 })
+	-- Like vanilla LSO's title table, share the graph's main frame so expanded
+	-- nodes on layer 4 cover these controls without changing native node depth.
+	local ftable = frame:addTable(5, { tabOrder = 1, width = toolbarWidth, x = toolbarX, y = geo.y })
 	local buttonWidth = Helper.scaleX(Helper.standardButtonHeight)
 	local stationsWidth = math.min(Helper.scaleX(180), toolbarWidth * 0.28)
 	for _, col in ipairs({ 1, 3, 5 }) do ftable:setColWidth(col, buttonWidth, false) end
@@ -893,7 +884,6 @@ function menu.displayToolbar()
 	-- Store the station button's left edge in screen pixels, including table borders.
 	geo.anchorX = toolbarX + toolbarWidth - stationsWidth - buttonWidth - Helper.borderSize
 	geo.overlayY = geo.y + Helper.scaleY(Helper.standardButtonHeight) + Helper.borderSize
-	frame:display()
 end
 
 function menu.toggleManagement(mode)
