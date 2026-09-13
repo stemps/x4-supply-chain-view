@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1 - 2026-09-13
+
+- Fix stock bar flicker issue
+- Fix UI layering issue
+- Count unbuilt storage modules as 0 capacity, rather than unknown
+
 ## 0.2.0 - 2026-09-13
 
 - Require Kuertee UI Extensions

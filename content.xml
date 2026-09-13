@@ -17,7 +17,7 @@
 <content id="supply_chain_view"
          name="Supply Chain View"
          author="stemps"
-         version="200"
+         version="201"
          date="2026-09-13"
          save="false"
          enabled="1"
