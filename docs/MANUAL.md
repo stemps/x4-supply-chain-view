@@ -32,19 +32,6 @@ your save file.
   runs full. It assumes maximum production without collections. These are
   planning estimates.
 
-## Optional keyboard shortcut
-
-Install [Native Hotkey API](https://www.nexusmods.com/x4foundations/mods/2181)
-and the requirements listed on its page to enable keyboard access. It is optional:
-the tab and existing context-menu access still work without it.
-
-After loading a game, open **Options → Hotkey Management → Hotkey Bindings**,
-find **Open Supply Chain View**, and assign a key. **Ctrl+S** is suggested
-because it is unused in the game's default presets.
-
-The shortcut opens the view from the map, while piloting, or while walking,
-retaining the selected chain.
-
 ## Some things you can spot using this mod
 
 - Expand a ware. If the producer side has plenty of stock, but the consumer side
@@ -60,6 +47,19 @@ retaining the selected chain.
   add storage if existing capacity prevents keeping a large enough buffer.
 
 Let me know what kinds of issues you found in your supply chain ;-).
+
+## Optional keyboard shortcut
+
+Install [Native Hotkey API](https://www.nexusmods.com/x4foundations/mods/2181)
+and the requirements listed on its page to enable keyboard access. It is optional:
+the tab and existing context-menu access still work without it.
+
+After loading a game, open **Options → Hotkey Management → Hotkey Bindings**,
+find **Open Supply Chain View**, and assign a key. **Ctrl+S** is suggested
+because it is unused in the game's default presets.
+
+The shortcut opens the view from the map, while piloting, or while walking,
+retaining the selected chain.
 
 ## Links
 
