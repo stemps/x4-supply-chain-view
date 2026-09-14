@@ -129,7 +129,27 @@ assert(not read().wares.energycells.prodKnown)
 state.rateLocked=false
 state.build=true
 assert(not read().wares.energycells.consKnown) -- build demand stays unknown
+assert(read().wares.energycells.input and not read().wares.energycells.output,
+    'shipbuilding consumption must veto a produced/sellable output')
 state.build=false
+local originalData = GetComponentData
+function GetComponentData(id, key)
+    if key == 'availableproducts' then return {'energycells', 'food'} end
+    if key == 'pureresources' then return {} end
+    return originalData(id, key)
+end
+assert(read().wares.food.output, 'workforce consumption must not veto a product output')
+state.build=true
+local mixedYard = read()
+assert(mixedYard.wares.food.output and not mixedYard.wares.energycells.output,
+    'a mixed shipyard retains outputs not consumed by shipbuilding')
+state.build=false
+function GetComponentData(id, key)
+    if key == 'intermediatewares' then return {'energycells'} end
+    return originalData(id, key)
+end
+assert(read().wares.energycells == nil, 'internal intermediates must remain excluded')
+GetComponentData = originalData
 state.stockKnown=false
 local hidden=read().wares.energycells
 assert(not hidden.stockKnown and SCV_Graph.reservationBar(hidden).percent == nil)
@@ -280,6 +300,17 @@ assert(paddedFrame.properties.x==82 and paddedFrame.properties.width==256)
 assert(paddedFrame.properties.height==220)
 menu.expandWare({id=1},paddedFrame,tableMock(),menu.graph.wareNodes.energycells)
 assert(paddedFrame.properties.width==256) -- normalization is not cumulative
+-- A terminal ware panel must work with an empty consumer list.
+local terminalGraph = SCV_Graph.build({producer})
+menu.graph = terminalGraph
+local terminalTable = tableMock()
+menu.expandWare(nil, {properties={height=220}}, terminalTable, terminalGraph.wareNodes.energycells)
+local terminalProducerRows = 0
+for _, row in ipairs(terminalTable.rows) do
+    if row.key == 'station:A' then terminalProducerRows = terminalProducerRows + 1 end
+    assert(row.key ~= 'station:B', 'terminal panel must not invent a consumer')
+end
+assert(terminalProducerRows == 1, 'terminal panel must list its producer')
 local stock,rate=compareEntry(false,'A')
 assert(stock == 'Amount 120.0k / 200.0k' and rate == '+4.8M/h',stock..rate)
 local _, inputRate=compareEntry(true,'B')

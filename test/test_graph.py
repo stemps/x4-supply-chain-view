@@ -94,17 +94,51 @@ check("hullparts linked", g.wareNodes["hullparts"] is not None)
 check("hub is ore's supplier", "hub" in to_list(g.wareNodes["ore"].producers))
 check("yard takes hullparts", "yard" in to_list(g.wareNodes["hullparts"].consumers))
 
-print("\n=== a ware needs BOTH ends inside the chain ===")
+print("\n=== terminal outputs have nodes; unsupplied inputs do not ===")
 stations = lua.table(
     station("a", "Seller", {"widgets": dict(output=True, stock=100, production=10)}),
     station("b", "Other", {"gadgets": dict(input=True, stock=10, consumption=5)}),
 )
 g = G.build(stations, lua.table())
-check("no ware node when offers do not meet", next(iter(to_list(g.nodes) or []), None) is not None
-      and g.wareNodes["widgets"] is None and g.wareNodes["gadgets"] is None)
+check("terminal output node exists", g.wareNodes["widgets"] is not None)
+check("unsupplied input has no node", g.wareNodes["gadgets"] is None)
 check("seller reports its output as untaken", "widgets" in to_list(g.stationNodes["a"].unsold))
 check("buyer reports its input as unsupplied", "gadgets" in to_list(g.stationNodes["b"].unmet))
-check("no edges at all", g.counts.edges == 0, f"got {g.counts.edges}")
+check("one terminal output edge", g.counts.edges == 1, f"got {g.counts.edges}")
+
+print("\n=== shared terminal outputs survive refresh and pruning ===")
+stations = lua.table(
+    station("a", "Substrate A", {"computronicsubstrate": dict(output=True, stock=100, production=10)}),
+    station("b", "Substrate B", {"computronicsubstrate": dict(output=True, stock=200, production=20)}),
+)
+g = G.build(stations, lua.table())
+w = g.wareNodes["computronicsubstrate"]
+check("two producers share one terminal node", g.counts.nodes == 3 and g.counts.edges == 2)
+check("terminal node has no consumers", len(w.consumers) == 0)
+check("terminal edges only feed the ware", all(key(e.to) == key(w) for e in to_list(g.edges)))
+check("terminal production is combined with zero demand", w.supplyCap == 30 and w.demandCap == 0)
+check("terminal stock combines both producers", w.storage.stock == 300)
+check("both producers are layout predecessors", len(list(w.predecessors.items())) == 2)
+stations[1].wares.computronicsubstrate.prodMax = 40
+G.refreshMetrics(g, stations)
+check("terminal metrics refresh", w.supplyCap == 60 and w.demandCap == 0 and not g.structureChanged)
+G.removeNode(g, g.stationNodes["a"])
+G.pruneOrphanWares(g)
+check("terminal survives with one producer", g.wareNodes["computronicsubstrate"] is not None)
+G.removeNode(g, g.stationNodes["b"])
+G.pruneOrphanWares(g)
+check("terminal removed after last producer disappears", g.wareNodes["computronicsubstrate"] is None)
+
+g = G.build(stations, lua.table(limits=lua.table(maxNodes=2, maxEdges=1)))
+check("budget retains remaining producer and terminal", g.counts.nodes == 2 and g.counts.edges == 1
+      and g.wareNodes["computronicsubstrate"] is not None and len(g.droppedStations) == 1)
+
+g = G.build(lua.table(
+    station("a", "Mixed", {"chips": dict(output=True), "widgets": dict(output=True)}),
+    station("b", "Consumer", {"chips": dict(input=True)}),
+), lua.table())
+check("connected producer also shows surplus output", g.wareNodes["chips"] is not None
+      and g.wareNodes["widgets"] is not None and g.counts.edges == 3)
 
 print("\n=== internal intermediates are excluded upstream ===")
 # The data layer strips a ware the station both makes and eats, so the model never sees it
@@ -329,8 +363,8 @@ check("empty station list refuses with a reason",
       empty == (None, "empty") or empty is None, f"got={empty!r}")
 g = G.build(lua.table(station("s1", "Lonely", {"x": dict(output=True, production=1, stock=5)})),
             lua.table())
-check("single station builds with no ware nodes", g is not None and g.counts.nodes == 1)
-check("  ...and no edges", g.counts.edges == 0)
+check("single station builds with its output node", g is not None and g.counts.nodes == 2)
+check("  ...and one output edge", g.counts.edges == 1)
 
 print("\n" + "=" * 52)
 if fails:

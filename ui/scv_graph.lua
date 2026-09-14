@@ -290,15 +290,12 @@ end
 --
 -- OUTPUT and INPUT are decided by the data layer, not here, and they are NOT the same as
 -- "produces" and "consumes":
---   output = the station has a SELL offer for the ware, and no module on it consumes it
---   input  = the station has a BUY  offer for the ware, and no module on it produces it
--- The offer is what makes a ware part of the chain at all; the module test is what strips
--- out internal intermediates that never leave the station.
+-- Roles use configured products/resources and explicit trade settings, not live offers.
+-- Internal production/build consumption excludes outputs; workforce consumption does not.
 --
--- Bipartite by construction: station -> ware -> station. A ware earns a node ONLY if it
--- crosses between two members of the chain (an output of one, an input of another). Wares
--- with no counterpart here are the chain's BOUNDARY, reported on the station node rather
--- than drawn as dangling stubs.
+-- Bipartite by construction: station -> ware -> station. Every output earns a shared
+-- ware node, including terminal outputs with no consumers. Unsupplied inputs remain
+-- station boundary information; they do not create source ware nodes.
 -- Recalculate only metrics. Node identity, roles and predecessors belong to the layout.
 function SCV_Graph.updateStationMetrics(node)
 	node.severity, node.healthKnown, node.worstWare = "ok", true, nil
@@ -451,7 +448,7 @@ function SCV_Graph.build(stations, options)
 		end
 	end
 
-	-- Record the boundary before discarding non-crossing wares. "Nobody here supplies this"
+	-- Record the boundary even when an output has its own node. "Nobody here supplies this"
 	-- and "nobody here takes this" are frequently the actually-useful finding.
 	for _, st in ipairs(stations) do
 		local node = stationNodes[st.id]
@@ -469,8 +466,8 @@ function SCV_Graph.build(stations, options)
 
 	local edges = {}
 	for ware, producers in pairs(producersOf) do
-		local consumers = consumersOf[ware]
-		if consumers then
+		local consumers = consumersOf[ware] or {}
+		do
 			local sample
 			for _, sid in ipairs(producers) do
 				sample = stationNodes[sid].wares[ware]
@@ -697,12 +694,12 @@ function SCV_Graph.pruneOrphanWares(graph)
 		changed = false
 		for _, n in ipairs(graph.nodes) do
 			if n.scvkind == "ware" then
-				local hasIn, hasOut = false, false
+				local hasIn = false
 				for _, e in ipairs(graph.edges) do
 					if e.to == n then hasIn = true end
-					if e.from == n then hasOut = true end
 				end
-				if not (hasIn and hasOut) then
+				-- A producer-backed terminal output is valid without outgoing edges.
+				if not hasIn then
 					SCV_Graph.removeNode(graph, n)
 					graph.wareNodes[n.scvware] = nil
 					changed = true

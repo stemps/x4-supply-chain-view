@@ -5,11 +5,10 @@
 -- SCV_Graph.build expects, and to be paranoid while doing it.
 --
 -- THE GOODS RULE this file implements:
---   output = the station has a SELL offer for the ware, and no module on it CONSUMES it
---   input  = the station has a BUY  offer for the ware, and no module on it PRODUCES it
--- The trade offer is what makes a ware part of the chain at all - it is the station saying
--- "I will give you this" or "I want this". The module test strips internal intermediates:
--- a ware a station both makes and eats never really leaves, so it is not a link.
+--   output = configured product or sellable trade ware, without internal production/build use
+--   input  = configured resource, build resource or buyable trade ware, unless output wins
+-- Roles do not depend on current stock or live offers. Internal intermediates are excluded;
+-- workforce consumption alone does not disqualify an output.
 --
 -- Consequence worth knowing: a ware that is produced, partly consumed internally, AND sold
 -- in surplus does NOT count as an output, because an internal consumer exists. That is the
@@ -282,6 +281,12 @@ local function readWareRoles(id64)
 	-- of the very ware it exists to supply - it draws an edge back into the hub, turns
 	-- every hub into a false bottleneck, and manufactures a cycle out of what is really a
 	-- one-way flow. What the chain cares about is where the ware GOES.
+	-- Build resources are internal consumers even if the engine also lists the ware
+	-- as a product or sellable trade good. Workforce use is deliberately not a veto.
+	for ware in pairs(buildwares) do
+		outputs[ware] = nil
+		if not intermediates[ware] then inputs[ware] = true end
+	end
 	for ware in pairs(outputs) do
 		inputs[ware] = nil
 	end
