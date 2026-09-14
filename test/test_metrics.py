@@ -18,6 +18,7 @@ function DebugError(s) logs[#logs+1] = s end
 function ReadText(page, id) return texts[id] or tostring(id) end
 function ConvertStringTo64Bit(v) return v end
 function IsValidComponent() return true end
+function IsComponentConstruction(id) return id == 'unfinished' end
 state = { modules=true, build=false, stockKnown=true, reservations=true, workforce=100,
           prod=4800000, cons=2400000, cargo={energycells=120000, food=10000},
           incoming=2000, outgoing=12000 }
@@ -25,13 +26,18 @@ C = {}
 package.preload.ffi = function() return {C=C, new=function() return {} end, string=tostring} end
 function C.IsComponentClass() return true end
 function C.IsRealComponentClass(id, class) return class == 'production' end
-function C.IsComponentOperational() return not state.nonOperational end
+function C.IsComponentOperational(id) return id ~= 'unfinished' and not state.nonOperational end
 function C.IsInfoUnlockedForPlayer(id, key)
     if key == 'production_rate' then return not state.rateLocked end
     return key ~= 'storage_amounts' or state.stockKnown
 end
-function C.GetNumStationModules() return state.modules and 1 or 0 end
-function C.GetStationModules(buf) buf[0]='module'; return 1 end
+function C.GetNumStationModules() return (state.modules and 1 or 0) + (state.unfinished and 1 or 0) end
+function C.GetStationModules(buf)
+    local n = 0
+    if state.modules then buf[n]='module'; n=n+1 end
+    if state.unfinished then buf[n]='unfinished'; n=n+1 end
+    return n
+end
 function C.GetNumContainerBuildResources() return state.build and 1 or 0 end
 function C.GetContainerBuildResources(buf) buf[0]='energycells'; return 1 end
 function C.GetNumContainerWareReservations2()
@@ -92,6 +98,7 @@ function C.IsComponentClass(id, kind)
     return id ~= 'ship' and kind == 'station'
 end
 function GetComponentData(id, key)
+    assert(id ~= 'unfinished', 'unfinished production must be skipped before recipe reads')
     assert(id ~= 'stale' and id ~= 'ship', 'invalid/non-station IDs must not reach data reads')
     dataReads=dataReads+1
     return data(id,key)
@@ -121,6 +128,14 @@ state.prod=4800000
 state.modules=false
 assert(not read().wares.energycells.prodKnown) -- mining/trade throughput isn't production
 state.modules=true
+state.unfinished=true
+assert(read().wares.energycells.prodKnown and read().wares.energycells.prodMax == 4800000,
+       'unfinished solar expansion must preserve the effective completed output')
+assert(read().wares.food.consKnown, 'unfinished module must not invalidate input demand')
+state.modules=false
+assert(not read().wares.energycells.prodKnown, 'unbuilt-only capacity behaves like planned-only capacity')
+state.modules=true
+state.unfinished=false
 state.nonOperational=true
 assert(not read().wares.energycells.prodKnown)
 state.nonOperational=false

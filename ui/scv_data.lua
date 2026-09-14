@@ -386,8 +386,10 @@ local function readTheoreticalRates(id64)
 			local module = ConvertStringTo64Bit(tostring(buf[i]))
 			local isprod = C.IsRealComponentClass(module, "production")
 			local isproc = C.IsRealComponentClass(module, "processingmodule")
-			-- Operational only: a wrecked or half-built module produces nothing.
-			if isprod or isproc then
+			-- Construction is future capacity, just like a module still in the build
+			-- plan. Skip its recipe and scan gates so it cannot veto completed rates.
+			local unbuiltProduction = isprod and not isproc and IsComponentConstruction(module)
+			if (isprod or isproc) and not unbuiltProduction then
 				local macro = GetComponentData(module, "macro")
 				if macro then
 					local rates = byMacro[macro]
@@ -459,7 +461,7 @@ local function readTheoreticalRates(id64)
 							for w in pairs(rates.c) do excludedCons[w] = true end
 						end
 					elseif not isproc then
-						-- Do not claim an aggregate engine maximum excludes wrecks/construction
+						-- Do not claim an aggregate engine maximum excludes other inactive modules
 						-- without evidence. Only affected wares lose a complete maximum.
 						for w in pairs(rates.p) do excludedProd[w] = true end
 						for w in pairs(rates.c) do excludedCons[w] = true end

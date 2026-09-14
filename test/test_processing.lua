@@ -55,7 +55,7 @@ function GetComponentData(id, ...)
 		return table.unpack(result)
 	end
 	local key = ...
-	if key == "availableproducts" then return { "scrapmetal" } end
+	if key == "availableproducts" then return modules.productWares or { "scrapmetal" } end
 	if key == "pureresources" then return { "energycells", "rawscrap", "rawkhaakscrap" } end
 	if key == "tradewares" or key == "intermediatewares" then return {} end
 	if key == "cargo" then return { energycells = 150, rawscrap = 0, rawkhaakscrap = 20, scrapmetal = 100 } end
@@ -83,6 +83,15 @@ function GetMacroData(id) return "module" end
 function GetLibraryEntry(_, id)
 	local m = find(id)
 	if m.class == "production" then
+		assert(not m.construction, "unfinished recyclers must not need recipe data")
+		if modules.productWares then
+			local products = {}
+			for _, ware in ipairs(modules.productWares) do
+				products[#products + 1] = { ware = ware, amount = 10, cycle = 60,
+					resources = { { ware = "energycells", amount = 10 } } }
+			end
+			return { products = products }
+		end
 		return { products = { { ware = "hullparts", amount = 10, cycle = 60,
 			resources = { { ware = "energycells", amount = 10 } } } } }
 	end
@@ -117,6 +126,9 @@ function C.GetContainerWareConsumption(_, ware, maximum)
 end
 function C.GetContainerWareProduction(_, ware, maximum)
 	assert(maximum == true)
+	for _, product in ipairs(modules.productWares or {}) do
+		if ware == product then return 600 end -- completed recycler's effective maximum
+	end
 	return 0 -- measured native API does not include processor output either
 end
 local function read()
@@ -156,6 +168,23 @@ assert(read().wares.energycells.consKnown, "unfinished modules must not hide com
 reset()
 modules[1].invalid = true
 assert(read().wares.energycells.consMax == 2610)
+reset()
+-- An unfinished ordinary recycler cannot hide the completed recycler/processor sum.
+modules[#modules + 1] = { id = "unfinished-recycler", class = "production", functional = false,
+	construction = true, locked = true }
+st = read()
+assert(st.wares.energycells.consKnown and st.wares.energycells.consMax == 3610)
+assert(st.wares.rawscrap.consKnown and st.wares.rawscrap.consMax == 200)
+assert(st.wares.scrapmetal.prodKnown and st.wares.scrapmetal.prodMax == 200)
+for _, products in ipairs({ { "hullparts", "claytronics" }, { "computronicsubstrate", "siliconcarbide" } }) do
+	modules.productWares = products
+	st = read()
+	assert(st.wares.energycells.consKnown and st.wares.energycells.consMax == 3610)
+	for _, ware in ipairs(products) do
+		assert(st.wares[ware].prodKnown and st.wares[ware].prodMax == 600,
+			"unfinished recycler must preserve completed output: " .. ware)
+	end
+end
 reset()
 modules[1].locked = true
 assert(not read().wares.rawscrap.consKnown and not read().wares.energycells.consKnown)
