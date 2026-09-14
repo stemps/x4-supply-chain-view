@@ -62,7 +62,12 @@ function Helper.createFrameHandle(_, props)
                 function c:createText(text,pr) self.text=text; self.textprops=pr; return self end
                 function c:createButton(pr) self.properties=pr or {}; return self end
                 function c:createEditBox(pr) self.properties=pr; return self end
-                function c:createDropDown(options,pr) self.options=options; self.properties=pr; return self end
+                function c:createDropDown(options,pr)
+                    for _,option in ipairs(options) do
+                        assert(type(option.displayremoveoption)=='boolean', 'dropdown option requires displayremoveoption')
+                    end
+                    self.options=options; self.properties=pr; return self
+                end
                 function c:setTextProperties(pr) self.textprops=pr; return self end
                 function c:setText(text,pr) self.text=text; self.textprops=pr; return self end
                 function c:setIcon(icon,pr) self.icon=icon; self.iconprops=pr; return self end
@@ -265,6 +270,18 @@ menu.mode='name'; menu.nameText='New chain'; menu.pendingStations={}
 menu.display()
 assert(menu.nameText=='New chain' and frames[5].tables[1].rows[3][1].text=='New chain')
 ''')
+
+# Addon loading must not initialize storage before X4 restores savegame variables.
+lua.execute("__SCV_GROUPS=nil")
+lua.execute((root/'ui/scv_store.lua').read_text(encoding='utf-8'))
+lua.globals().menu = lua.execute((root/'ui/scv_menu.lua').read_text(encoding='utf-8'))
+lua.execute("""
+assert(__SCV_GROUPS == nil, 'menu startup must not initialize or write storage')
+__SCV_GROUPS={version=5, selected=1, names={'Restored chain'}, members={'123|ABC-123'}}
+local restored = SCV_Store.load()
+assert(#restored==1 and restored[1].name=='Restored chain')
+assert(restored[1].members[1].code=='ABC-123', 'delayed save restoration must survive startup')
+""")
 
 # Every translation has the new confirmation and exactly one chain-name placeholder.
 for path in (root/'t').glob('*.xml'):

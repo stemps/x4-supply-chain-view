@@ -48,7 +48,7 @@ ENGINE_GLOBALS = {
     "GetStorageData", "GetTradeList", "GetWareProductionLimit", "CheckSuitableTransportType",
     "IsMacroClass", "IsComponentConstruction", "IsKnownItem",
     "GetNPCBlackboard", "SetNPCBlackboard",
-    "getElapsedTime", "GetCurRealTime",
+    "getElapsedTime",
     "RegisterEvent", "UnregisterEvent", "OpenMenu", "AddUITriggeredEvent", "SetScript", "registerForEvent",
     "unregisterForEvent", "getElement", "CallWidgetEventScripts",
     "GetEditBoxText", "SetSliderCellValue",

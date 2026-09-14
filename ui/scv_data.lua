@@ -29,8 +29,6 @@ SCV_Data.cache = {}
 SCV_Data.SCAN_CHUNK = 4
 SCV_Data.REFRESH_INTERVAL = 5
 SCV_Data.REFRESH_ENABLED = true
--- Diagnostic switch for an in-game A/B performance check; normally silent.
-SCV_Data.PROFILE_REFRESH = false
 
 local function log(msg)
 	DebugError("SCV: " .. tostring(msg))
@@ -94,8 +92,9 @@ function SCV_Data.describe(id64)
 	if (not id64) or (id64 == 0) then
 		return nil
 	end
-	-- Liveness gate. A destroyed component stops being a station, so this doubles as the
-	-- "does it still exist" test without a second call.
+	-- Vanilla menu_station_overview.lua:2442 checks validity before component reads.
+	-- IsComponentClass logs stale IDs even inside pcall.
+	if not IsValidComponent(id64) then return nil end
 	local ok, isstation = pcall(function () return C.IsComponentClass(id64, "station") end)
 	if (not ok) or (not isstation) then
 		return nil
@@ -703,10 +702,8 @@ function SCV_Data.refreshStep(state, now)
 		if now < state.nextStart then return nil end
 		state.pending, state.cursor = {}, 1
 		state.nextStart = now + SCV_Data.REFRESH_INTERVAL
-		state.readSeconds, state.maxReadSeconds = 0, 0
 	end
 	local st = state.members[state.cursor]
-	local started = SCV_Data.PROFILE_REFRESH and GetCurRealTime()
 	local ok, result = pcall(function ()
 		local live = SCV_Data.describe(st.id64 or st.id)
 		if not live or (st.code and live.code ~= st.code) then
@@ -714,11 +711,6 @@ function SCV_Data.refreshStep(state, now)
 		end
 		return SCV_Data.readStation(st)
 	end)
-	if started then
-		local duration = GetCurRealTime() - started
-		state.readSeconds = state.readSeconds + duration
-		state.maxReadSeconds = math.max(state.maxReadSeconds, duration)
-	end
 	if not ok or not result then
 		warnOnce("refresh:" .. st.id, "refresh failed for station " .. tostring(st.name) .. ": " .. tostring(result))
 		result = { id = st.id, name = st.name, wares = {}, failed = true }

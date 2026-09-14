@@ -34,7 +34,11 @@ function C.IsInfoUnlockedForPlayer(id, key)
 	local m = find(id)
 	return not (m and m.locked) and not (key == "storage_amounts" and modules.stockLocked)
 end
-function IsValidComponent(id) return not find(id).invalid end
+function IsValidComponent(id)
+	if id == "yard" then return true end
+	local module = find(id)
+	return module ~= nil and not module.invalid
+end
 function IsComponentConstruction(id) return find(id).construction or false end
 function GetComponentData(id, ...)
 	local m = find(id)

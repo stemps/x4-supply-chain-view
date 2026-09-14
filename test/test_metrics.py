@@ -17,6 +17,7 @@ logs = {}
 function DebugError(s) logs[#logs+1] = s end
 function ReadText(page, id) return texts[id] or tostring(id) end
 function ConvertStringTo64Bit(v) return v end
+function IsValidComponent() return true end
 state = { modules=true, build=false, stockKnown=true, reservations=true, workforce=100,
           prod=4800000, cons=2400000, cargo={energycells=120000, food=10000},
           incoming=2000, outgoing=12000 }
@@ -81,6 +82,28 @@ for name in ['scv_graph.lua', 'scv_data.lua']:
     lua.execute((root/'ui'/name).read_text(encoding='utf-8'))
 menu = lua.execute((root/'ui/scv_menu.lua').read_text(encoding='utf-8'))
 g.menu = menu
+lua.execute('''
+local valid, class, data = IsValidComponent, C.IsComponentClass, GetComponentData
+local classReads, dataReads = 0, 0
+function IsValidComponent(id) return id ~= 'stale' end
+function C.IsComponentClass(id, kind)
+    assert(id ~= 'stale', 'invalid IDs must never reach the class query')
+    classReads=classReads+1
+    return id ~= 'ship' and kind == 'station'
+end
+function GetComponentData(id, key)
+    assert(id ~= 'stale' and id ~= 'ship', 'invalid/non-station IDs must not reach data reads')
+    dataReads=dataReads+1
+    return data(id,key)
+end
+assert(SCV_Data.describe('stale') == nil)
+assert(classReads == 0 and dataReads == 0)
+assert(SCV_Data.describe('ship') == nil)
+assert(classReads == 1 and dataReads == 0)
+assert(SCV_Data.describe('station').code == 'idcode')
+assert(classReads == 2 and dataReads > 0)
+IsValidComponent, C.IsComponentClass, GetComponentData = valid, class, data
+''')
 lua.execute('''
 function read() return SCV_Data.readStation({id='A', id64='A', name='A'}) end
 station = read()

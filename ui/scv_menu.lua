@@ -558,15 +558,9 @@ function menu.decorateNodes(graph)
 end
 
 function menu.publishMetrics(snapshot)
-	local started = SCV_Data.PROFILE_REFRESH and GetCurRealTime()
 	SCV_Graph.refreshMetrics(menu.graph, snapshot)
 	for _, st in ipairs(snapshot) do SCV_Data.cache[st.id] = st end
 	menu.updateMetricDisplay()
-	if started then
-		log(string.format("refresh: %d stations, reads %.2fms total / %.2fms max, publish %.2fms",
-			#snapshot, menu.refreshState.readSeconds * 1000,
-			menu.refreshState.maxReadSeconds * 1000, (GetCurRealTime() - started) * 1000))
-	end
 end
 
 function menu.updateMetricDisplay()
@@ -863,7 +857,7 @@ function menu.displayToolbar(frame)
 	for i, entry in ipairs(chains) do
 		options[#options + 1] = { id = tostring(i), text = entry.name, icon = "", displayremoveoption = false }
 	end
-	if #options == 0 then options[1] = { id = "0", text = T(1004), icon = "" } end
+	if #options == 0 then options[1] = { id = "0", text = T(1004), icon = "", displayremoveoption = false } end
 	local row = ftable:addRow(true, { fixed = true })
 	row[1]:createButton({ active = chain ~= nil and #chains > 1 }):setText("<", { halign = "center" })
 	row[1].handlers.onClick = function ()
