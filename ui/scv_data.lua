@@ -206,6 +206,70 @@ local function readBuildResources(id64)
 	return out
 end
 
+-- Future module inventory is classification-only. Never pass these recipes to the
+-- operational rate/storage readers. The live engine lists cover completed modules.
+-- Vanilla: menu_map.getStationModules and station_overview's planned recipe nodes.
+local function readFutureWareRoles(id64)
+	local products, resources = {}, {}
+	local seenComponents, seenMacros = {}, {}
+	local function readMacro(macro)
+		if not macro or macro == "" or seenMacros[macro] then return end
+		seenMacros[macro] = true
+		local ok, err = pcall(function ()
+			if IsMacroClass(macro, "production") or IsMacroClass(macro, "processingmodule") then
+				local data = GetLibraryEntry(GetMacroData(macro, "infolibrary"), macro)
+				assert(data and type(data.products) == "table", "module recipe unavailable")
+				for _, product in ipairs(data.products) do
+					if product.ware then products[product.ware] = true end
+					for _, resource in ipairs(product.resources or {}) do
+						if resource.ware then resources[resource.ware] = true end
+					end
+				end
+			elseif IsMacroClass(macro, "buildmodule") then
+				local data = GetLibraryEntry("moduletypes_build", macro)
+				assert(data and type(data.buildresources) == "table", "build recipe unavailable")
+				for _, resource in ipairs(data.buildresources) do
+					if resource.ware then resources[resource.ware] = true end
+				end
+			end
+		end)
+		if not ok then warnOnce("future-recipe:" .. macro, "planned module " .. macro .. ": " .. tostring(err)) end
+	end
+	local function readComponent(module)
+		local key = tostring(module)
+		if seenComponents[key] then return end
+		seenComponents[key] = true
+		if IsValidComponent(module) and IsComponentConstruction(module) then
+			readMacro(GetComponentData(module, "macro"))
+		end
+	end
+	-- Separate protected reads: failure of either list must not discard the other.
+	local ok, err = pcall(function ()
+		local n = C.GetNumStationModules(id64, true, true)
+		if n <= 0 then return end
+		local buf = ffi.new("UniverseID[?]", n)
+		n = C.GetStationModules(buf, n, id64, true, true)
+		for i = 0, n - 1 do readComponent(ConvertStringTo64Bit(tostring(buf[i]))) end
+	end)
+	if not ok then warnOnce("future-components", "unfinished module read failed: " .. tostring(err)) end
+	ok, err = pcall(function ()
+		-- size_t is 64-bit cdata in LuaJIT; numeric for loops require a Lua number.
+		local n = tonumber(C.GetNumPlannedStationModules(id64, false))
+		if n <= 0 then return end
+		local buf = ffi.new("UIConstructionPlanEntry[?]", n)
+		n = tonumber(C.GetPlannedStationModules(buf, n, id64, false))
+		for i = 0, n - 1 do
+			if buf[i].componentid ~= 0 then
+				readComponent(ConvertStringTo64Bit(tostring(buf[i].componentid)))
+			else
+				readMacro(ffi.string(buf[i].macroid))
+			end
+		end
+	end)
+	if not ok then warnOnce("future-plan", "planned module read failed: " .. tostring(err)) end
+	return products, resources
+end
+
 -- How a station classifies each ware it deals in.
 --
 -- The engine already computes exactly the distinction the goods rule needs, and vanilla
@@ -215,8 +279,7 @@ end
 --     intermediatewares  -> made AND consumed here                      => EXCLUDED
 --     anything else in tradewares -> explicitly traded goods            => depends on
 --                                    IsSellable / IsBuyable
--- "intermediatewares" IS the internal-consumer test, done by the engine, so we no longer
--- walk module recipes ourselves.
+-- Supplement the engine's completed-module roles with committed future recipes.
 --
 -- WHY NOT GetTradeList. The first version of this used live trade offers, and that made a
 -- BROKEN chain INVISIBLE: a starved factory has produced nothing, so it has no sell offer,
@@ -234,6 +297,13 @@ local function readWareRoles(id64)
 	local intermediates = normalizeWareList(safe({}, GetComponentData, id64, "intermediatewares"))
 	local tradewares    = normalizeWareList(safe({}, GetComponentData, id64, "tradewares"))
 	local buildwares    = readBuildResources(id64)
+	local futureProducts, futureResources = readFutureWareRoles(id64)
+	for ware in pairs(futureResources) do
+		if products[ware] or futureProducts[ware] then intermediates[ware] = true end
+	end
+	for ware in pairs(futureProducts) do
+		if pureresources[ware] or buildwares[ware] then intermediates[ware] = true end
+	end
 
 	local outputs, inputs, candidates = {}, {}, {}
 
@@ -245,6 +315,7 @@ local function readWareRoles(id64)
 	for ware in pairs(pureresources) do note(ware) end
 	for ware in pairs(tradewares) do note(ware) end
 	for ware in pairs(buildwares) do note(ware) end
+	for ware in pairs(futureResources) do note(ware) end
 
 	for ware in pairs(candidates) do
 		-- The exclusion is applied explicitly rather than trusting the lists to be
@@ -255,7 +326,7 @@ local function readWareRoles(id64)
 			if products[ware] then
 				outputs[ware] = true
 			end
-			if pureresources[ware] or buildwares[ware] then
+			if pureresources[ware] or buildwares[ware] or futureResources[ware] then
 				inputs[ware] = true
 			end
 			-- Explicitly traded goods: a mining hub's ore is neither a product nor a
@@ -287,6 +358,7 @@ local function readWareRoles(id64)
 		outputs[ware] = nil
 		if not intermediates[ware] then inputs[ware] = true end
 	end
+	for ware in pairs(futureResources) do outputs[ware] = nil end
 	for ware in pairs(outputs) do
 		inputs[ware] = nil
 	end

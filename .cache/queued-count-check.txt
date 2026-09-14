@@ -1,0 +1,299 @@
+uv run python test/test_translations.py
+........
+----------------------------------------------------------------------
+Ran 8 tests in 0.032s
+
+OK
+uv run python test/check_sources.py translations
+PASS translations: every source entry is present and nonempty in every language
+uv run --with lupa python test/test_graph.py
+
+=== the linking rule: output of one, input of another ===
+  PASS  graph built
+  PASS  3 stations + 2 crossing wares = 5 nodes   got 5
+  PASS  4 edges   got 4
+  PASS  ore linked (seller -> buyer)
+  PASS  hullparts linked
+  PASS  hub is ore's supplier
+  PASS  yard takes hullparts
+
+=== terminal outputs have nodes; unsupplied inputs do not ===
+  PASS  terminal output node exists
+  PASS  unsupplied input has no node
+  PASS  seller reports its output as untaken
+  PASS  buyer reports its input as unsupplied
+  PASS  one terminal output edge   got 1
+
+=== shared terminal outputs survive refresh and pruning ===
+  PASS  two producers share one terminal node
+  PASS  terminal node has no consumers
+  PASS  terminal edges only feed the ware
+  PASS  terminal production is combined with zero demand
+  PASS  terminal stock combines both producers
+  PASS  both producers are layout predecessors
+  PASS  terminal metrics refresh
+  PASS  terminal survives with one producer
+  PASS  terminal removed after last producer disappears
+  PASS  budget retains remaining producer and terminal
+  PASS  connected producer also shows surplus output
+
+=== internal intermediates are excluded upstream ===
+  PASS  internal intermediate gets no node even though f2 wants it
+  PASS  f2 reports wafers as unsupplied
+  PASS  the real product still links
+
+=== chain-wide ware aggregates (the numbers the tooltip shows) ===
+  PASS  combined stock counts all participants
+  PASS  combined capacity
+  PASS  maximum supplier subtotal
+  PASS  maximum consumer total
+  PASS  unmeasured mining makes net unknown
+  PASS  consumer station warns
+
+=== input-only warning boundaries ===
+  PASS  0 minutes -> critical
+  PASS  14.999 minutes -> critical
+  PASS  15 minutes -> warning
+  PASS  29.999 minutes -> warning
+  PASS  30 minutes -> ok
+  PASS  100 minutes -> ok
+  PASS  unavailable or zero consumption has no warning
+  PASS  unavailable or zero consumption has no warning
+  PASS  unavailable or zero consumption has no warning
+  PASS  output never warns, even with consumption data
+  PASS  output never warns, even with consumption data
+  PASS  output never warns, even with consumption data
+  PASS  output never warns, even with consumption data
+  PASS  dual role ignores full output
+  PASS  dual role uses input coverage
+
+=== station severity is the worst of its wares ===
+  PASS  station takes its worst ware's severity
+  PASS    ...and names it
+
+=== cycle breaking ===
+  PASS  cyclic chain still builds
+  PASS  an edge was dropped to break it   dropped=1
+  PASS  surviving graph topologically sorts (truly acyclic)
+  PASS  a station that is both ends of one ware does not hang
+  PASS    ...and stays acyclic
+
+=== budget degradation ===
+  PASS  over-budget chain still returns a graph
+  PASS  respects maxEdges   edges=25
+  PASS  reports what it gave up   collapsed=['energycells'] dropped=7
+  PASS  still acyclic after budgeting
+
+=== predecessors handed to the layout ===
+  PASS  ware node has the producer as predecessor
+  PASS  consumer has the ware as predecessor
+  PASS  liquid gets slot rank 2   got 2
+  PASS  solid gets slot rank 3
+  PASS  unknown transport falls back to 1
+
+=== theoretical module rates (LSO formula) ===
+  PASS  single product: amount * 3600 / cycle   got=720.0
+  PASS    ...resource on the same denominator   got=1080.0
+  PASS    ...every resource is counted   got=720.0
+  PASS  multi-product: rate is over the WHOLE queue, not the product's own cycle   a=240.0 b=240.0
+  PASS    ...a resource used by both products sums over the queue   got=240.0
+  PASS  no recipe -> no rates, no crash
+  PASS  zero cycle -> no rates rather than a divide by zero
+
+=== reservation bar (vanilla trade-bar semantics) ===
+  PASS  incoming delivery raises the future level   start=100 current=400
+  PASS    ...against the ware's own allocation
+  PASS  outgoing pickup lowers the future level   current=300
+  PASS  both directions apply: NET change, not one side by role   current=250
+  PASS  an over-committed hold floors at zero, never negative   current=0
+  PASS  the allocation stays fixed and only the drawing clips on overflow   max=1000 current=1300
+  PASS  unknown allocation falls back to transport-type capacity   max=2000
+  PASS  no allocation and no capacity: flagged unknown, denominator stays positive   max=1
+
+=== A: capacity balance (can the chain sustain it?) ===
+  PASS  supply capacity sums prodMax over suppliers   got=60000
+  PASS  demand capacity sums consMax over consumers   got=20000
+  PASS  signed maximum balance
+  PASS  stock remains inventory rather than production
+  PASS  supplier with output stock does not warn
+  PASS  ample consumer stock does not warn
+  PASS  incomplete rates suppress net only
+  PASS  inventory survives unknown rates
+  PASS  incomplete rates suppress net only
+  PASS  inventory survives unknown rates
+  PASS  incomplete rates suppress net only
+  PASS  inventory survives unknown rates
+
+=== edge cases ===
+  PASS  empty station list refuses with a reason   got=(None, 'empty')
+  PASS  single station builds with its output node
+  PASS    ...and one output edge
+
+====================================================
+All checks passed.
+uv run --with lupa python test/test_metrics.py
+PASS focused tooltip contracts
+PASS known-zero reader, aggregation, transport and popup contracts
+Warning policy, popup controls, live updates and refresh contracts passed.
+PASS planned/unfinished ware roles, graph connections, cancellation and metric isolation
+Reader, maximum-rate, unknown-data, paired popup, scroll, collapse, atomic graph, live refresh and Lua syntax checks passed.
+PASS planned/unfinished ware roles, graph connections, cancellation and metric isolation
+uv run --with lupa python test/test_store.py
+
+=== v4 storage: each member is id + station code ===
+  PASS  members stored as records   got=['506813', '501323']
+  PASS    ...with their codes   got=['HEA-485', 'CXG-006']
+  PASS  persisted flat as id|code   got='506813|HEA-485,501323|CXG-006'
+
+=== survives a /reloadui ===
+  PASS  ids survive   got=['506813', '501323']
+  PASS  codes survive   got=['HEA-485', 'CXG-006']
+
+=== migration: v3 stored bare ids with no code ===
+  PASS  v3 ids carried over   got=['506813', '501323']
+  PASS    ...with no code (none was ever recorded)
+  PASS  rewritten in the v4 shape   got='506813|,501323|'
+
+=== migration: v1/v2 nested form ===
+  PASS  nested chains recovered
+  PASS    ...old key gone after rewrite
+
+=== THE REPORTED BUG: a savegame load renumbers every station ===
+  PASS  every member re-found by its code   live=3 missing=0
+  PASS  stored ids updated to the new ones   got=['900001', '900002', '900003']
+  PASS    ...and saved   got='900001|HEA-485,900002|CXG-006,900003|ZUB-121'
+  PASS  the fresh ids survive the next reload
+
+=== a stale id now pointing at a DIFFERENT station must not be trusted ===
+  PASS  the impostor at the old id is rejected   got code=AAA-111
+  PASS    ...and the real station re-found under its new id   got=['555']
+
+=== fast path: nothing changed, nothing rewritten ===
+  PASS  resolves by id
+  PASS    ...without a single code lookup   lookups=0
+  PASS    ...and without rewriting storage
+
+=== genuinely gone stations are counted, not deleted ===
+  PASS  one live, one missing   live=1 missing=1
+  PASS  the missing member is KEPT (a lookup miss is not proof it is gone)   got=['1', '2']
+
+=== a stale and a fresh record for the same station collapse ===
+  PASS  addStations already refuses it by CODE   got=['10']
+  PASS    ...and reconcile collapses a forced duplicate   live=1 ids=['20']
+
+=== legacy code-less members are upgraded when their id still resolves ===
+  PASS  resolvable legacy member upgraded with its code   got=['LEG-042', None]
+  PASS  unresolvable legacy member counted missing   missing=1
+
+=== contains() matches by code as well as id ===
+  PASS  same id
+  PASS  new id, same code (stale store after a load)
+  PASS  different station
+  PASS  bare id still accepted
+
+=== mutations persist ===
+  PASS  added station survived reload
+  PASS  removal survived reload
+  PASS  second chain and selection survived   idx=1
+  PASS  deletion survived reload
+
+=== separators cannot leak into stored codes ===
+  PASS  separator characters stripped from a code   got=['ABC']
+  PASS    ...so the record still round-trips
+
+=== hostile input does not crash the store ===
+  PASS  survives __SCV_GROUPS = 42
+  PASS  survives __SCV_GROUPS = {}
+  PASS  survives __SCV_GROUPS = { names = 'nope', members = 7 }
+  PASS  survives __SCV_GROUPS = { names = {'A'}, members = {} }
+  PASS  survives __SCV_GROUPS = { names = {'A'}, members = {'|||,,,|'} }
+
+=== rename preserves membership and selection across reload ===
+  PASS  rename trims surrounding whitespace
+  PASS  blank name rejected
+  PASS  missing chain rejected
+  PASS  renamed name persisted
+  PASS  members unchanged
+  PASS  selection and other chain unchanged
+
+=== per-station ware warning exclusions ===
+  PASS  old storage defaults to enabled
+  PASS  ignore stored
+  PASS  other station independent
+  PASS  other ware independent
+  PASS  exclusion survives reload and membership removal
+  PASS  new runtime id retains preference
+  PASS  restoring warnings survives reload
+  PASS  missing durable code rejected
+  PASS  separator injection rejected
+  PASS  malformed entries safely ignored
+
+====================================================
+All checks passed.
+uv run --with lupa python test/test_name_entry.py
+PASS creation, rename, cancel, blank-name rejection, membership, selection and count wording
+uv run --with lupa python test/test_management.py
+PASS toolbar navigation, overlays, rename/delete/remove, graph identity, warnings, bounds and localization
+uv run --with lupa python test/test_interact.py
+PASS context labels in all languages, visible hints, selection and station membership
+uv run --with lupa python test/test_hotkey.py
+PASS optional API, late readiness, reload, localization, menu opening and editing guards
+uv run --with markdown-it-py==4.0.0 python test/test_release.py
+.............Release commit retained. Inspect git status and tag v0.1.0. If the tag exists, retry: git push --atomic origin main v0.1.0. No rollback was performed. Rebuild any missing ZIP from the verified tag.
+...
+----------------------------------------------------------------------
+Ran 16 tests in 29.894s
+
+OK
+Released v0.1.0: C:\Users\simon\AppData\Local\Temp\tmpfu1v17iz\mod\dist\Supply-Chain-View-0.1.0.zip
+Released v0.2.0: C:\Users\simon\AppData\Local\Temp\tmpfu1v17iz\mod\dist\Supply-Chain-View-0.2.0.zip
+Released v0.1.0: C:\Users\simon\AppData\Local\Temp\tmp9s5pbiq3\mod\dist\Supply-Chain-View-0.1.0.zip
+Released v0.1.0: C:\Users\simon\AppData\Local\Temp\tmpjzchkdk8\mod\dist\Supply-Chain-View-0.1.0.zip
+uv run --with markdown-it-py==4.0.0 python test/test_manual_bbcode.py
+E...........
+======================================================================
+ERROR: test_current_manual (__main__.ConversionTests.test_current_manual)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\simon\projects\play\x4-claude-toolkit\dev\supply_chain_view\test\test_manual_bbcode.py", line 45, in test_current_manual
+    output = manual.convert(source)
+  File "C:\Users\simon\projects\play\x4-claude-toolkit\dev\supply_chain_view\scripts\manual_bbcode.py", line 63, in convert
+    result = render(SyntaxTreeNode(parser.parse(source))).strip()
+             ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\simon\projects\play\x4-claude-toolkit\dev\supply_chain_view\scripts\manual_bbcode.py", line 37, in render
+    content = ''.join(render(child) for child in node.children)
+  File "C:\Users\simon\projects\play\x4-claude-toolkit\dev\supply_chain_view\scripts\manual_bbcode.py", line 37, in <genexpr>
+    content = ''.join(render(child) for child in node.children)
+                      ~~~~~~^^^^^^^
+  File "C:\Users\simon\projects\play\x4-claude-toolkit\dev\supply_chain_view\scripts\manual_bbcode.py", line 37, in render
+    content = ''.join(render(child) for child in node.children)
+  File "C:\Users\simon\projects\play\x4-claude-toolkit\dev\supply_chain_view\scripts\manual_bbcode.py", line 37, in <genexpr>
+    content = ''.join(render(child) for child in node.children)
+                      ~~~~~~^^^^^^^
+  File "C:\Users\simon\projects\play\x4-claude-toolkit\dev\supply_chain_view\scripts\manual_bbcode.py", line 37, in render
+    content = ''.join(render(child) for child in node.children)
+  File "C:\Users\simon\projects\play\x4-claude-toolkit\dev\supply_chain_view\scripts\manual_bbcode.py", line 37, in <genexpr>
+    content = ''.join(render(child) for child in node.children)
+                      ~~~~~~^^^^^^^
+  File "C:\Users\simon\projects\play\x4-claude-toolkit\dev\supply_chain_view\scripts\manual_bbcode.py", line 37, in render
+    content = ''.join(render(child) for child in node.children)
+  File "C:\Users\simon\projects\play\x4-claude-toolkit\dev\supply_chain_view\scripts\manual_bbcode.py", line 37, in <genexpr>
+    content = ''.join(render(child) for child in node.children)
+                      ~~~~~~^^^^^^^
+  File "C:\Users\simon\projects\play\x4-claude-toolkit\dev\supply_chain_view\scripts\manual_bbcode.py", line 37, in render
+    content = ''.join(render(child) for child in node.children)
+  File "C:\Users\simon\projects\play\x4-claude-toolkit\dev\supply_chain_view\scripts\manual_bbcode.py", line 37, in <genexpr>
+    content = ''.join(render(child) for child in node.children)
+                      ~~~~~~^^^^^^^
+  File "C:\Users\simon\projects\play\x4-claude-toolkit\dev\supply_chain_view\scripts\manual_bbcode.py", line 35, in render
+    raise ReleaseError(f'{MANUAL}: unsupported Markdown construct {kind!r}. '
+                       'Use headings, paragraphs, emphasis, links or lists instead.')
+release_archive.ReleaseError: docs/MANUAL.md: unsupported Markdown construct 'code_inline'. Use headings, paragraphs, emphasis, links or lists instead.
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.061s
+
+FAILED (errors=1)
+Nexus description ready to paste: C:\Users\simon\AppData\Local\Temp\tmpthb2rb_0\dist\nexus\v1.2.3\description.bbcode.txt
+Nexus description ready to paste: C:\Users\simon\AppData\Local\Temp\manual with spaces 81k1jf00\dist\nexus\v1.2.3\description.bbcode.txt
+error: recipe `test-release` failed on line 41 with exit code 1

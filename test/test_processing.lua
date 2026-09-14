@@ -5,6 +5,7 @@ for key, value in pairs(C) do savedC[key] = value end
 local componentData, macroData, libraryEntry, wareData = GetComponentData, GetMacroData, GetLibraryEntry, GetWareData
 local validComponent, construction, processingData = IsValidComponent, IsComponentConstruction, GetProcessingModuleData
 local productionLimit = GetWareProductionLimit
+local macroClass = IsMacroClass
 local workforce = Helper.getWorkforceConsumption
 local oldGraph, oldRevision = menu.graph, menu.metricRevision
 local modules = {}
@@ -80,10 +81,11 @@ function C.GetContainerWareReservations2(buf)
 	return 2
 end
 function GetMacroData(id) return "module" end
+function IsMacroClass(id, class) return find(id).class == class end
 function GetLibraryEntry(_, id)
 	local m = find(id)
 	if m.class == "production" then
-		assert(not m.construction, "unfinished recyclers must not need recipe data")
+		-- Classification reads unfinished recipes; effective rate queries still exclude them.
 		if modules.productWares then
 			local products = {}
 			for _, ware in ipairs(modules.productWares) do
@@ -265,6 +267,7 @@ for key in pairs(C) do C[key] = nil end
 for key, value in pairs(savedC) do C[key] = value end
 GetComponentData, GetMacroData, GetLibraryEntry, GetWareData = componentData, macroData, libraryEntry, wareData
 GetWareProductionLimit = productionLimit
+IsMacroClass = macroClass
 IsValidComponent, IsComponentConstruction, GetProcessingModuleData = validComponent, construction, processingData
 Helper.getWorkforceConsumption = workforce
 menu.graph, menu.metricRevision = oldGraph, oldRevision

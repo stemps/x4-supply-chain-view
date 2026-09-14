@@ -6,6 +6,7 @@ Run from any directory: uv run --with lupa python test_metrics.py
 from pathlib import Path
 from xml.etree import ElementTree as ET
 from lupa import LuaRuntime
+from lupa.luajit21 import LuaRuntime as LuaJITRuntime
 
 root = Path(__file__).resolve().parents[1]
 lua = LuaRuntime(unpack_returned_tuples=True)
@@ -19,10 +20,12 @@ function ReadText(page, id) return texts[id] or tostring(id) end
 function ConvertStringTo64Bit(v) return v end
 function IsValidComponent() return true end
 function IsComponentConstruction(id) return id == 'unfinished' end
+function IsMacroClass(_, class) return class == 'production' end
 state = { modules=true, build=false, stockKnown=true, reservations=true, workforce=100,
           prod=4800000, cons=2400000, cargo={energycells=120000, food=10000},
           incoming=2000, outgoing=12000 }
 C = {}
+function C.GetNumPlannedStationModules() return 0 end
 package.preload.ffi = function() return {C=C, new=function() return {} end, string=tostring} end
 function C.IsComponentClass() return true end
 function C.IsRealComponentClass(id, class) return class == 'production' end
@@ -535,3 +538,17 @@ menu.display()
 assert(menu.scanDone and SCV_Data.cache.failed.failed)
 ''')
 print('Reader, maximum-rate, unknown-data, paired popup, scroll, collapse, atomic graph, live refresh and Lua syntax checks passed.')
+
+for runtime in [LuaRuntime, LuaJITRuntime]:
+    future_lua = runtime(unpack_returned_tuples=True)
+    if runtime is LuaJITRuntime:
+        future_lua.execute('''
+            local nativeffi = require('ffi')
+            function nativeCount(n) return nativeffi.new('size_t', n) end
+            assert(type(nativeCount(1)) == 'cdata')
+            package.loaded.ffi = nil
+        ''')
+    future_tests = future_lua.execute((root/'test/test_future_roles.lua').read_text(encoding='utf-8'))
+    for name in ['scv_graph.lua', 'scv_data.lua']:
+        future_lua.execute((root/'ui'/name).read_text(encoding='utf-8'))
+    future_tests()
