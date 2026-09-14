@@ -1,4 +1,4 @@
-"""Interactive, Git-backed release builder. Uses only Python's standard library."""
+"""Interactive, Git-backed release builder with a Markdown-to-BBCode handoff."""
 from __future__ import annotations
 
 import datetime
@@ -142,6 +142,8 @@ class Release:
 
     def run(self, ask=input, check=None, publisher=None):
         head = self.preflight()
+        from manual_bbcode import from_commit
+        from_commit(self.root, head)
         previous, suggested = self.previous()
         version = ask(f"Next version [{suggested}]: ").strip() or suggested
         parts = version_tuple(version)
@@ -260,11 +262,19 @@ def main():
         tag = args.tag
     try:
         archive, commit, notes = tagged_zip(root, tag)
+        from manual_bbcode import from_commit, handoff
+        from_commit(root, commit)
         publisher.publish(tag, commit, archive, notes, adopt_version=args.adopt_version,
                           retry_version=args.retry_version, changelog_status=args.changelog_status)
     except (ReleaseError, OSError, ValueError, KeyError, zipfile.BadZipFile) as error:
         raise ReleaseError(f'Nexus publication incomplete: {error}\n'
                            f'Git release retained. Resume: just publish-nexus {tag}') from None
+    try:
+        handoff(root, tag, commit)
+    except (ReleaseError, OSError, ValueError) as error:
+        print(f'Nexus publication succeeded, but the description handoff failed: {error}\n'
+              'No publication retry is needed. Open the generated file if present, or run:\n'
+              f'just nexus-description {tag}', file=sys.stderr)
 
 
 if __name__ == "__main__":

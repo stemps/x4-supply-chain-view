@@ -44,6 +44,7 @@ class ReleaseTests(unittest.TestCase):
         self.write("assets/nested/example.lua", "return 'not runtime content'\n")
         self.write("assets/nested/example.xml", "<promotional/>\n")
         self.write("README.md", "Not shipped\n")
+        self.write("docs/MANUAL.md", "## Usage\n\nRelease manual.\n")
         self.cmd("add", ".")
         self.cmd("commit", "-m", "Initial mod")
         self.cmd("remote", "add", "origin", str(self.remote))
@@ -108,6 +109,25 @@ class ReleaseTests(unittest.TestCase):
         self.cmd("branch", "--set-upstream-to=origin/main")
         self.cmd("remote", "set-url", "origin", str(self.remote.parent / "missing.git"))
         with self.assertRaises(release.ReleaseError): self.runner.preflight()
+
+    def test_manual_uses_released_commit_after_later_edits(self):
+        from manual_bbcode import from_commit
+        commit = self.cmd('rev-parse', 'HEAD')
+        self.write('docs/MANUAL.md', '## Later working-tree edits\n')
+        self.assertIn('Release manual.', from_commit(self.root, commit))
+        self.assertNotIn('Later working-tree', from_commit(self.root, commit))
+
+    def test_invalid_manual_stops_before_metadata_or_publication(self):
+        self.write('docs/MANUAL.md', '> Unsupported quote\n')
+        self.cmd('commit', '-am', 'Unsupported manual')
+        self.cmd('push')
+        head = self.cmd('rev-parse', 'HEAD')
+        with patch.object(self.runner, 'updated_metadata') as update:
+            with self.assertRaisesRegex(release.ReleaseError, 'unsupported Markdown'):
+                self.run_release()
+        update.assert_not_called()
+        self.assertEqual(self.cmd('rev-parse', 'HEAD'), head)
+        self.assertEqual(self.cmd('status', '--porcelain'), '')
 
     def test_remote_ahead(self):
         old = self.cmd("rev-parse", "HEAD")

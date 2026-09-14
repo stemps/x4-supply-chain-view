@@ -21,7 +21,7 @@ test: test-graph test-metrics test-store test-hotkey test-release
 
 # Validate, record, push, package and publish a release from clean main.
 release:
-    uv run python scripts/release.py
+    uv run --with markdown-it-py==4.0.0 python scripts/release.py
 
 # Package the current working tree, including uncommitted runtime files.
 build-zip:
@@ -29,13 +29,18 @@ build-zip:
 
 # Publish or resume an existing tagged release on Nexus Mods.
 publish-nexus tag *args:
-    uv run python scripts/release.py publish-nexus "{{tag}}" {{args}}
+    uv run --with markdown-it-py==4.0.0 python scripts/release.py publish-nexus "{{tag}}" {{args}}
+
+# Regenerate and open a released manual without publishing anything.
+nexus-description tag:
+    uv run --with markdown-it-py==4.0.0 python scripts/manual_bbcode.py "{{tag}}"
 
 # Exercise releases using temporary repositories and local remotes only.
 test-release:
-    uv run python test/test_release.py
+    uv run --with markdown-it-py==4.0.0 python test/test_release.py
+    uv run --with markdown-it-py==4.0.0 python test/test_manual_bbcode.py
     uv run python test/test_nexus.py
-    uv run python test/test_archive.py
+    uv run --with markdown-it-py==4.0.0 python test/test_archive.py
 
 # Optional API lifecycle and menu activation guards.
 test-hotkey:
