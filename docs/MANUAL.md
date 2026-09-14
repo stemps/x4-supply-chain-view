@@ -14,16 +14,23 @@ your save file.
 ### Interacting with the supply chain view:
 
 - Open the map or player information screen. The Supply Chain View is the
-  rightmost tab. You can also set a direct keybind; see **Optional keyboard shortcut** below.
+  rightmost tab. You can also set a direct keybind; see **Optional keyboard
+  shortcut** below.
 - Expand a station or ware to see a detailed view of input and output wares, their
   stocks, production rates, trade reservations, how long current supply buffers
   last, ...
-- Select ware nodes to see how they connect your stations together and compare input/output stock levels to see if your traders are the bottleneck
-- Orange or red labels indicate potential ware flow issues
-- Navigate between your supply chains on the top of the screen
-- The supply chain view shows real ware stock and real production rates to help
-  you to troubleshoot and right-size your production chain. It does not (yet?)
-  show real ware flow.
+- Select ware nodes to compare supplier and consumer stocks. Links show matching
+  sell/buy offers within this chain, not actual shipments.
+- Orange or red labels indicate potential ware flow issues.
+- Hover over figures and warnings for explanations. `?` means unknown data,
+  not zero.
+- Navigate between your supply chains on the top of the screen.
+- The supply chain view shows real ware stock and maximum production rates under
+  current station conditions to help you troubleshoot and right-size your chain.
+- "Lasts" shows how long current stock would satisfy station demand. It assumes
+  maximum consumption without deliveries; "Full in" shows the time until storage
+  runs full. It assumes maximum production without collections. These are
+  planning estimates.
 
 ## Optional keyboard shortcut
 
@@ -41,15 +48,16 @@ retaining the selected chain.
 ## Some things you can spot using this mod
 
 - Expand a ware. If the producer side has plenty of stock, but the consumer side
-  doesn't, your traders are the bottleneck. Add more traders to move goods faster.
-- If a ware shows a red (negative) ratio of production to consumption, you need
-  more factories for that ware.
-- If an input stock bar shows as a small blue bar and a large green bar, most of
-  the capacity of the stock is reservations (goods that are still en route).
-  Add more storage of that type to allow for a larger buffer and more in-transit
-  shipments.
-- Check the "lasts X min" display next to your input stock. If that's low, you
-  also want more storage to buffer against shipping fluctuations.
+  doesn't, check trade restrictions, prices or add more traders.
+- A negative production balance means this chain cannot meet maximum demand
+  internally. Either external supply is needed or more factories are reuquired.
+- If an input stock bar shows as a small blue bar and a large green bar filling up
+  to 100%, most of the expected stock is reserved incoming goods, still en route
+  and further trades are blocked by the stock limit. Make sure your available
+  storage is large enough to accomodate for expected en route volume and
+  production buffer.
+- A low "Lasts" time means a small current buffer. Check supply and deliveries;
+  add storage if existing capacity prevents keeping a large enough buffer.
 
 Let me know what kinds of issues you found in your supply chain ;-).
 
