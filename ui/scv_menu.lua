@@ -30,9 +30,9 @@ local config = {
 	textPage               = 90210,
 	-- Station names run long ("2 - Factory - Asteroid Belt - Computronic Substrate") and the
 	-- node must also fit a status figure on the right; at 250px they were cut off mid-word.
-	-- Ware names are short, and widening them too would only fit fewer tiers on screen.
+	-- Leave room for long ware names beside partial supply/demand labels.
 	stationNodeWidth       = 310,
-	wareNodeWidth          = 260,
+	wareNodeWidth          = 300,
 	nodeOffsetX            = 20,
 	savedVersion           = 2,
 	consumptionColor       = { r = 255, g = 150, b = 150, a = 100, glow = 0 },
@@ -345,6 +345,37 @@ local function formatPartial(n, known, rate)
 	return (n or 0) > 0 and (value .. " + ?") or (rate and T(5003, "? ") or "?")
 end
 
+-- Compact partial notation is confined to collapsed ware labels.
+local function aggregateStatus(node)
+	local color = Color["text_inactive"]
+	if node.netKnown then
+		if node.netRate > 0 then color = Color["text_positive"]
+		elseif node.netRate < 0 then color = config.consumptionColor end
+		local text = formatSigned(node.netRate)
+		if node.demandCap > 0 then
+			text = text .. string.format(" (%+.0f%%)", node.netRate / node.demandCap * 100)
+		end
+		return text, color
+	end
+	-- Incomplete sides are subtotals, never a basis for a signed net balance.
+	local supply, demand = node.supplyCap or 0, node.demandCap or 0
+	local function side(value, isInput)
+		return T(3157, T(isInput and 3156 or 3155, formatRate(value))), isInput and config.consumptionColor or Color["text_positive"]
+	end
+	if node.supplyKnown and supply > 0 then return side(supply, false) end
+	if node.demandKnown and demand > 0 then return side(demand, true) end
+	if not node.supplyKnown and not node.demandKnown and supply > 0 and demand > 0 then
+		local supplyText = Helper.convertColorToText(Color["text_positive"]) .. T(3155, formatAmount(supply)) .. "\27X"
+		local demandText = Helper.convertColorToText(config.consumptionColor) .. T(3156, formatAmount(demand)) .. "\27X"
+		return T(3157, T(3159, supplyText, demandText)), color
+	end
+	if supply > 0 then return side(supply, false) end
+	if demand > 0 then return side(demand, true) end
+	if node.supplyKnown then return side(0, false) end
+	if node.demandKnown then return side(0, true) end
+	return formatSigned(nil), color
+end
+
 -- Hours as something readable. Below an hour, minutes are what you act on.
 local function formatHours(hours)
 	if not hours then
@@ -531,15 +562,21 @@ function menu.decorateNodes(graph)
 			local lines = { aggregateStockTooltip(node.name, storage), "",
 				aggregateRateLine(node.supplyCap, node.supplyKnown, false),
 				aggregateRateLine(node.demandCap, node.demandKnown, true),
-				T(3151, formatSigned(node.netRate)), "",
-				rateAssumptions(true, hasContinuousDemand(graph, node)), T(3143), T(3144) }
-			local rateColor = Color["text_inactive"]
-			if node.netKnown and node.netRate > 0 then rateColor = Color["text_positive"]
-			elseif node.netKnown and node.netRate < 0 then rateColor = config.consumptionColor end
-			local rateText = formatSigned(node.netRate)
-			if node.netKnown and node.demandCap > 0 then
-				rateText = rateText .. string.format(" (%+.0f%%)", node.netRate / node.demandCap * 100)
+			}
+			if node.netKnown then
+				lines[#lines + 1] = T(3151, formatSigned(node.netRate))
+			else
+				lines[#lines + 1] = T(not node.supplyKnown and (not node.demandKnown and 3163 or 3161) or 3162)
+				lines[#lines + 1] = T(3160)
+				if node.supplyKnown or node.demandKnown or node.supplyCap > 0 or node.demandCap > 0 then
+					lines[#lines + 1] = T(3164)
+				end
 			end
+			lines[#lines + 1] = ""
+			lines[#lines + 1] = rateAssumptions(true, hasContinuousDemand(graph, node))
+			lines[#lines + 1] = T(3143)
+			lines[#lines + 1] = T(3144)
+			local rateText, rateColor = aggregateStatus(node)
 			node.text = node.name
 			node[1] = {
 				properties = {
@@ -1155,6 +1192,17 @@ function menu.displayChain(frame, x, y, width, reuseGraph)
 	})
 
 	menu.renderFlowchart(graph, junctions)
+	menu.drawChainLegend(frame, x, chartY, width)
+end
+
+-- Reserve wrapped footer space before measuring the chart's visible height, as
+-- vanilla station overview does for its tables below the flowchart.
+function menu.drawChainLegend(frame, x, chartY, width)
+	local footer = frame:addTable(1, { tabOrder = 4, width = width, x = x, y = chartY })
+	footer:addRow(false, { fixed = true })[1]:createText(T(3166), { wordwrap = true })
+	menu.flowchart.properties.maxVisibleHeight = math.max(1,
+		frame:getAvailableHeight() - chartY - footer:getFullHeight() - Helper.borderSize - Helper.frameBorder)
+	footer.properties.y = chartY + menu.flowchart:getVisibleHeight() + Helper.borderSize
 end
 
 -- The node/junction/edge loop, modelled on menu_station_overview.lua:1774-1915 and

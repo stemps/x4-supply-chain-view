@@ -75,6 +75,49 @@ local build, breakCycles, budget = SCV_Graph.build, SCV_Graph.breakCycles, SCV_G
 SCV_Graph.build = function () error("refresh rebuilt graph") end
 SCV_Graph.breakCycles = function () error("refresh broke cycles") end
 SCV_Graph.applyBudget = function () error("refresh changed budget") end
+-- The same native node and open popup survive every label/completeness transition.
+local createdBefore = nodeCreates
+for _, case in ipairs({
+	{ 8000, true, 5000, false, "+8.0k/h*", "Demand is incomplete." },
+	{ 8000, false, 5000, false, "+8.0k / -5.0k*", "Supply and demand are incomplete." },
+	{ 0, false, 0, false, "? /h", "Supply and demand are incomplete." },
+	{ 0, false, 12000, true, "-12.0k/h*", "Supply is incomplete." },
+	{ 14400, true, 12000, true, "+2.4k/h (+20%)", "Balance: +2.4k/h" },
+}) do
+	local nextSupplier, nextConsumer = copy(supplier), copy(consumer)
+	nextSupplier.wares.ore.prodMax, nextSupplier.wares.ore.prodKnown = case[1], case[2]
+	nextConsumer.wares.ore.consMax, nextConsumer.wares.ore.consKnown = case[3], case[4]
+	menu.publishMetrics({ nextSupplier, nextConsumer })
+	assert(plainStatus(nativeWare.status) == case[5], nativeWare.status)
+	if case[5]:find("^%-[^ ]+/h%*$") then
+		assert(nativeWare.statusColor.r == 255 and nativeWare.statusColor.g == 150)
+	elseif case[5]:find("^%+[^ ]+/h%*$") or (case[2] and case[4]) then
+		assert(nativeWare.statusColor == "text_positive")
+	else
+		assert(nativeWare.statusColor == "text_inactive")
+	end
+	if case[5]:find(" / ") then
+		assert(nativeWare.status:find("\27#ff00ff00#", 1, true))
+		assert(nativeWare.status:find("\27#ffff9696#", 1, true))
+	else
+		assert(not nativeWare.status:find("\27", 1, true), "stale inline colours")
+	end
+	assert(string.find(nativeWare.tooltip, case[6], 1, true))
+	if case[5]:sub(-1) == "*" then
+		assert(string.find(nativeWare.tooltip, "* Known contributions only; net balance unavailable. Rates are per hour.", 1, true))
+	else
+		assert(not string.find(nativeWare.tooltip, "* Known contributions", 1, true))
+	end
+	assert(nativeWare.value == 110 and nativeWare.max == 2000)
+	assert(nodeCreates == createdBefore and ware[1].node == nativeWare)
+	assert(menu.expandedNode == nativeWare and panel.scroll == 73 and #popup.rows == rows)
+	if not case[2] or not case[4] then
+		assert(ware.netRate == nil and not string.find(nativeWare.status, "%", 1, true))
+	else
+		assert(not string.find(nativeWare.tooltip, "incomplete", 1, true))
+		assert(not string.find(nativeWare.tooltip, "* Known contributions", 1, true))
+	end
+end
 local freshSupplier, freshConsumer = copy(supplier), copy(consumer)
 freshSupplier.wares.ore.stock, freshSupplier.wares.ore.prodMax = 400, 200
 freshSupplier.wares.ore.incoming, freshSupplier.wares.ore.outgoing = 0, 100

@@ -128,5 +128,15 @@
     <t id="3152">Zapas nieznany.</t>
     <t id="3153">Ostrzeżenia dla tego towaru na tej stacji są włączone. Kliknij, aby je ignorować.</t>
     <t id="3154">Ostrzeżenia dla tego towaru na tej stacji są ignorowane. Kliknij, aby je włączyć.</t>
+    <t id="3155">+%s</t>
+    <t id="3156">-%s</t>
+    <t id="3157">%s*</t>
+    <t id="3159">%s / %s</t>
+    <t id="3160">Bilans niedostępny: dane podaży lub popytu są niepełne.</t>
+    <t id="3161">Dane podaży są niepełne.</t>
+    <t id="3162">Dane popytu są niepełne.</t>
+    <t id="3163">Dane podaży i popytu są niepełne.</t>
+    <t id="3164">* Tylko znane ilości; bilans netto niedostępny. Wartości na godzinę.</t>
+    <t id="3166">* dokładny bilans nieznany z powodu producentów/odbiorców o nieznanych lub zmiennych ilościach \(np. górników lub stoczni\)</t>
   </page>
 </language>

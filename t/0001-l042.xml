@@ -128,5 +128,15 @@
     <t id="3152">Zásoba neznámá.</t>
     <t id="3153">Varování pro toto zboží na této stanici jsou zapnutá. Kliknutím je ignorujete.</t>
     <t id="3154">Varování pro toto zboží na této stanici jsou ignorována. Kliknutím je zapnete.</t>
+    <t id="3155">+%s</t>
+    <t id="3156">-%s</t>
+    <t id="3157">%s*</t>
+    <t id="3159">%s / %s</t>
+    <t id="3160">Bilance není k dispozici: údaje o nabídce nebo poptávce jsou neúplné.</t>
+    <t id="3161">Údaje o nabídce jsou neúplné.</t>
+    <t id="3162">Údaje o poptávce jsou neúplné.</t>
+    <t id="3163">Údaje o nabídce a poptávce jsou neúplné.</t>
+    <t id="3164">* Pouze známé příspěvky; čistá bilance není k dispozici. Hodnoty jsou za hodinu.</t>
+    <t id="3166">* přesná bilance není známa kvůli výrobcům/spotřebitelům s neznámým nebo proměnlivým objemem \(např. těžařům či loděnicím\)</t>
   </page>
 </language>

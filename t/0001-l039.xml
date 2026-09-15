@@ -128,5 +128,15 @@
     <t id="3152">Scorte sconosciute.</t>
     <t id="3153">Avvisi attivi per questa merce in questa stazione. Clicca per ignorarli.</t>
     <t id="3154">Avvisi ignorati per questa merce in questa stazione. Clicca per attivarli.</t>
+    <t id="3155">+%s</t>
+    <t id="3156">-%s</t>
+    <t id="3157">%s*</t>
+    <t id="3159">%s / %s</t>
+    <t id="3160">Saldo non disponibile: i dati di offerta o domanda sono incompleti.</t>
+    <t id="3161">Dati di offerta incompleti.</t>
+    <t id="3162">Dati di domanda incompleti.</t>
+    <t id="3163">Dati di offerta e domanda incompleti.</t>
+    <t id="3164">* Solo contributi noti; saldo netto non disponibile. Quantità per ora.</t>
+    <t id="3166">* saldo esatto sconosciuto a causa di produttori/consumatori con volumi sconosciuti o variabili \(ad es. minatori o cantieri navali\)</t>
   </page>
 </language>

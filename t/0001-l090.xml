@@ -128,5 +128,15 @@
     <t id="3152">Stok bilinmiyor.</t>
     <t id="3153">Bu istasyondaki bu mal için uyarılar etkin. Yok saymak için tıklayın.</t>
     <t id="3154">Bu istasyondaki bu mal için uyarılar yok sayılıyor. Etkinleştirmek için tıklayın.</t>
+    <t id="3155">+%s</t>
+    <t id="3156">-%s</t>
+    <t id="3157">%s*</t>
+    <t id="3159">%s / %s</t>
+    <t id="3160">Denge hesaplanamıyor: arz veya talep verileri eksik.</t>
+    <t id="3161">Arz verileri eksik.</t>
+    <t id="3162">Talep verileri eksik.</t>
+    <t id="3163">Arz ve talep verileri eksik.</t>
+    <t id="3164">* Yalnızca bilinen miktarlar; net denge hesaplanamıyor. Değerler saat başınadır.</t>
+    <t id="3166">* miktarı bilinmeyen veya değişken üreticiler/tüketiciler \(ör. madenciler veya tersaneler\) nedeniyle kesin denge bilinmiyor</t>
   </page>
 </language>

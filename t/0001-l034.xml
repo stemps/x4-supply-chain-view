@@ -128,5 +128,15 @@
     <t id="3152">Existencias desconocidas.</t>
     <t id="3153">Avisos activados para esta mercancía en esta estación. Haz clic para ignorarlos.</t>
     <t id="3154">Avisos ignorados para esta mercancía en esta estación. Haz clic para activarlos.</t>
+    <t id="3155">+%s</t>
+    <t id="3156">-%s</t>
+    <t id="3157">%s*</t>
+    <t id="3159">%s / %s</t>
+    <t id="3160">Balance no disponible: la oferta o la demanda están incompletas.</t>
+    <t id="3161">Oferta incompleta.</t>
+    <t id="3162">Demanda incompleta.</t>
+    <t id="3163">Oferta y demanda incompletas.</t>
+    <t id="3164">* Solo contribuciones conocidas; balance neto no disponible. Tasas por hora.</t>
+    <t id="3166">* balance exacto desconocido por productores/consumidores con volúmenes desconocidos o variables \(p. ej., mineros o astilleros\)</t>
   </page>
 </language>

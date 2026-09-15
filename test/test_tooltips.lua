@@ -106,7 +106,8 @@ local node = graph.wareNodes.ore
 local overview = node[1].properties.mouseOverText
 has(overview, "Ore\n\nStock: 100 + ? / ~500\nIncomplete stock or capacity;")
 has(overview, "Maximum production: 50/h\nMaximum consumption: 80/h + ?\nIncomplete total:")
-has(overview, "Balance: ? /h")
+has(overview, "Demand is incomplete.\nBalance unavailable: supply or demand is incomplete.")
+lacks(overview, "Balance: ? /h")
 local totals = tableMock()
 menu.expandWare(nil, { properties = { height = 600 } }, totals, node)
 local stock = totals.rows[2][1].props.mouseOverText

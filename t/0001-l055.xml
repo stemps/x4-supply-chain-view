@@ -128,5 +128,15 @@
     <t id="3152">Estoque desconhecido.</t>
     <t id="3153">Avisos ativados para esta mercadoria nesta estação. Clique para ignorá-los.</t>
     <t id="3154">Avisos ignorados para esta mercadoria nesta estação. Clique para ativá-los.</t>
+    <t id="3155">+%s</t>
+    <t id="3156">-%s</t>
+    <t id="3157">%s*</t>
+    <t id="3159">%s / %s</t>
+    <t id="3160">Saldo indisponível: os dados de oferta ou demanda estão incompletos.</t>
+    <t id="3161">Dados de oferta incompletos.</t>
+    <t id="3162">Dados de demanda incompletos.</t>
+    <t id="3163">Dados de oferta e demanda incompletos.</t>
+    <t id="3164">* Apenas contribuições conhecidas; saldo líquido indisponível. Taxas por hora.</t>
+    <t id="3166">* saldo exato desconhecido devido a produtores/consumidores com volumes desconhecidos ou variáveis \(por exemplo, mineradores ou estaleiros\)</t>
   </page>
 </language>

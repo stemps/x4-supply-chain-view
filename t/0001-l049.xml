@@ -128,5 +128,15 @@
     <t id="3152">Vorrat unbekannt.</t>
     <t id="3153">Warnungen für diese Ware an dieser Station sind aktiviert. Klicken, um sie zu ignorieren.</t>
     <t id="3154">Warnungen für diese Ware an dieser Station werden ignoriert. Klicken, um sie zu aktivieren.</t>
+    <t id="3155">+%s</t>
+    <t id="3156">-%s</t>
+    <t id="3157">%s*</t>
+    <t id="3159">%s / %s</t>
+    <t id="3160">Bilanz nicht verfügbar: Angebot oder Bedarf ist unvollständig erfasst.</t>
+    <t id="3161">Angebot unvollständig erfasst.</t>
+    <t id="3162">Bedarf unvollständig erfasst.</t>
+    <t id="3163">Angebot und Bedarf unvollständig erfasst.</t>
+    <t id="3164">* Nur bekannte Beiträge; Nettobilanz nicht verfügbar. Raten pro Stunde.</t>
+    <t id="3166">* genaue Bilanz unbekannt wegen Produzenten/Verbrauchern mit unbekannten oder variablen Mengen \(z. B. Bergbauschiffen oder Werften\)</t>
   </page>
 </language>

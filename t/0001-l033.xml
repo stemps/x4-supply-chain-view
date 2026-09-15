@@ -128,5 +128,15 @@
     <t id="3152">Stock inconnu.</t>
     <t id="3153">Alertes activées pour cette marchandise dans cette station. Cliquez pour les ignorer.</t>
     <t id="3154">Alertes ignorées pour cette marchandise dans cette station. Cliquez pour les activer.</t>
+    <t id="3155">+%s</t>
+    <t id="3156">-%s</t>
+    <t id="3157">%s*</t>
+    <t id="3159">%s / %s</t>
+    <t id="3160">Bilan indisponible : les données d’offre ou de demande sont incomplètes.</t>
+    <t id="3161">Données d’offre incomplètes.</t>
+    <t id="3162">Données de demande incomplètes.</t>
+    <t id="3163">Données d’offre et de demande incomplètes.</t>
+    <t id="3164">* Contributions connues uniquement ; bilan net indisponible. Les débits sont par heure.</t>
+    <t id="3166">* bilan exact inconnu en raison de producteurs/consommateurs aux volumes inconnus ou variables \(p. ex. mineurs ou chantiers navals\)</t>
   </page>
 </language>

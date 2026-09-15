@@ -150,5 +150,15 @@
     <t id="3152">Stock unknown.</t>
     <t id="3153">Warnings enabled for this ware at this station. Click to ignore.</t>
     <t id="3154">Warnings ignored for this ware at this station. Click to enable.</t>
+    <t id="3155">+%s</t>
+    <t id="3156">-%s</t>
+    <t id="3157">%s*</t>
+    <t id="3159">%s / %s</t>
+    <t id="3160">Balance unavailable: supply or demand is incomplete.</t>
+    <t id="3161">Supply is incomplete.</t>
+    <t id="3162">Demand is incomplete.</t>
+    <t id="3163">Supply and demand are incomplete.</t>
+    <t id="3164">* Known contributions only; net balance unavailable. Rates are per hour.</t>
+    <t id="3166">* exact balance unknown due producers/consumers with unknown or variable volume \(e.g. miners or shipyards\)</t>
   </page>
 </language>

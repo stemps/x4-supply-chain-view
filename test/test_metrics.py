@@ -4,6 +4,7 @@ These verify our use of engine results, not the engine's implementation of ignor
 Run from any directory: uv run --with lupa python test_metrics.py
 """
 from pathlib import Path
+import re
 from xml.etree import ElementTree as ET
 from lupa import LuaRuntime
 from lupa.luajit21 import LuaRuntime as LuaJITRuntime
@@ -11,7 +12,14 @@ from lupa.luajit21 import LuaRuntime as LuaJITRuntime
 root = Path(__file__).resolve().parents[1]
 lua = LuaRuntime(unpack_returned_tuples=True)
 g = lua.globals()
-texts = {int(t.attrib['id']): ''.join(t.itertext()) for t in ET.parse(root/'t/0001.xml').iter('t')}
+def read_text(text):
+    # X4 removes translator comments; escaped parentheses remain visible.
+    text = text.replace(r'\(', '\x01').replace(r'\)', '\x02')
+    text = re.sub(r'\([^()]*\)', '', text)
+    return text.replace('\x01', '(').replace('\x02', ')')
+
+
+texts = {int(t.attrib['id']): read_text(''.join(t.itertext())) for t in ET.parse(root/'t/0001.xml').iter('t')}
 g.texts = lua.table_from(texts)
 lua.execute('''
 logs = {}
@@ -86,6 +94,14 @@ Helper = { standardTextHeight=20, topLevelMenus={}, headerRow1Properties={},
     registerMenu=function() end, clearFrame=function() cleared=true end,
     getWorkforceConsumption=function(id, ware) return ware == 'food' and state.workforce or 0 end }
 Color = setmetatable({}, {__index=function(_, key) return key end})
+function Helper.convertColorToText(color)
+    if color == 'text_positive' then return string.char(27) .. '#ff00ff00#' end
+    assert(color.r == 255 and color.g == 150 and color.b == 150 and color.a == 100)
+    return string.char(27) .. '#ffff9696#'
+end
+function plainStatus(text)
+    return (text:gsub(string.char(27) .. '#%x+#', ''):gsub(string.char(27) .. 'X', ''))
+end
 ''')
 for name in ['scv_graph.lua', 'scv_data.lua']:
     lua.execute((root/'ui'/name).read_text(encoding='utf-8'))
@@ -449,7 +465,7 @@ assert(w[1].properties.value==0 and w[1].statusText=='-30/h (-38%)')
 b.wares.ore.limit=300; b.wares.ore.stockKnown=true; b.wares.ore.consKnown=false
 graph=SCV_Graph.build({a,b}); w=graph.wareNodes.ore
 menu.decorateNodes(graph)
-assert(w[1].properties.value==150 and w[1].properties.max==500 and w[1].statusText=='? /h')
+assert(w[1].properties.value==150 and w[1].properties.max==500 and w[1].statusText=='+50/h*')
 menu.graph=graph
 local partial=tableMock()
 menu.expandWare(nil,{properties={height=220}},partial,w)
@@ -489,6 +505,9 @@ lua.execute((root/'test/test_processing.lua').read_text(encoding='utf-8'))
 lua.execute((root/'ui/scv_store.lua').read_text(encoding='utf-8'))
 lua.execute((root/'test/test_warnings.lua').read_text(encoding='utf-8'))
 lua.execute((root/'test/test_menu_lifecycle.lua').read_text(encoding='utf-8'))
+g.germanTexts = lua.table_from({int(t.attrib['id']): read_text(''.join(t.itertext()))
+    for t in ET.parse(root/'t/0001-l049.xml').iter('t')})
+lua.execute((root/'test/test_aggregate_labels.lua').read_text(encoding='utf-8'))
 lua.execute((root/'test/test_refresh.lua').read_text(encoding='utf-8'))
 lua.execute('''
 -- Exercise the real chunked scanner and menu lifecycle. No graph may be built from
