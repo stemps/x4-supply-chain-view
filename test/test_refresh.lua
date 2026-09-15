@@ -45,6 +45,23 @@ menu.flowchart = { addNode = function (_, row, col, customdata, properties)
 end }
 menu.renderFlowchart(graph, {})
 local nativeWare, nativeStation = ware[1].node, station[1].node
+assert(station.severity == "critical")
+assert(nativeStation.properties.outlineColor == "icon_error")
+assert(nativeStation.properties.statusColor == "icon_error")
+assert(nativeStation.properties.text.color == "default-text")
+-- Warning styling also applies when opening the view directly at that severity.
+local warningConsumer = copy(consumer)
+warningConsumer.wares.ore.stock = 40
+local warningGraph = SCV_Graph.build({ copy(supplier), warningConsumer })
+assert(warningGraph.stationNodes.consumer.severity == "warning")
+menu.decorateNodes(warningGraph)
+menu.renderFlowchart(warningGraph, {})
+local warningWidget = warningGraph.stationNodes.consumer[1].node
+assert(warningWidget.properties.outlineColor == "icon_warning")
+assert(warningWidget.properties.statusColor == "icon_warning")
+assert(warningWidget.properties.text.color == "default-text")
+-- Only count the original graph when checking that live updates keep its widgets.
+nodeCreates = nodeCreates - #warningGraph.nodes
 local popup = tableMock()
 local panel = { properties = { height = 400 }, scroll = 73 }
 function panel:update()
@@ -77,6 +94,16 @@ SCV_Graph.breakCycles = function () error("refresh broke cycles") end
 SCV_Graph.applyBudget = function () error("refresh changed budget") end
 -- The same native node and open popup survive every label/completeness transition.
 local createdBefore = nodeCreates
+for _, case in ipairs({ { 40, "warning", "icon_warning" }, { 10, "critical", "icon_error" },
+	{ 40, "warning", "icon_warning" } }) do
+	local nextConsumer = copy(consumer)
+	nextConsumer.wares.ore.stock = case[1]
+	menu.publishMetrics({ copy(supplier), nextConsumer })
+	assert(station.severity == case[2])
+	assert(nativeStation.outline == case[3] and nativeStation.statusColor == case[3])
+	assert(nativeStation.textColor == "default-text")
+	assert(nativeStation.status and nodeCreates == createdBefore)
+end
 for _, case in ipairs({
 	{ 8000, true, 5000, false, "+8.0k/h*", "Demand is incomplete." },
 	{ 8000, false, 5000, false, "+8.0k / -5.0k*", "Supply and demand are incomplete." },
@@ -175,7 +202,8 @@ assert(string.find(popup.rows[4][2].props.mouseOverText, "Incomplete total:", 1,
 assert(not string.find(popup.rows[consumerRow+2][2].props.mouseOverText, "100/h", 1, true))
 menu.publishMetrics({ copy(supplier), copy(consumer) })
 assert(not graph.refreshFailed and ware.demandKnown and ware.storage.stock == 110)
-assert(nativeStation.outline == "lso_node_error")
+assert(nativeStation.outline == "icon_error" and nativeStation.statusColor == "icon_error")
+assert(nativeStation.textColor == "default-text")
 
 -- New modules update existing maximum rates; new wares/roles await a rebuild.
 -- Storage construction and failed reads update an already open panel in place.

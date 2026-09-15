@@ -549,7 +549,7 @@ function menu.decorateNodes(graph)
 						or ((#parts > 0) and table.concat(parts, "\n") or T(3014)),
 				},
 				statuscolor = severityColor(node.severity),
-				color       = (node.severity == "critical") and Color["lso_node_error"] or nil,
+				outlinecolor = severityColor(node.severity),
 			}
 			if node.severity ~= "ok" then
 				local h = node.wares[node.worstWare].health
@@ -609,10 +609,10 @@ function menu.updateMetricDisplay()
 		if widget then
 			widget.customdata.moduledata = display
 			-- Passing explicit defaults clears a warning when a station recovers.
-			widget:updateOutlineColor(display.color or widget.scvDefaultOutline)
-			widget:updateText(data.text, display.color or widget.scvDefaultText)
+			widget:updateOutlineColor(display.outlinecolor or widget.scvDefaultOutline)
+			widget:updateText(data.text, widget.scvDefaultText)
 			widget:updateStatus(display.statusText, display.statusIcon, nil,
-				display.statuscolor or display.color or widget.scvDefaultStatus)
+				display.statuscolor or widget.scvDefaultStatus)
 			if data.scvkind == "ware" then
 				widget:updateMaxValue(display.properties.max)
 				widget:updateValue(display.properties.value)
@@ -1231,10 +1231,8 @@ function menu.renderFlowchart(graph, junctions)
 			node.scvDefaultText = node.properties.text.color
 			node.scvDefaultStatus = node.properties.statusColor or node.properties.statustext.color
 
-			if moduledata.color then
-				node.properties.outlineColor = moduledata.color
-				node.properties.text.color   = moduledata.color
-				node.properties.statusColor  = moduledata.color
+			if moduledata.outlinecolor then
+				node.properties.outlineColor = moduledata.outlinecolor
 			end
 			if moduledata.statuscolor then
 				node.properties.statusColor = moduledata.statuscolor
