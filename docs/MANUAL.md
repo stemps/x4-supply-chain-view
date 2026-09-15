@@ -61,6 +61,11 @@ because it is unused in the game's default presets.
 The shortcut opens the view from the map, while piloting, or while walking,
 retaining the selected chain.
 
+## Troubleshooting
+
+**Q: Why are some stations or ware connections not displayed?**
+A: The game engine's graph component has a hard limit at 100 nodes and 150 connections. If your supply chain needs more, the mod has to drop some of the connections.
+
 ## Links
 
 - [Source Code on GitHub](https://github.com/stemps/x4-supply-chain-view)
