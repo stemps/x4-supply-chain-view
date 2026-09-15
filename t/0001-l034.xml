@@ -26,7 +26,7 @@
     <t id="3006">Nadie recoge esta mercancía aquí</t>
     <t id="3010">Entrega en curso</t>
     <t id="3011">Sin entrega programada</t>
-    <t id="3012">Comercio mutuo: %s enlaces dibujados en un solo sentido (%s)</t>
+    <t id="3012">Comercio mutuo: %s enlaces dibujados en un solo sentido \(%s\)</t>
     <t id="3013">Peor: %s</t>
     <t id="3014">Sin alertas de autonomía o capacidad a pleno rendimiento.</t>
     <t id="3015">%s proveedores, %s receptores</t>
@@ -54,7 +54,7 @@
     <t id="3046">Capacidad de almacenamiento desconocida.</t>
     <t id="3047">máx. %s</t>
     <t id="3049">ninguno</t>
-    <t id="3050">A pleno rendimiento: oferta %s, demanda %s (%s)</t>
+    <t id="3050">A pleno rendimiento: oferta %s, demanda %s \(%s\)</t>
     <t id="3051">Oferta máxima incompleta o desconocida; balance completo no disponible.</t>
     <t id="3052">Demanda máxima incompleta o desconocida; balance completo no disponible.</t>
     <t id="3053">Los proveedores almacenan %s y los consumidores %s</t>

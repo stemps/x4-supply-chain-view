@@ -26,7 +26,7 @@
     <t id="3006">Ninguém aqui recolhe esta mercadoria</t>
     <t id="3010">Entrega em andamento</t>
     <t id="3011">Nenhuma entrega agendada</t>
-    <t id="3012">Comércio recíproco: %s conexões exibidas em apenas um sentido (%s)</t>
+    <t id="3012">Comércio recíproco: %s conexões exibidas em apenas um sentido \(%s\)</t>
     <t id="3013">Pior: %s</t>
     <t id="3014">Nenhum alerta de autonomia de estoque ou capacidade em operação plena.</t>
     <t id="3015">%s fornecedores, %s recebedores</t>
@@ -54,7 +54,7 @@
     <t id="3046">Capacidade de armazenamento desconhecida.</t>
     <t id="3047">máx. %s</t>
     <t id="3049">nenhum</t>
-    <t id="3050">Em operação plena: oferta %s, demanda %s (%s)</t>
+    <t id="3050">Em operação plena: oferta %s, demanda %s \(%s\)</t>
     <t id="3051">Oferta máxima incompleta ou desconhecida; balanço completo indisponível.</t>
     <t id="3052">Demanda máxima incompleta ou desconhecida; balanço completo indisponível.</t>
     <t id="3053">Fornecedores armazenam %s, consumidores armazenam %s</t>

@@ -26,7 +26,7 @@
     <t id="3006">Nikt tutaj nie odbiera tego towaru</t>
     <t id="3010">Dostawa w toku</t>
     <t id="3011">Brak zaplanowanej dostawy</t>
-    <t id="3012">Handel wzajemny: połączenia pokazane tylko w jednym kierunku: %s (%s)</t>
+    <t id="3012">Handel wzajemny: połączenia pokazane tylko w jednym kierunku: %s \(%s\)</t>
     <t id="3013">Najgorszy wynik: %s</t>
     <t id="3014">Brak ostrzeżeń o zapasach lub pojemności przy pełnej pracy.</t>
     <t id="3015">Dostawcy: %s, odbiorcy: %s</t>
@@ -54,7 +54,7 @@
     <t id="3046">Pojemność magazynu nieznana.</t>
     <t id="3047">maks. %s</t>
     <t id="3049">brak</t>
-    <t id="3050">Przy pełnej pracy: podaż %s, popyt %s (%s)</t>
+    <t id="3050">Przy pełnej pracy: podaż %s, popyt %s \(%s\)</t>
     <t id="3051">Maksymalna podaż jest niepełna lub nieznana; pełny bilans niedostępny.</t>
     <t id="3052">Maksymalny popyt jest niepełny lub nieznany; pełny bilans niedostępny.</t>
     <t id="3053">Zapasy dostawców: %s, zapasy konsumentów: %s</t>

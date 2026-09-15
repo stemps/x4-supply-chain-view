@@ -26,7 +26,7 @@
     <t id="3006">Hier nimmt niemand diese Ware ab</t>
     <t id="3010">Lieferung unterwegs</t>
     <t id="3011">Keine Lieferung geplant</t>
-    <t id="3012">Gegenseitiger Handel: %s Verbindungen nur in eine Richtung dargestellt (%s)</t>
+    <t id="3012">Gegenseitiger Handel: %s Verbindungen nur in eine Richtung dargestellt \(%s\)</t>
     <t id="3013">Schlechtester Wert: %s</t>
     <t id="3014">Keine Warnung zu Vorratsreichweite oder Lagerkapazität bei Vollbetrieb.</t>
     <t id="3015">%s Lieferanten, %s Abnehmer</t>
@@ -54,7 +54,7 @@
     <t id="3046">Lagerkapazität unbekannt.</t>
     <t id="3047">max. %s</t>
     <t id="3049">keine</t>
-    <t id="3050">Bei Vollbetrieb: Angebot %s, Bedarf %s (%s)</t>
+    <t id="3050">Bei Vollbetrieb: Angebot %s, Bedarf %s \(%s\)</t>
     <t id="3051">Maximales Angebot unvollständig oder unbekannt; keine vollständige Bilanz verfügbar.</t>
     <t id="3052">Maximaler Bedarf unvollständig oder unbekannt; keine vollständige Bilanz verfügbar.</t>
     <t id="3053">Lieferanten lagern %s, Verbraucher lagern %s</t>

@@ -26,7 +26,7 @@
     <t id="3006">Burada bu malı alan yok</t>
     <t id="3010">Teslimat sürüyor</t>
     <t id="3011">Planlanmış teslimat yok</t>
-    <t id="3012">Karşılıklı ticaret: %s bağlantı yalnızca tek yönde çizildi (%s)</t>
+    <t id="3012">Karşılıklı ticaret: %s bağlantı yalnızca tek yönde çizildi \(%s\)</t>
     <t id="3013">En kötü: %s</t>
     <t id="3014">Tam kapasitede stok süresi veya depo kapasitesi uyarısı yok.</t>
     <t id="3015">%s tedarikçi, %s alıcı</t>
@@ -54,7 +54,7 @@
     <t id="3046">Depo kapasitesi bilinmiyor.</t>
     <t id="3047">azami %s</t>
     <t id="3049">yok</t>
-    <t id="3050">Tam kapasitede: arz %s, talep %s (%s)</t>
+    <t id="3050">Tam kapasitede: arz %s, talep %s \(%s\)</t>
     <t id="3051">Azami arz eksik veya bilinmiyor; tam denge hesaplanamıyor.</t>
     <t id="3052">Azami talep eksik veya bilinmiyor; tam denge hesaplanamıyor.</t>
     <t id="3053">Tedarikçilerin stoku %s, tüketicilerin stoku %s</t>

@@ -26,7 +26,7 @@
     <t id="3006">Toto zboží zde nikdo neodebírá</t>
     <t id="3010">Probíhá dodávka</t>
     <t id="3011">Žádná plánovaná dodávka</t>
-    <t id="3012">Vzájemný obchod: počet spojení vykreslených pouze jedním směrem: %s (%s)</t>
+    <t id="3012">Vzájemný obchod: počet spojení vykreslených pouze jedním směrem: %s \(%s\)</t>
     <t id="3013">Nejhorší: %s</t>
     <t id="3014">Bez varování před nedostatkem zásob nebo kapacity při plném provozu.</t>
     <t id="3015">Dodavatelé: %s, odběratelé: %s</t>
@@ -54,7 +54,7 @@
     <t id="3046">Kapacita skladu není známa.</t>
     <t id="3047">max. %s</t>
     <t id="3049">žádné</t>
-    <t id="3050">Při plném provozu: nabídka %s, poptávka %s (%s)</t>
+    <t id="3050">Při plném provozu: nabídka %s, poptávka %s \(%s\)</t>
     <t id="3051">Maximální nabídka je neúplná nebo neznámá; úplná bilance není dostupná.</t>
     <t id="3052">Maximální poptávka je neúplná nebo neznámá; úplná bilance není dostupná.</t>
     <t id="3053">Dodavatelé skladují %s, spotřebitelé skladují %s</t>

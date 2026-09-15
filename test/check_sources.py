@@ -46,6 +46,10 @@ def translation_coverage_errors(directory, languages=LANGUAGES):
                 values[key] = "".join(entry.itertext())
                 if not values[key].strip():
                     errors.append(f"{label}: empty translation")
+                # SCV uses XML comments for translator notes; parentheses in
+                # visible strings must survive X4's translator-comment parser.
+                if re.search(r'(?<!\\)[()]', values[key]):
+                    errors.append(f"{label}: unescaped parentheses; X4 would strip visible text")
         if not values:
             errors.append(f"{path.name}: no text entries")
         return values

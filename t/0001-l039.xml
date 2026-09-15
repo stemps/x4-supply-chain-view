@@ -26,7 +26,7 @@
     <t id="3006">Nessuno qui ritira questa merce</t>
     <t id="3010">Consegna in corso</t>
     <t id="3011">Nessuna consegna pianificata</t>
-    <t id="3012">Commercio reciproco: %s collegamenti rappresentati in una sola direzione (%s)</t>
+    <t id="3012">Commercio reciproco: %s collegamenti rappresentati in una sola direzione \(%s\)</t>
     <t id="3013">Peggiore: %s</t>
     <t id="3014">Nessun avviso su autonomia delle scorte o capacità a pieno regime.</t>
     <t id="3015">%s fornitori, %s destinatari</t>
@@ -54,7 +54,7 @@
     <t id="3046">Capacità di stoccaggio sconosciuta.</t>
     <t id="3047">max %s</t>
     <t id="3049">nessuno</t>
-    <t id="3050">A pieno regime: offerta %s, domanda %s (%s)</t>
+    <t id="3050">A pieno regime: offerta %s, domanda %s \(%s\)</t>
     <t id="3051">Offerta massima incompleta o sconosciuta; bilancio completo non disponibile.</t>
     <t id="3052">Domanda massima incompleta o sconosciuta; bilancio completo non disponibile.</t>
     <t id="3053">Scorte dei fornitori: %s; dei consumatori: %s</t>

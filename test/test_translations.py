@@ -55,6 +55,24 @@ class TranslationCoverageTests(unittest.TestCase):
         self.write("0001-l049.xml", self.source + '<page id="99"><t id="2">Extra</t></page>')
         self.assertTrue(any("absent from neutral source" in error for error in self.errors()))
 
+    def test_unescaped_parentheses_checked_on_every_page_and_language(self):
+        for name in ['0001.xml', '0001-l049.xml', '0001-l033.xml']:
+            self.write(name, self.source.replace('%s/h', '%s/h (examples)'))
+        errors = self.errors()
+        for name in ['0001.xml', '0001-l049.xml', '0001-l033.xml']:
+            self.assertIn(f'{name}: page 90211, text 1: unescaped parentheses; X4 would strip visible text', errors)
+        self.assertEqual(len(errors), 3)
+
+    def test_escaped_parentheses_and_xml_comments_are_allowed(self):
+        source = self.source.replace('%s/h', r'%s/h \(examples\)')
+        for name in ['0001.xml', '0001-l049.xml']:
+            self.write(name, source + '<!-- (translator note) -->')
+        self.assertEqual(self.errors(), [])
+
+    def test_unescaped_closing_parenthesis_is_reported(self):
+        self.write('0001-l049.xml', self.source.replace('Stations', r'Stationen \(Beispiele)'))
+        self.assertTrue(any('unescaped parentheses' in error for error in self.errors()))
+
 
 if __name__ == "__main__":
     unittest.main()

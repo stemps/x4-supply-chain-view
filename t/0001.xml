@@ -34,7 +34,7 @@
     <t id="3006">Nobody here takes this</t>
     <t id="3010">Delivery in progress</t>
     <t id="3011">No delivery scheduled</t>
-    <t id="3012">Mutual trade: %s link(s) drawn one way only (%s)</t>
+    <t id="3012">Mutual trade: %s link\(s\) drawn one way only \(%s\)</t>
     <t id="3013">Worst: %s</t>
     <t id="3014">No stock coverage or capacity warning at full operation.</t>
     <t id="3015">%s supplying, %s taking</t>
@@ -42,7 +42,7 @@
     <t id="3021">Added %s %s.</t>
     <t id="3022">%s stations could not be found and are not shown.</t>
     <t id="3025">%s station could not be found and is not shown.</t>
-    <t id="3023">%s station(s) have unavailable storage information. Links remain visible; unavailable amounts show as ?.</t>
+    <t id="3023">%s station\(s\) have unavailable storage information. Links remain visible; unavailable amounts show as ?.</t>
     <t id="3027">full %s</t>
     <t id="3028">cover %s</t>
 
@@ -69,7 +69,7 @@
     <t id="3049">none</t>
 
     <!-- 3050-3056: graph tooltip uses the SAME maximum rates as the bar and detail panels. -->
-    <t id="3050">At full operation: supply %s, demand %s (%s)</t>
+    <t id="3050">At full operation: supply %s, demand %s \(%s\)</t>
     <t id="3051">Maximum supply is incomplete or unknown; no complete balance is available.</t>
     <t id="3052">Maximum demand is incomplete or unknown; no complete balance is available.</t>
     <t id="3053">Suppliers hold %s, consumers hold %s</t>
