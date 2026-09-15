@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0 - 2026-09-15
+
+- Ware nodes can be end nodes
+- Better handling of planned and half-built station modules
+- Improved display of supply/demand metrics with unknown components
+- More consistent station warning and alert highlighting
+- Translation fixes
+
 ## 0.2.1 - 2026-09-13
 
 - Fix stock bar flicker issue

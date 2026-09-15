@@ -17,8 +17,8 @@
 <content id="supply_chain_view"
          name="Supply Chain View"
          author="stemps"
-         version="201"
-         date="2026-09-13"
+         version="300"
+         date="2026-09-15"
          save="false"
          enabled="1"
          description="Right-click your stations on the map to group them into a supply chain, then see it as a diagram: who supplies whom, which inputs are about to run dry, and which outputs are backing up because nobody is collecting them.">
