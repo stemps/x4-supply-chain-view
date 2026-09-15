@@ -312,6 +312,7 @@ local function readWareRoles(id64)
 	end
 
 	for ware in pairs(products) do note(ware) end
+	for ware in pairs(futureProducts) do note(ware) end
 	for ware in pairs(pureresources) do note(ware) end
 	for ware in pairs(tradewares) do note(ware) end
 	for ware in pairs(buildwares) do note(ware) end
@@ -323,7 +324,7 @@ local function readWareRoles(id64)
 		-- means a ware in both would read as a product there. The rule says an internal
 		-- consumer disqualifies it, so intermediates lose either way.
 		if not intermediates[ware] then
-			if products[ware] then
+			if products[ware] or futureProducts[ware] then
 				outputs[ware] = true
 			end
 			if pureresources[ware] or buildwares[ware] or futureResources[ware] then

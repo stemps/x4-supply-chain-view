@@ -85,12 +85,20 @@ return function()
 	local queued = read()
 	assert(#logs == 0, "queued plan read failed: " .. table.concat(logs, "; "))
 	assert(queued.wares.ore and queued.wares.ore.input and queued.wares.gas.input)
-	assert(not queued.wares.metals and not queued.wares.widgets)
+	assert(not queued.wares.metals and queued.wares.widgets.output)
+	assert(not queued.wares.widgets.prodKnown and queued.wares.widgets.prodMax == 0)
 	assert(not queued.wares.gas.consKnown and queued.wares.gas.consMax == 0)
 	assert(queued.wares.gas.stock == 7 and queued.wares.gas.capacityUnits == 250)
 	local supplied = SCV_Graph.build({queued,
 		{id="supplier",name="supplier",wares={gas={output=true,prodMax=100,prodKnown=true,stock=20}}}})
 	assert(#supplied.wareNodes.gas.consumers == 1 and supplied.wareNodes.gas.demandCap == 0)
+	assert(#supplied.wareNodes.widgets.producers == 1 and #supplied.wareNodes.widgets.consumers == 0,
+		"future products create terminal output nodes")
+	assert(supplied.wareNodes.widgets.supplyCap == 0 and not supplied.wareNodes.widgets.supplyKnown)
+	local downstream = SCV_Graph.build({queued,
+		{id="buyer",name="buyer",wares={widgets={input=true,consMax=20,consKnown=true,stock=0}}}})
+	assert(#downstream.wareNodes.widgets.producers == 1 and #downstream.wareNodes.widgets.consumers == 1)
+	assert(downstream.wareNodes.widgets.supplyCap == 0, "future supplier adds no projected production")
 	products, inputs, plans = {"metals"}, {"ore"}, {}
 	modules = {{id="built",macro="smelter"}}
 	local baseline = read()
@@ -99,7 +107,7 @@ return function()
 	plans = {plan("consumer")}
 	local st = read()
 	assert(st.wares.metals == nil, "planned consumers suppress terminal intermediates")
-	assert(st.wares.widgets == nil, "planned producers do not create terminal outputs")
+	assert(st.wares.widgets.output, "planned producers create terminal outputs")
 	assert(st.wares.gas.input and not st.wares.gas.consKnown and st.wares.gas.consMax == 0)
 	assert(st.wares.gas.stock == 7, "future inputs use actual cargo")
 	for _, key in ipairs({"stock", "limit", "capacityUnits", "consMax", "consKnown"}) do
@@ -117,18 +125,36 @@ return function()
 	modules[2] = {id="unfinished",macro="consumer",construction=true}
 	recipeReads = {}
 	st = read()
-	assert(not st.wares.metals and st.wares.gas.input)
+	assert(not st.wares.metals and st.wares.gas.input and st.wares.widgets.output)
+	assert(st.wares.widgets.prodMax == 0 and not st.wares.widgets.prodKnown)
 	assert(recipeReads.consumer == 1, "duplicate components/macros read once per classification")
 	plans = {}
-	assert(not read().wares.metals, "under-construction component works without plan entry")
+	st = read()
+	assert(not st.wares.metals and st.wares.widgets.output, "under-construction component works without plan entry")
 	modules[2] = nil
 	st = read()
 	assert(st.wares.metals.output and not st.wares.gas, "cancelled plan restores output on next read")
 	assert(st.wares.metals.prodMax == baseline.wares.metals.prodMax)
+	assert(not st.wares.widgets, "cancelled future producer removes its output")
+
+	-- Future copies of a built producer change neither rates nor actual inventory.
+	plans = {plan("smelter"), plan("smelter", "expansion")}
+	modules[2] = {id="expansion",macro="smelter",construction=true}
+	st = read()
+	for _, key in ipairs({"stock", "limit", "capacityUnits", "prodMax", "prodKnown"}) do
+		assert(st.wares.metals[key] == baseline.wares.metals[key], "planned expansion changed metric: " .. key)
+	end
+	modules[2] = nil
+	-- Newly visible output stock is real station cargo, independent of future capacity.
+	plans = {plan("gasworks")}
+	st = read()
+	assert(st.wares.gas.output and st.wares.gas.stock == 7 and st.wares.gas.capacityUnits == 250)
+	assert(st.wares.gas.prodMax == 0 and not st.wares.gas.prodKnown)
 
 	plans = {plan("processor"), plan("storage")}
 	st = read()
-	assert(st.wares.rawscrap.input and st.wares.energycells.input and not st.wares.scrapmetal)
+	assert(st.wares.rawscrap.input and st.wares.energycells.input and st.wares.scrapmetal.output)
+	assert(st.wares.scrapmetal.prodMax == 0 and not st.wares.scrapmetal.prodKnown)
 	assert(not st.wares.rawscrap.consKnown and st.wares.rawscrap.consMax == 0)
 	assert(st.wares.metals.stock == 40 and st.wares.metals.prodMax == 60)
 	assert(st.wares.metals.capacityUnits == 250 and st.wares.metals.capacityUnitsKnown)
