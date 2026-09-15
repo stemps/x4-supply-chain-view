@@ -46,7 +46,8 @@ class ConversionTests(unittest.TestCase):
         for expected in ('[b][size=4]Usage[/size][/b]', 'Declaration of AI usage',
                          '[url=https://www.nexusmods.com/x4foundations/mods/2181]',
                          '[url=https://github.com/stemps/x4-supply-chain-view]',
-                         'back up your save file', 'lasts X min', 'Hotkey Bindings'):
+                         'back up your save file', '"Lasts"', '"Full in"',
+                         '[b]?[/b] means unknown data', 'Hotkey Bindings'):
             self.assertIn(expected, output)
         self.assertNotIn('Work in progress', output)
 

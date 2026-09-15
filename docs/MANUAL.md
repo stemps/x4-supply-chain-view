@@ -22,7 +22,7 @@ your save file.
 - Select ware nodes to compare supplier and consumer stocks. Links show matching
   sell/buy offers within this chain, not actual shipments.
 - Orange or red labels indicate potential ware flow issues.
-- Hover over figures and warnings for explanations. `?` means unknown data,
+- Hover over figures and warnings for explanations. **?** means unknown data,
   not zero.
 - Navigate between your supply chains on the top of the screen.
 - The supply chain view shows real ware stock and maximum production rates under
