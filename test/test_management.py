@@ -122,17 +122,14 @@ assert(toolbarTable().widths[1]==Helper.scaleY(Helper.standardButtonHeight), 'na
 assert(menu.toolbarGeometry.anchorX>toolbarTable().properties.x and
     menu.toolbarGeometry.anchorX<toolbarTable().properties.x+toolbarTable().properties.width)
 
--- Presentation-only logistics growth captures native scroll before destroying widgets.
+-- Presentation refreshes never query or restore native scroll positions.
 local savedGraph, savedBuilds = menu.graph, builds
 menu.flowchart.id = 'scroll-chart'
-function GetFlowchartFirstVisibleCell(id) assert(id=='scroll-chart'); return 4,3 end
-function GetFlowchartSelectedCell(id) assert(id=='scroll-chart'); return 5,4 end
+function GetFlowchartFirstVisibleCell() error('must not read native scroll') end
+function GetFlowchartSelectedCell() error('must not read native selection') end
 menu.display(true)
-assert(menu.logisticsScroll[1]==4 and menu.logisticsScroll[2]==3)
-assert(menu.logisticsScroll[3]==5 and menu.logisticsScroll[4]==4)
-assert(menu.graph==savedGraph and builds==savedBuilds, 'presentation growth preserves topology')
+assert(menu.graph==savedGraph and builds==savedBuilds, 'presentation refresh preserves topology')
 menu.display()
-assert(menu.logisticsScroll==nil, 'full chain rebuild clears the previous scroll position')
 
 SCV_Store.create('A very long chain name '..string.rep('abc ',40),{{id='1',code='code1'}})
 menu.display(); row=toolbar()
@@ -272,6 +269,25 @@ SCV_Data.scanGroup=function() error('status resize must not scan') end
 SCV_Graph={LIMITS={maxCols=100,maxNodes=100,maxEdges=100}}
 nativeDisplayChain(Helper.createFrameHandle(menu,{layer=5}),5,100,1000,true)
 assert(menu.graph==cache and menu.refreshState==cursor)
+
+-- Chart construction uses native default viewport cells and node-based spacing.
+local oldRender, oldLegend = menu.renderFlowchart, menu.drawChainLegend
+menu.renderFlowchart=function() end
+menu.drawChainLegend=function() end
+cache.wareNodes={ore={}}
+cache.collapsedWares={}; cache.droppedStations={}; cache.droppedEdges={}
+menu.graphLayout={rows=6,cols=5,junctions={}}
+local chartFrame=Helper.createFrameHandle(menu,{layer=5})
+function chartFrame:addFlowchart(rows,cols,props)
+    for _,key in ipairs({'firstVisibleRow','firstVisibleCol','selectedRow','selectedCol'}) do
+        assert(props[key]==nil, 'chart must use the native default: '..key)
+    end
+    return {setDefaultNodeProperties=function() end,
+        setColWidthMin=function() error('logistics must not widen graph columns') end}
+end
+nativeDisplayChain(chartFrame,5,100,1000,true)
+assert(menu.graph==cache and menu.refreshState==cursor)
+menu.renderFlowchart, menu.drawChainLegend=oldRender,oldLegend
 menu.graph=nil; menu.chainPlaceholder={header='Loading'}
 nativeDisplayChain(Helper.createFrameHandle(menu,{layer=5}),5,100,1000,true)
 assert(menu.graph==nil and menu.refreshState==cursor, 'loading placeholder does not scan')

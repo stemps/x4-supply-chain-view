@@ -82,9 +82,9 @@ for _, example in ipairs({
 				local header, count = entry.text:match("^(.-)\n(.*)$")
 				assert(header and count)
 				for _, line in ipairs({header,count}) do
-					assert(C.GetTextWidth(line, Helper.standardFont, Helper.scaleFont(nil, 9)) + 4*scale <= entry.width)
+					assert(C.GetTextWidth(line, Helper.standardFont, Helper.scaleFont(nil, 8)) + 4*scale <= entry.width)
 				end
-				assert(C.GetTextHeight(entry.text, Helper.standardFont, Helper.scaleFont(nil, 9), 0) <= rows[1].height)
+				assert(C.GetTextHeight(entry.text, Helper.standardFont, Helper.scaleFont(nil, 8), 0) <= rows[1].height)
 			end
 		end
 	end
@@ -105,8 +105,7 @@ local layout = menu.logisticsColumnLayouts[1]
 assert(layout.width == 310, "dock and ship groups span exactly the station width")
 assert(menu.logisticsFrame.tables[1].properties.x == 145 or menu.logisticsFrame.tables[1].properties.x == 745)
 assert(menu.graph.nodes[1].logisticsRows[1].entries[1].header == "\27[stationbuildst_dock]")
-local spacing = 2 * menu.graph.nodes[1][1].properties.y - layout.height - 3
-assert(spacing == Helper.standardFontSize * 1.5, "one line between strip bottom and next station")
+assert(menu.graph.nodes[1][1].properties.y == nil, "overlay measurement must not change node geometry")
 local count = displays
 menu.updateLogisticsStrip()
 assert(displays == count, "stable anchors must not recreate the overlay")
@@ -117,7 +116,7 @@ for _, t in ipairs(menu.logisticsFrame.tables) do
 	for _, row in ipairs(t.rows) do
 		for _, cell in ipairs(row) do
 			local props = cell.properties
-			if props then assert(props.fontsize == math.ceil(Helper.standardFontSize * scale)) end
+			if props then assert(props.fontsize == math.ceil(8 * scale)) end
 			if props and value(props.mouseOverText):find("Cargo drones", 1, true) then
 				droneTips, droneCell = droneTips + 1, cell
 				assert(value(props.color) == "faction_green")
@@ -160,26 +159,43 @@ for _, t in ipairs(menu.logisticsFrame.tables) do
 end
 anchors.a[1], anchors.b[1] = 300, 300
 menu.updateLogisticsStrip()
--- Large count widths grow once and never shrink during ordinary publications.
+-- Overlay widths follow current text without growing or redrawing the graph.
 local oldWidth = menu.logisticsColumnLayouts[1].width
 snapshot.drones = string.rep("8", 60)
 for _, data in ipairs(menu.graph.nodes) do data.logisticsRows = menu.logisticsRows(snapshot) end
-menu.prepareLogisticsColumns(menu.graph, 2250, false)
+local savedDisplay, savedDecorate, savedFrame = menu.display, menu.decorateNodes, menu.frame
+local savedPanel = menu.expandedMenuFrame
+menu.display = function () error("wide logistics must not redraw the graph") end
+menu.decorateNodes = function () end -- rows above already contain the widened text
+menu.frame = { update = function () end }
+menu.expandedMenuFrame = nil
+local chartBefore = menu.flowchart
+for _, data in ipairs(menu.graph.nodes) do
+	local widget = data[1].node
+	widget.customdata = {}
+	widget.updateOutlineColor = function () end
+	widget.updateText = function () end
+	widget.updateStatus = function () end
+end
+menu.updateMetricDisplay()
+assert(menu.flowchart == chartBefore, "wide logistics preserves the native chart")
+menu.display, menu.decorateNodes, menu.frame = savedDisplay, savedDecorate, savedFrame
+menu.expandedMenuFrame = savedPanel
+menu.prepareLogisticsColumns(menu.graph)
 assert(menu.logisticsColumnLayouts[1].width > oldWidth)
 local grown = menu.logisticsColumnLayouts[1].width
 snapshot.drones = 1
 for _, data in ipairs(menu.graph.nodes) do data.logisticsRows = menu.logisticsRows(snapshot) end
-menu.prepareLogisticsColumns(menu.graph, 2250, false)
-assert(menu.logisticsColumnLayouts[1].width == grown)
-menu.prepareLogisticsColumns(menu.graph, 2250, true)
+menu.prepareLogisticsColumns(menu.graph)
 assert(menu.logisticsColumnLayouts[1].width < grown)
+assert(menu.graph.nodes[1][1].properties.y == nil)
 -- More than thirteen columns become adjacent tables on one baseline.
 scale = 1
 snapshot.categories = {}
 for i = 1, 16 do snapshot.categories[i] = { total = i, idle = 0, rank = i, size = "m", purpose = "trade", icon = "ship_m_transporter_01" } end
 anchors.a, anchors.b = {750,100}, {750,350}
 for _, data in ipairs(menu.graph.nodes) do data.logisticsRows = menu.logisticsRows(snapshot) end
-menu.prepareLogisticsColumns(menu.graph, 1500, true)
+menu.prepareLogisticsColumns(menu.graph)
 menu.updateLogisticsStrip()
 assert(#menu.logisticsFrame.tables == 2)
 local columns = 0
@@ -203,28 +219,28 @@ local short = node("short",1)
 short.logisticsRows = menu.logisticsRows({shipsKnown=true,drones=3,categories={}})
 local long = node("long",1)
 local alignmentGraph = {nodes={short,long}}
-menu.prepareLogisticsColumns(alignmentGraph,1500,true)
+menu.prepareLogisticsColumns(alignmentGraph)
 local sharedCount = #long.logisticsRows[1].entries
 assert(#short.logisticsRows[1].entries == sharedCount)
 assert(short.logisticsRows[1].entries[sharedCount].text:find("ships_idling_01",1,true))
 assert(short.logisticsRows[1].entries[sharedCount-1].text:find("ship_xs_drone_trade_01",1,true))
 assert(short.logisticsRows[1].entries[sharedCount].tip:find("\n\n",1,true))
 assert(not short.logisticsRows[1].entries[sharedCount].tip:find("—",1,true))
-menu.prepareLogisticsColumns(alignmentGraph,1500,false)
+menu.prepareLogisticsColumns(alignmentGraph)
 assert(#short.logisticsRows[1].entries == sharedCount, "alignment padding must not accumulate")
--- Spacing bounds the overlay table pool even on wide viewports.
+-- The native table limit is respected without changing graph spacing.
 local budgetGraph = {nodes={}}
 for i=1,20 do
 	local data = node("budget"..i, i)
 	budgetGraph.nodes[i] = data
 end
-menu.prepareLogisticsColumns(budgetGraph, 6000, true)
+menu.prepareLogisticsColumns(budgetGraph)
 local x = -1000
 for i,data in ipairs(budgetGraph.nodes) do
 	local layout = menu.logisticsColumnLayouts[i]
-	assert(layout.minWidth >= layout.width + 40)
-	anchors["budget"..i] = {x + layout.minWidth/2,100}
-	x = x + layout.minWidth
+	assert(layout.minWidth == nil)
+	anchors["budget"..i] = {x + 175,100}
+	x = x + 350
 end
 local savedSize = GetSize
 GetSize = function(id) if id=="chart" then return 6000,900 end return savedSize(id) end

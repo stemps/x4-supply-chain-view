@@ -34,6 +34,7 @@ local config = {
 	-- Leave room for long ware names beside partial supply/demand labels.
 	stationNodeWidth       = 310,
 	logisticsColumns       = 13, -- native table limit
+	logisticsFontSize      = 8, -- quieter than station names; icons scale with text
 	wareNodeWidth          = 300,
 	nodeOffsetX            = 20,
 	savedVersion           = 2,
@@ -140,7 +141,6 @@ end
 function menu.cleanup()
 	menu.closed = true
 	menu.clearLogisticsStrip()
-	menu.logisticsNeedsSpace = nil
 	if SCV_Data.stopLogistics then SCV_Data.stopLogistics() end
 	if menu.statusFrame then Helper.clearFrame(menu, config.statusFrameLayer) end
 	menu.statusFrame, menu.statusKey, menu.statusHeight, menu.noticeUntil = nil, nil, nil, nil
@@ -246,9 +246,6 @@ function menu.onUpdate()
 		if snapshot then menu.publishMetrics(snapshot) end
 	end
 	menu.updateStatusStrip()
-	if menu.logisticsNeedsSpace and menu.frame and not menu.expandedNode then
-		menu.display(true)
-	end
 	menu.updateLogisticsStrip()
 	if menu.managementFrame then menu.managementFrame:update() end
 end
@@ -403,7 +400,7 @@ end
 function menu.logisticsRows(logistics)
 	local entries = {}
 	local scale = Helper.uiScale or (Helper.scaleY(1000) / 1000)
-	local fontsize = Helper.scaleFont and Helper.scaleFont(Helper.standardFont, Helper.standardFontSize) or math.ceil(Helper.standardFontSize * scale)
+	local fontsize = Helper.scaleFont and Helper.scaleFont(Helper.standardFont, config.logisticsFontSize) or math.ceil(config.logisticsFontSize * scale)
 	local height = 2 * fontsize + 4 * scale
 	for _, entry in ipairs(menu.logisticsEntries(logistics)) do
 		if entry.groupStart then entries[#entries + 1] = { text = "", tip = "", width = 10 * scale } end
@@ -422,16 +419,10 @@ function menu.logisticsRows(logistics)
 	return { { entries = entries, height = height } }
 end
 
--- Grow shared widths until a full presentation rebuild. Twelve overlay tables
--- leave nine slots for the chart's controls, status and expanded native panels.
-function menu.prepareLogisticsColumns(graph, viewportWidth, reset)
-	if reset or menu.logisticsLayoutGraph ~= graph then
-		menu.logisticsColumnLayouts = {}
-		menu.logisticsLayoutGraph = graph
-	end
-	local layouts = menu.logisticsColumnLayouts or {}
+-- Measure the overlay independently of the graph's node sizes and column spacing.
+function menu.prepareLogisticsColumns(graph)
+	local layouts = {}
 	menu.logisticsColumnLayouts = layouts
-	local changed, maxChunks = false, 1
 	for _, node in ipairs(graph.nodes) do
 		if node.scvkind == "station" and node.col then
 			local layout = layouts[node.col] or { widths = {}, height = 0, count = 0 }
@@ -451,29 +442,19 @@ function menu.prepareLogisticsColumns(graph, viewportWidth, reset)
 			for i = 6, #base do entries[i+padding] = base[i] end
 			line.entries = entries
 			for i, entry in ipairs(entries) do
-				if i ~= 5 and entry.width > (layout.widths[i] or 0) then layout.widths[i], changed = entry.width, true end
+				if i ~= 5 then layout.widths[i] = math.max(layout.widths[i] or 0, entry.width) end
 			end
 			layout.widths[5] = 10 * (Helper.uiScale or Helper.scaleY(1000)/1000)
-			if line.height > layout.height then layout.height, changed = line.height, true end
-			maxChunks = math.max(maxChunks, math.ceil(layout.count / config.logisticsColumns))
+			layout.height = math.max(layout.height, line.height)
 		end
 	end
 	for _, layout in pairs(layouts) do
 		layout.width = math.max(0, #layout.widths - 1) * (Helper.borderSize or 1)
 		for _, w in ipairs(layout.widths) do layout.width = layout.width + w end
-		local targetWidth = math.max(layout.width, layout.previousWidth or 0, Helper.scaleY(config.stationNodeWidth))
+		local targetWidth = math.max(layout.width, Helper.scaleY(config.stationNodeWidth))
 		layout.widths[5] = layout.widths[5] + targetWidth - layout.width
-		layout.width, layout.previousWidth = targetWidth, targetWidth
-		local chunks = math.ceil(#layout.widths / config.logisticsColumns)
-		local budgetWidth = (viewportWidth or 0) * chunks / math.max(1, 12 - 2 * maxChunks)
-		local required = math.max(Helper.scaleY(config.stationNodeWidth + 40), layout.width + Helper.scaleY(40), budgetWidth)
-		if required > (layout.minWidth or 0) then layout.minWidth, changed = required, true end
+		layout.width = targetWidth
 	end
-	for _, node in ipairs(graph.nodes) do
-		local layout = node.scvkind == "station" and layouts[node.col]
-		if layout then node[1].properties.y = (layout.height / (Helper.scaleY(1000) / 1000) + 3 + Helper.standardFontSize * 1.5) / 2 end
-	end
-	return changed
 end
 
 function menu.onDockMetrics()
@@ -488,7 +469,7 @@ end
 -- Use the very same screen-space anchor as native node expansion. Only visible
 -- nodes have anchors. Rebuild these light text tables when scrolling changes the
 -- anchors; the flowchart, its edges and its node pool remain untouched.
--- Shared tables split at thirteen metric columns; graph spacing budgets the native pool.
+-- Shared tables split at thirteen metric columns, the native table limit.
 function menu.updateLogisticsStrip()
 	local chart = menu.flowchart
 	if menu.closed or menu.mode ~= "chain" or not chart or not chart.id or not menu.graph then
@@ -497,7 +478,7 @@ function menu.updateLogisticsStrip()
 	end
 	local width, height = GetSize(chart.id)
 	local left, top = chart.properties.x, chart.properties.y
-	menu.prepareLogisticsColumns(menu.graph, width, false)
+	menu.prepareLogisticsColumns(menu.graph)
 	local columns, keys = {}, { tostring(left), tostring(top), tostring(width), tostring(height) }
 	local panel = menu.expandedMenuFrame and menu.expandedMenuFrame.properties
 	for _, data in ipairs(menu.graph.nodes) do
@@ -540,10 +521,12 @@ function menu.updateLogisticsStrip()
 	local frame = Helper.createFrameHandle(menu, { layer = config.logisticsFrameLayer,
 		x = left, y = top, width = width, height = height, standardButtons = {},
 		startAnimation = false, blurBackground = false, enableDefaultInteractions = false })
-	local tableCount = 0
-	for _ in pairs(columns) do tableCount = tableCount + 1 end
-	assert(tableCount <= 12, "SCV logistics overlay exceeds reserved native table budget")
-	for _, column in pairs(columns) do
+	local orderedColumns = {}
+	for _, column in pairs(columns) do orderedColumns[#orderedColumns + 1] = column end
+	table.sort(orderedColumns, function (a, b) return a.x < b.x end)
+	for index, column in ipairs(orderedColumns) do
+		-- Reserve the remaining native tables for controls and expanded panels.
+		if index > 12 then break end
 		table.sort(column.items, function (a, b) return a.y < b.y end)
 		local firstY, layout = column.items[1].y, column.layout
 		local ncols = column.last - column.first + 1
@@ -560,7 +543,7 @@ function menu.updateLogisticsStrip()
 				local index = i
 				local function entry() return item.data.logisticsRows[1].entries[index] or {} end
 				row[i - column.first + 1]:createText(function () return entry().text or "" end, {
-					scaling = false, fontsize = Helper.scaleFont(Helper.standardFont, Helper.standardFontSize),
+					scaling = false, fontsize = Helper.scaleFont(Helper.standardFont, config.logisticsFontSize),
 					height = layout.height, minRowHeight = layout.height, halign = "center", x = 0, y = 0,
 					color = function () return entry().color or Color["text_normal"] end,
 					mouseOverText = function () return entry().tip or "" end })
@@ -869,16 +852,10 @@ end
 function menu.updateMetricDisplay()
 	menu.metricRevision = (menu.metricRevision or 0) + 1
 	menu.decorateNodes(menu.graph)
-	if menu.prepareLogisticsColumns(menu.graph, menu.logisticsViewportWidth, false) then menu.logisticsNeedsSpace = true end
 	for _, data in ipairs(menu.graph.nodes) do
 		local display = data[1]
 		local widget = display and display.node
 		if widget then
-			if data.scvkind == "station" and widget.properties and display.properties.y > (widget.properties.y or 0) then
-				-- A wider category or count may need more graph space. Recreate only
-				-- presentation with the cached layout, never rescan/rebuild topology.
-				menu.logisticsNeedsSpace = true
-			end
 			widget.customdata.moduledata = display
 			-- Passing explicit defaults clears a warning when a station recovers.
 			widget:updateOutlineColor(display.outlinecolor or widget.scvDefaultOutline)
@@ -895,10 +872,6 @@ function menu.updateMetricDisplay()
 	-- station reads or graph reconstruction happen in frame:update().
 	if menu.frame then menu.frame:update() end
 	if menu.expandedMenuFrame then menu.expandedMenuFrame:update() end
-	if menu.logisticsNeedsSpace and menu.frame and not menu.expandedNode then
-		menu.logisticsNeedsSpace = nil
-		menu.display(true)
-	end
 end
 
 function menu.setWareWarnings(stationCode, ware, enabled)
@@ -926,14 +899,8 @@ local function availableHeight(y)
 end
 
 function menu.display(presentationOnly)
-	menu.logisticsScroll = nil
-	if presentationOnly and menu.flowchart and menu.flowchart.id then
-		local row, col = GetFlowchartFirstVisibleCell(menu.flowchart.id)
-		local selectedRow, selectedCol = GetFlowchartSelectedCell(menu.flowchart.id)
-		menu.logisticsScroll = { row, col, selectedRow, selectedCol }
-	end
 	menu.clearLogisticsStrip()
-	menu.flowchart, menu.logisticsNeedsSpace = nil, nil
+	menu.flowchart = nil
 	local managementMode = menu.managementMode
 	if not presentationOnly then
 		menu.closeManagement()
@@ -1460,20 +1427,13 @@ function menu.displayChain(frame, x, y, width, reuseGraph)
 		chartY = y + ntable:getFullHeight()
 	end
 
-	menu.logisticsViewportWidth = width
-	menu.prepareLogisticsColumns(graph, width, not reuseGraph)
-	local scroll = menu.logisticsScroll or {}
 	menu.flowchart = frame:addFlowchart(numrows, numcols, {
-		firstVisibleRow = scroll[1], firstVisibleCol = scroll[2], selectedRow = scroll[3], selectedCol = scroll[4],
 		borderHeight = 3,
 		borderColor  = Color["row_background_blue"],
 		minRowHeight = 45,
 		minColWidth  = 80,
 		x = x, y = chartY, width = width,
 	})
-	for col, layout in pairs(menu.logisticsColumnLayouts) do
-		menu.flowchart:setColWidthMin(col, layout.minWidth, 1, false)
-	end
 	menu.flowchart:setDefaultNodeProperties({
 		expandedFrameLayer      = config.expandedMenuFrameLayer,
 		expandedTableNumColumns = 4,
