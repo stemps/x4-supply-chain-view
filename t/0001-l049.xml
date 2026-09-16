@@ -138,5 +138,17 @@
     <t id="3163">Angebot und Bedarf unvollständig erfasst.</t>
     <t id="3164">* Nur bekannte Beiträge; Nettobilanz nicht verfügbar. Raten pro Stunde.</t>
     <t id="3166">* genaue Bilanz unbekannt wegen Produzenten/Verbrauchern mit unbekannten oder variablen Mengen \(z. B. Bergbauschiffen oder Werften\)</t>
+    <t id="3170">Logistik</t>
+    <t id="3171">Docks: frei / gesamt. Orange bedeutet keine freien Liegeplätze.</t>
+    <t id="3172">L umfasst gemeinsame L/XL-Liegeplätze; interne Lagerplätze zählen nicht.</t>
+    <t id="3173">Untätig: %s / %s Schiffe - %s</t>
+    <t id="3174">Untätig bedeutet ohne aktuelle Befehle. Gezählt wird nach Schiffstyp, einschließlich indirekt unterstellter Schiffe.</t>
+    <t id="3175">Untätigkeit: orange ab 50%, rot ab 75%.</t>
+    <t id="3176">Händler</t>
+    <t id="3177">Bergbauschiffe</t>
+    <t id="3178">Lastendrohnen</t>
+    <t id="3179">Belegte und reservierte Liegeplätze sind nicht verfügbar.</t>
+    <t id="3180">Docks</t>
+    <t id="3181">Schiffs- und Dockzahlen sind nur für spielereigene Stationen verfügbar.</t>
   </page>
 </language>

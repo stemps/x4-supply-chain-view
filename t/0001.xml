@@ -160,5 +160,17 @@
     <t id="3163">Supply and demand are incomplete.</t>
     <t id="3164">* Known contributions only; net balance unavailable. Rates are per hour.</t>
     <t id="3166">* exact balance unknown due producers/consumers with unknown or variable volume \(e.g. miners or shipyards\)</t>
+    <t id="3170">Logistics</t>
+    <t id="3171">Docks: free / total. Orange means no free berths.</t>
+    <t id="3172">L includes shared L/XL berths; internal storage is excluded.</t>
+    <t id="3173">Idle: %s / %s ships - %s</t>
+    <t id="3174">Idle means no current orders. Counts follow ship type, including nested subordinates.</t>
+    <t id="3175">Idle: orange at 50%, red at 75%.</t>
+    <t id="3176">Traders</t>
+    <t id="3177">Miners</t>
+    <t id="3178">Cargo drones</t>
+    <t id="3179">Free excludes berths with a docked ship and berths reserved for a ship that is approaching.</t>
+    <t id="3180">Docks</t>
+    <t id="3181">Ship and dock counts require player ownership.</t>
   </page>
 </language>

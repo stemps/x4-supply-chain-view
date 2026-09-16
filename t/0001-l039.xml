@@ -138,5 +138,17 @@
     <t id="3163">Dati di offerta e domanda incompleti.</t>
     <t id="3164">* Solo contributi noti; saldo netto non disponibile. Quantità per ora.</t>
     <t id="3166">* saldo esatto sconosciuto a causa di produttori/consumatori con volumi sconosciuti o variabili \(ad es. minatori o cantieri navali\)</t>
+    <t id="3170">Logistica</t>
+    <t id="3171">Attracchi: liberi / totali. Arancione: nessun posto libero.</t>
+    <t id="3172">L include gli attracchi condivisi L/XL; il deposito interno è escluso.</t>
+    <t id="3173">Inattive: %s / %s navi - %s</t>
+    <t id="3174">Inattiva significa senza ordini attuali. Conteggio per tipo di nave, inclusi i subordinati indiretti.</t>
+    <t id="3175">Inattività: arancione dal 50%, rosso dal 75%.</t>
+    <t id="3176">Commercianti</t>
+    <t id="3177">Minatori</t>
+    <t id="3178">Droni da carico</t>
+    <t id="3179">Gli attracchi occupati o riservati non sono disponibili.</t>
+    <t id="3180">Attracchi</t>
+    <t id="3181">I conteggi di navi e attracchi richiedono una stazione del giocatore.</t>
   </page>
 </language>

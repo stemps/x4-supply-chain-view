@@ -22,6 +22,7 @@ function IsValidComponent() return true end
 function IsComponentConstruction(id) return module(id).construction or false end
 function IsMacroClass(macro, class) return classes[macro] == class end
 function GetMacroData() return "module" end
+function GetFactionData() return nil end
 function GetLibraryEntry(_, macro)
 	recipeReads[macro] = (recipeReads[macro] or 0) + 1
 	return recipes[macro]
@@ -46,6 +47,7 @@ end
 function GetWareProductionLimit() return 100 end
 Helper = {getWorkforceConsumption=function() return 0 end}
 C = {}
+function C.GetNumStoredUnits() return 0 end
 package.preload.ffi = function() return {C=C, new=function() return {} end, string=tostring} end
 function C.IsComponentClass() return true end
 function C.IsRealComponentClass(id, class) return classes[module(id).macro] == class end

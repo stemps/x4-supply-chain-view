@@ -138,5 +138,17 @@
     <t id="3163">Dane podaży i popytu są niepełne.</t>
     <t id="3164">* Tylko znane ilości; bilans netto niedostępny. Wartości na godzinę.</t>
     <t id="3166">* dokładny bilans nieznany z powodu producentów/odbiorców o nieznanych lub zmiennych ilościach \(np. górników lub stoczni\)</t>
+    <t id="3170">Logistyka</t>
+    <t id="3171">Doki: wolne / ogółem. Pomarańczowy oznacza brak wolnych miejsc.</t>
+    <t id="3172">L obejmuje wspólne miejsca L/XL; magazyn wewnętrzny jest wykluczony.</t>
+    <t id="3173">Bezczynne: %s / %s statków - %s</t>
+    <t id="3174">Bezczynność oznacza brak bieżących rozkazów. Liczone są typy statków, także pośredni podwładni.</t>
+    <t id="3175">Bezczynność: pomarańczowy od 50%, czerwony od 75%.</t>
+    <t id="3176">Handlowcy</t>
+    <t id="3177">Górnicy</t>
+    <t id="3178">Drony ładunkowe</t>
+    <t id="3179">Zajęte i zarezerwowane miejsca dokowania są niedostępne.</t>
+    <t id="3180">Doki</t>
+    <t id="3181">Liczby statków i doków są dostępne tylko dla stacji gracza.</t>
   </page>
 </language>

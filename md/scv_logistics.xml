@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mdscript name="SCV_Logistics" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="md.xsd">
+  <cues>
+    <!-- On-demand only. lib.recall.subordinates uses this same native free-dock
+         filter. Never reserve a berth or alter a ship's orders to measure it. -->
+    <cue name="DockCapacity" instantiate="true">
+      <conditions>
+        <event_ui_triggered screen="'SCVSupplyChainMenu'" control="'dock_capacity'"/>
+      </conditions>
+      <actions>
+        <do_if value="typeof event.param3 == datatype.list and event.param3.count == 3">
+          <set_value name="$Station" exact="event.param3.{1}"/>
+          <set_value name="$Token" exact="event.param3.{2}"/>
+          <set_value name="$Code" exact="event.param3.{3}"/>
+          <do_if value="typeof $Station == datatype.component and $Station.exists and $Station.isclass.station and $Station.owner == faction.player and $Station.idcode == $Code and typeof $Token == datatype.string">
+            <find_dockingbay name="$Docks" object="$Station" checkoperational="true" multiple="true">
+              <match_dock storage="false" trading="true" hidden="false" showroom="false" ventureronly="false" allowplayeronly="false"/>
+            </find_dockingbay>
+            <find_dockingbay name="$FreeDocks" object="$Station" checkoperational="true" multiple="true">
+              <match_dock storage="false" trading="true" hidden="false" showroom="false" ventureronly="false" allowplayeronly="false" free="true"/>
+            </find_dockingbay>
+            <set_value name="$Counts" exact="[0, 0, 0, 0, 0, 0]"/>
+            <do_all exact="$Docks.count" counter="$i">
+              <set_value name="$Dock" exact="$Docks.{$i}"/>
+              <set_value name="$Index" exact="0"/>
+              <do_if value="$Dock.external and $Dock.isdockingallowed">
+                <!-- The largest supported size owns a shared berth. L includes XL. -->
+                <do_if value="$Dock.docksize.indexof.{tag.dock_xl} or $Dock.docksize.indexof.{tag.dock_l}">
+                  <set_value name="$Index" exact="5"/>
+                </do_if>
+                <do_elseif value="$Dock.docksize.indexof.{tag.dock_m}">
+                  <set_value name="$Index" exact="3"/>
+                </do_elseif>
+                <do_elseif value="$Dock.docksize.indexof.{tag.dock_s}">
+                  <set_value name="$Index" exact="1"/>
+                </do_elseif>
+              </do_if>
+              <do_if value="$Index gt 0">
+                <set_value name="$Counts.{$Index + 1}" operation="add" exact="1"/>
+                <do_if value="$FreeDocks.indexof.{$Dock}">
+                  <set_value name="$Counts.{$Index}" operation="add" exact="1"/>
+                </do_if>
+              </do_if>
+            </do_all>
+            <do_if value="not player.entity.$scv_dock_results?">
+              <set_value name="player.entity.$scv_dock_results" exact="table[]"/>
+            </do_if>
+            <set_value name="player.entity.$scv_dock_results.{$Token}" exact="[$Code, $Counts.{1}, $Counts.{2}, $Counts.{3}, $Counts.{4}, $Counts.{5}, $Counts.{6}]"/>
+            <raise_lua_event name="'scv_dock_capacity_ready'"/>
+          </do_if>
+        </do_if>
+      </actions>
+    </cue>
+  </cues>
+</mdscript>

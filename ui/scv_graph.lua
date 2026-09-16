@@ -360,6 +360,26 @@ end
 
 -- Publish a whole sweep without touching topology or any widget/layout references.
 -- Ware tables remain stable too: an expanded panel may already reference them.
+function SCV_Graph.logisticsTotals(logistics)
+	local data = logistics or {}
+	local result = { traders = 0, miners = 0, idle = 0,
+		shipsKnown = data.shipsKnown == true, idleKnown = data.shipsKnown == true and data.idleKnown == true }
+	for _, role in ipairs({ "traders", "miners" }) do
+		for _, bucket in pairs(data[role] or {}) do
+			result[role] = result[role] + bucket.total
+			result.idle = result.idle + bucket.idle
+		end
+	end
+	result.total = result.traders + result.miners
+	result.severity = "ok"
+	-- Compare integers, never a rounded display percentage. No ships is not an error.
+	if result.idleKnown and result.total > 0 then
+		if result.idle * 4 >= result.total * 3 then result.severity = "critical"
+		elseif result.idle * 2 >= result.total then result.severity = "warning" end
+	end
+	return result
+end
+
 function SCV_Graph.refreshMetrics(graph, stations)
 	local current = {}
 	for _, st in ipairs(stations) do current[st.id] = st end
@@ -380,6 +400,7 @@ function SCV_Graph.refreshMetrics(graph, stations)
 		end
 		local node = graph.metricStations[id]
 		if node then
+			node.logistics = available and st.logistics or nil
 			for ware, w in pairs(node.wares) do
 				local fresh = available and st.wares[ware]
 				if not sameRole(fresh, roles[ware]) then fresh = unknownWare(w) end
@@ -422,6 +443,7 @@ function SCV_Graph.build(stations, options)
 			name      = st.name,
 			type      = "container",
 			wares     = st.wares or {},
+			logistics = st.logistics,
 			severity  = "ok",
 			healthKnown = true,
 			worstWare = nil,

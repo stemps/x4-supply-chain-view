@@ -138,5 +138,17 @@
     <t id="3163">Oferta y demanda incompletas.</t>
     <t id="3164">* Solo contribuciones conocidas; balance neto no disponible. Tasas por hora.</t>
     <t id="3166">* balance exacto desconocido por productores/consumidores con volúmenes desconocidos o variables \(p. ej., mineros o astilleros\)</t>
+    <t id="3170">Logística</t>
+    <t id="3171">Muelles: libres / total. Naranja: no hay puestos libres.</t>
+    <t id="3172">L incluye puestos compartidos L/XL; no incluye almacenamiento interno.</t>
+    <t id="3173">Inactivos: %s / %s naves - %s</t>
+    <t id="3174">Inactivo significa sin órdenes actuales. Se cuenta por tipo de nave, incluidos subordinados indirectos.</t>
+    <t id="3175">Inactividad: naranja desde 50%, rojo desde 75%.</t>
+    <t id="3176">Comerciantes</t>
+    <t id="3177">Mineros</t>
+    <t id="3178">Drones de carga</t>
+    <t id="3179">Los puntos de atraque ocupados o reservados no están disponibles.</t>
+    <t id="3180">Muelles</t>
+    <t id="3181">Los recuentos de naves y muelles requieren una estación del jugador.</t>
   </page>
 </language>

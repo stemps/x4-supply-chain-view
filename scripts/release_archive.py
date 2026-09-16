@@ -14,6 +14,7 @@ def runtime_path(name):
     return (not path.is_absolute() and '..' not in path.parts and '\\' not in name
             and (name in ('content.xml', 'ui.xml')
                  or (name.startswith('ui/') and name.endswith('.lua'))
+                 or (name.startswith('md/') and name.endswith('.xml'))
                  or (name.startswith('t/') and name.endswith('.xml'))))
 
 

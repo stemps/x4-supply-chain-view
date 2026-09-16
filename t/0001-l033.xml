@@ -138,5 +138,17 @@
     <t id="3163">Données d’offre et de demande incomplètes.</t>
     <t id="3164">* Contributions connues uniquement ; bilan net indisponible. Les débits sont par heure.</t>
     <t id="3166">* bilan exact inconnu en raison de producteurs/consommateurs aux volumes inconnus ou variables \(p. ex. mineurs ou chantiers navals\)</t>
+    <t id="3170">Logistique</t>
+    <t id="3171">Quais : libres / total. Orange : aucune place libre.</t>
+    <t id="3172">L inclut les places communes L/XL ; le stockage interne est exclu.</t>
+    <t id="3173">Inactifs : %s / %s vaisseaux - %s</t>
+    <t id="3174">Inactif signifie sans ordre en cours. Comptage par type de vaisseau, subordonnés indirects inclus.</t>
+    <t id="3175">Inactivité : orange dès 50%, rouge dès 75%.</t>
+    <t id="3176">Commerçants</t>
+    <t id="3177">Mineurs</t>
+    <t id="3178">Drones de fret</t>
+    <t id="3179">Les emplacements occupés ou réservés sont indisponibles.</t>
+    <t id="3180">Quais</t>
+    <t id="3181">Les nombres de vaisseaux et de quais sont réservés aux stations du joueur.</t>
   </page>
 </language>

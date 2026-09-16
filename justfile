@@ -53,6 +53,7 @@ test-graph:
 # Reader, graph, and popup contracts with a fake engine.
 test-metrics:
     uv run --with lupa python test/test_metrics.py
+    uv run --with lupa python test/test_logistics.py
 
 # Persistence and station relinking.
 test-store:

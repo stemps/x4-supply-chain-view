@@ -138,5 +138,17 @@
     <t id="3163">Dados de oferta e demanda incompletos.</t>
     <t id="3164">* Apenas contribuições conhecidas; saldo líquido indisponível. Taxas por hora.</t>
     <t id="3166">* saldo exato desconhecido devido a produtores/consumidores com volumes desconhecidos ou variáveis \(por exemplo, mineradores ou estaleiros\)</t>
+    <t id="3170">Logística</t>
+    <t id="3171">Docas: livres / total. Laranja significa nenhuma vaga livre.</t>
+    <t id="3172">L inclui vagas compartilhadas L/XL; armazenamento interno não é contado.</t>
+    <t id="3173">Ociosas: %s / %s naves - %s</t>
+    <t id="3174">Ociosa significa sem ordens atuais. Contagem por tipo de nave, incluindo subordinadas indiretas.</t>
+    <t id="3175">Ociosidade: laranja a partir de 50%, vermelho a partir de 75%.</t>
+    <t id="3176">Comerciantes</t>
+    <t id="3177">Mineradores</t>
+    <t id="3178">Drones de carga</t>
+    <t id="3179">Pontos de atracação ocupados e reservados não estão disponíveis.</t>
+    <t id="3180">Docas</t>
+    <t id="3181">As contagens de naves e docas exigem uma estação do jogador.</t>
   </page>
 </language>

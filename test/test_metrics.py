@@ -26,6 +26,16 @@ logs = {}
 function DebugError(s) logs[#logs+1] = s end
 function ReadText(page, id) return texts[id] or tostring(id) end
 function ConvertStringTo64Bit(v) return v end
+function ConvertIDTo64Bit(v) return v end
+function ConvertStringToLuaID(v) return v end
+function getElapsedTime() return 100 end
+function GetSubordinates() return {} end
+function GetFactionData() return nil end
+function RegisterEvent() end
+function UnregisterEvent() end
+function SetNPCBlackboard() end
+function GetNPCBlackboard() return nil end
+function AddUITriggeredEvent() end
 function IsValidComponent() return true end
 function IsComponentConstruction(id) return id == 'unfinished' end
 function IsMacroClass(_, class) return class == 'production' end
@@ -33,6 +43,8 @@ state = { modules=true, build=false, stockKnown=true, reservations=true, workfor
           prod=4800000, cons=2400000, cargo={energycells=120000, food=10000},
           incoming=2000, outgoing=12000 }
 C = {}
+function C.GetPlayerID() return 'player' end
+function C.GetNumStoredUnits() return 0 end
 function C.GetNumPlannedStationModules() return 0 end
 package.preload.ffi = function() return {C=C, new=function() return {} end, string=tostring} end
 function C.IsComponentClass() return true end
@@ -89,7 +101,7 @@ function GetWareData(ware, key)
     if key == 'volume' then return 1 end
     return key == 'transport' and 'container' or ware
 end
-Helper = { standardTextHeight=20, topLevelMenus={}, headerRow1Properties={},
+Helper = { standardFontSize=9, standardTextHeight=20, topLevelMenus={}, headerRow1Properties={},
     scaleY=function(value) return value end,
     registerMenu=function() end, clearFrame=function() cleared=true end,
     getWorkforceConsumption=function(id, ware) return ware == 'food' and state.workforce or 0 end }

@@ -122,6 +122,18 @@ assert(toolbarTable().widths[1]==Helper.scaleY(Helper.standardButtonHeight), 'na
 assert(menu.toolbarGeometry.anchorX>toolbarTable().properties.x and
     menu.toolbarGeometry.anchorX<toolbarTable().properties.x+toolbarTable().properties.width)
 
+-- Presentation-only logistics growth captures native scroll before destroying widgets.
+local savedGraph, savedBuilds = menu.graph, builds
+menu.flowchart.id = 'scroll-chart'
+function GetFlowchartFirstVisibleCell(id) assert(id=='scroll-chart'); return 4,3 end
+function GetFlowchartSelectedCell(id) assert(id=='scroll-chart'); return 5,4 end
+menu.display(true)
+assert(menu.logisticsScroll[1]==4 and menu.logisticsScroll[2]==3)
+assert(menu.logisticsScroll[3]==5 and menu.logisticsScroll[4]==4)
+assert(menu.graph==savedGraph and builds==savedBuilds, 'presentation growth preserves topology')
+menu.display()
+assert(menu.logisticsScroll==nil, 'full chain rebuild clears the previous scroll position')
+
 SCV_Store.create('A very long chain name '..string.rep('abc ',40),{{id='1',code='code1'}})
 menu.display(); row=toolbar()
 assert(not row[1].properties.active and not row[3].properties.active)

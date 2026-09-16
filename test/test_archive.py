@@ -50,6 +50,24 @@ class ArchiveTests(unittest.TestCase):
         local_zip(self.root)
         self.assertNotEqual(archive.read_bytes(), original)
 
+    def test_md_in_local_release_and_tagged_archives(self):
+        self.fixture.write('md/scv_logistics.xml', '<mdscript name="SCV_Logistics"/>\n')
+        self.fixture.write('md/notes.txt', 'Not runtime content')
+        local = local_zip(self.root)
+        with zipfile.ZipFile(local) as archive:
+            self.assertIn('supply_chain_view/md/scv_logistics.xml', archive.namelist())
+            self.assertNotIn('supply_chain_view/md/notes.txt', archive.namelist())
+        self.fixture.cmd('add', 'md')
+        self.fixture.cmd('commit', '-m', 'Add MD reader')
+        self.fixture.cmd('push', 'origin', 'main')  # fixture's temporary local bare repo
+        public = self.fixture.run_release()
+        with zipfile.ZipFile(public) as archive:
+            expected = archive.read('supply_chain_view/md/scv_logistics.xml')
+        public.unlink()
+        rebuilt, _, _ = tagged_zip(self.root, 'v0.1.0')
+        with zipfile.ZipFile(rebuilt) as archive:
+            self.assertEqual(archive.read('supply_chain_view/md/scv_logistics.xml'), expected)
+
     def test_missing_manifest_fails(self):
         (self.root / 'ui.xml').unlink()
         with self.assertRaisesRegex(ReleaseError, 'Missing runtime manifests'):

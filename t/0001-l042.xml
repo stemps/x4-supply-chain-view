@@ -138,5 +138,17 @@
     <t id="3163">Údaje o nabídce a poptávce jsou neúplné.</t>
     <t id="3164">* Pouze známé příspěvky; čistá bilance není k dispozici. Hodnoty jsou za hodinu.</t>
     <t id="3166">* přesná bilance není známa kvůli výrobcům/spotřebitelům s neznámým nebo proměnlivým objemem \(např. těžařům či loděnicím\)</t>
+    <t id="3170">Logistika</t>
+    <t id="3171">Doky: volné / celkem. Oranžová znamená žádná volná místa.</t>
+    <t id="3172">L zahrnuje sdílená stání L/XL; vnitřní skladování je vyloučeno.</t>
+    <t id="3173">Nečinné: %s / %s lodí - %s</t>
+    <t id="3174">Nečinnost znamená žádné aktuální rozkazy. Počty vycházejí z typu lodě včetně nepřímých podřízených.</t>
+    <t id="3175">Nečinnost: oranžová od 50%, červená od 75%.</t>
+    <t id="3176">Obchodníci</t>
+    <t id="3177">Těžaři</t>
+    <t id="3178">Nákladní drony</t>
+    <t id="3179">Obsazená a rezervovaná dokovací místa nejsou dostupná.</t>
+    <t id="3180">Doky</t>
+    <t id="3181">Počty lodí a doků jsou dostupné jen pro stanice hráče.</t>
   </page>
 </language>

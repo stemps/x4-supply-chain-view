@@ -585,6 +585,180 @@ end
 -- Per-station read
 -- ---------------------------------------------------------------------------------
 
+-- Property-owned ship summary: menu_map.getPropertyOwnedFleetDataInternal and
+-- getPropertyOwnedGroupIcons_getData. The map's empty order queue defines idle;
+-- default orders, cargo and ship speed do not. These C declarations belong to the
+-- ego_detailmonitor dependency (menu_map.lua), not Lua globals.
+local function nonnegativeInteger(value)
+	local n = tonumber(value)
+	return n and n >= 0 and n < math.huge and n == math.floor(n) and n or nil
+end
+
+function SCV_Data.readLogistics(id64)
+	local result = { docks = {}, traders = {}, miners = {}, categories = {} }
+	local owner = safe(nil, GetComponentData, id64, "owner")
+	result.factionColor = owner and safe(nil, GetFactionData, owner, "color") or nil
+	for _, role in ipairs({ "traders", "miners" }) do
+		for _, size in ipairs({ "xs", "s", "m", "l", "xl" }) do
+			result[role][size] = { total = 0, idle = 0 }
+		end
+	end
+	-- Vanilla's property-owned summary is player-only. Do not expose foreign
+	-- subordinate orders or unscanned dock modules through an MD back door.
+	if safe(false, GetComponentData, id64, "isplayerowned") == true then
+		local ok, err = pcall(function ()
+			if not IsValidComponent(id64) then error("station no longer exists") end
+			local seen, queue, cursor = {}, { id64 }, 1
+			result.shipsKnown, result.idleKnown = true, true
+			while cursor <= #queue do
+				local ship = queue[cursor]
+				cursor = cursor + 1
+				local key = tostring(ConvertIDTo64Bit(ship))
+				if not seen[key] then
+					seen[key] = true
+					if IsValidComponent(ship) then
+						if key ~= tostring(ConvertIDTo64Bit(id64)) then
+							local macro = GetComponentData(ship, "macro")
+							local purpose = GetMacroData(macro, "primarypurpose")
+							if type(purpose) ~= "string" then error("ship purpose unavailable") end
+							local role = purpose == "trade" and "traders" or purpose == "mine" and "miners" or nil
+							do
+								local size
+								for _, candidate in ipairs({ "xl", "l", "m", "s", "xs" }) do
+									if C.IsComponentClass(ConvertIDTo64Bit(ship), "ship_" .. candidate) then size = candidate; break end
+								end
+								if size then
+									local ranks = { fight = 5, auxiliary = 4, trade = 3, mine = 2, build = 1 }
+									local rank = ({ xs = 10, s = 20, m = 30, l = 40, xl = 50 })[size] + (ranks[purpose] or 0)
+									local bucket = result.categories[rank]
+									if not bucket then
+										bucket = { total = 0, idle = 0, size = size, purpose = purpose, rank = rank }
+										bucket.name = safe(nil, GetComponentData, ship, "shiptypename")
+										result.categories[rank] = bucket
+										if role then result[role][size] = bucket end
+									end
+									if not bucket.icon then
+										local icon = safe(nil, GetMacroData, macro, "primarypurposeicon")
+										if type(icon) ~= "string" or icon == "" then icon = safe(nil, GetMacroData, macro, "icon") end
+										if type(icon) == "string" and icon ~= "" then bucket.icon = icon end
+									end
+									bucket.total = bucket.total + 1
+									local orders = nonnegativeInteger(safe(nil, function () return C.GetNumOrders(ConvertIDTo64Bit(ship)) end))
+									if orders == nil then
+										bucket.idleUnknown = true
+										if role then result.idleKnown = false end
+									elseif orders == 0 then bucket.idle = bucket.idle + 1 end
+								else
+									result.shipsKnown, result.idleKnown = false, false
+								end
+							end
+						end
+						local children = GetSubordinates(ship)
+						if type(children) ~= "table" then error("subordinate list unavailable") end
+						for _, child in ipairs(children) do queue[#queue + 1] = child end
+					end
+				end
+			end
+		end)
+		if not ok then
+			result.shipsKnown, result.idleKnown = false, false
+			warnOnce("logistics-ships:" .. tostring(err), "ship logistics unavailable: " .. tostring(err))
+		end
+		SCV_Data.requestDocks(id64, result)
+	end
+	local unitsVisible = safe(false, function () return C.IsInfoUnlockedForPlayer(id64, "units_amount") end)
+		and safe(false, function () return C.IsInfoUnlockedForPlayer(id64, "units_details") end)
+	if unitsVisible then
+		result.drones = nonnegativeInteger(safe(nil, function () return C.GetNumStoredUnits(id64, "transport", false) end))
+	end
+	return result
+end
+
+-- MD responses are a token-keyed mailbox, so several responses arriving before
+-- Lua dispatch cannot overwrite one another. Values are lists, avoiding MD's
+-- dollar-prefixed named keys at the Lua boundary. Nothing is saved in __SCV_GROUPS.
+local dockEvent = "scv_dock_capacity_ready"
+local dockMailbox = "$scv_dock_results"
+local dockPending, dockStations, dockSerial = {}, {}, 0
+local dockActive, dockCallback, dockSession = false, nil, nil
+
+local function clearDockMailbox()
+	return safe(nil, function ()
+		local player = ConvertStringTo64Bit(tostring(C.GetPlayerID()))
+		SetNPCBlackboard(player, dockMailbox, nil)
+	end)
+end
+
+function SCV_Data.stopLogistics()
+	if dockActive then UnregisterEvent(dockEvent, SCV_Data.onDockCapacity) end
+	dockActive, dockCallback, dockSession = false, nil, nil
+	dockPending, dockStations = {}, {}
+end
+
+function SCV_Data.startLogistics(callback)
+	SCV_Data.stopLogistics()
+	dockActive, dockCallback = true, callback
+	dockSession = tostring({}) .. ":" .. tostring(getElapsedTime())
+	clearDockMailbox()
+	RegisterEvent(dockEvent, SCV_Data.onDockCapacity)
+end
+
+function SCV_Data.requestDocks(id64, logistics)
+	if not dockActive then return end
+	local id = tostring(id64)
+	if dockStations[id] then dockPending[dockStations[id]] = nil end
+	dockSerial = dockSerial + 1
+	-- MD string table keys must start with '$' (scriptproperties.xml, table).
+	local token = "$scv_" .. dockSession .. ":" .. tostring(dockSerial)
+	local code = safe(nil, GetComponentData, id64, "idcode")
+	if type(code) ~= "string" or code == "" then return end
+	dockStations[id] = token
+	dockPending[token] = { id = id, code = code, logistics = logistics, deadline = getElapsedTime() + SCV_Data.REFRESH_INTERVAL }
+	safe(nil, AddUITriggeredEvent, "SCVSupplyChainMenu", "dock_capacity",
+		{ ConvertStringToLuaID(tostring(id64)), token, code })
+end
+
+function SCV_Data.expireDockRequests(now)
+	for token, request in pairs(dockPending) do
+		if now >= request.deadline then
+			dockPending[token], dockStations[request.id] = nil, nil
+		end
+	end
+end
+
+function SCV_Data.onDockCapacity()
+	if not dockActive then return end
+	SCV_Data.expireDockRequests(getElapsedTime())
+	local results = safe(nil, function () return GetNPCBlackboard(ConvertStringTo64Bit(tostring(C.GetPlayerID())), dockMailbox) end)
+	if type(results) ~= "table" then return end
+	clearDockMailbox()
+	local changed = false
+	for token, values in pairs(results) do
+		-- MD string keys require '$', but the blackboard bridge strips that
+		-- prefix on the Lua side. Accept both bridge representations.
+		local correlationToken = type(token) == "string" and token:sub(1, 1) ~= "$" and ("$" .. token) or token
+		local request = dockPending[correlationToken]
+		if request then
+			dockPending[correlationToken], dockStations[request.id] = nil, nil
+			local id64 = ConvertStringTo64Bit(request.id)
+			local valid = type(values) == "table" and #values == 7 and values[1] == request.code
+				and safe(false, IsValidComponent, id64)
+				and safe(nil, GetComponentData, id64, "idcode") == request.code
+				and safe(false, GetComponentData, id64, "isplayerowned") == true
+			local docks = {}
+			if valid then
+				for i, size in ipairs({ "s", "m", "l" }) do
+					local free, total = nonnegativeInteger(values[2 * i]), nonnegativeInteger(values[2 * i + 1])
+					if free == nil or total == nil or free > total then valid = false; break end
+					docks[size] = { free = free, total = total }
+				end
+			end
+			if valid then request.logistics.docks = docks; changed = true end
+		end
+	end
+	if changed and dockCallback then dockCallback() end
+end
+
 function SCV_Data.readStation(st)
 	local id64 = st.id64
 
@@ -708,6 +882,7 @@ function SCV_Data.readStation(st)
 		code       = desc.code or st.code,
 		sectorname = desc.sectorname or "",
 		wares      = wares,
+		logistics  = SCV_Data.readLogistics(id64),
 		-- Not scanned far enough to read stock levels. The links are still right; the
 		-- numbers on them are not.
 		locked     = (not unlockedAmounts) or (not unlockedCapacity),
@@ -762,6 +937,11 @@ function SCV_Data.invalidate(id)
 		SCV_Data.cache[id] = nil
 	else
 		SCV_Data.cache = {}
+	end
+	-- A changed chain cannot accept replies requested by its predecessor.
+	if dockActive then
+		local callback = dockCallback
+		SCV_Data.startLogistics(callback)
 	end
 end
 

@@ -131,6 +131,10 @@ def main():
         schema = etree.XMLSchema(etree.parse(str(args.reference / "ui/core/addon.xsd")))
         schema.assertValid(etree.parse(str(ROOT / "ui.xml")))
         print("PASS schema: ui.xml (addon.xsd)")
+        md_schema = etree.XMLSchema(etree.parse(str(args.reference / "libraries/md.xsd")))
+        for path in sorted((ROOT / "md").rglob("*.xml")):
+            md_schema.assertValid(etree.parse(str(path)))
+            print(f"PASS schema: {path.relative_to(ROOT)} (md.xsd)")
         check_tooltip_translations(etree)
 
 

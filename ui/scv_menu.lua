@@ -19,19 +19,21 @@ local menu = {
 }
 
 local config = {
-	-- Lower layers draw in front: dialogs, status, node details, graph/toolbar.
+	-- Lower layers draw in front: dialogs, logistics, status, node details, graph.
 	mainFrameLayer         = 5,
 	-- Match vanilla LSO's 5 -> 4 node expansion. The native central fill and
 	-- background are coplanar; layer 2 produces hover-dependent fill occlusion.
 	expandedMenuFrameLayer = 4,
 	managementFrameLayer   = 1,
 	statusFrameLayer       = 3,
+	logisticsFrameLayer    = 2,
 	topLevelId             = "scv_supplychain",
 	textPage               = 90210,
 	-- Station names run long ("2 - Factory - Asteroid Belt - Computronic Substrate") and the
 	-- node must also fit a status figure on the right; at 250px they were cut off mid-word.
 	-- Leave room for long ware names beside partial supply/demand labels.
 	stationNodeWidth       = 310,
+	logisticsColumns       = 13, -- native table limit
 	wareNodeWidth          = 300,
 	nodeOffsetX            = 20,
 	savedVersion           = 2,
@@ -137,6 +139,9 @@ end
 
 function menu.cleanup()
 	menu.closed = true
+	menu.clearLogisticsStrip()
+	menu.logisticsNeedsSpace = nil
+	if SCV_Data.stopLogistics then SCV_Data.stopLogistics() end
 	if menu.statusFrame then Helper.clearFrame(menu, config.statusFrameLayer) end
 	menu.statusFrame, menu.statusKey, menu.statusHeight, menu.noticeUntil = nil, nil, nil, nil
 	menu.graphLayout = nil
@@ -169,6 +174,7 @@ end
 
 function menu.onShowMenu()
 	menu.closed = false
+	if SCV_Data.startLogistics then SCV_Data.startLogistics(menu.onDockMetrics) end
 	SCV_Store.load()
 
 	-- The InteractMenu may not have existed in the Menus registry when scv_interact loaded.
@@ -212,6 +218,7 @@ menu.updateInterval = 0.2
 
 function menu.onUpdate()
 	if menu.closed then return end
+	if SCV_Data.expireDockRequests then SCV_Data.expireDockRequests(getElapsedTime()) end
 	-- Chunked scanning: pull stations in a few at a time until the chain is fully read,
 	-- then redraw once. A full rescan inside one callback is the crash risk this avoids.
 	-- Do not destroy an active editbox when an initial scan/queued redraw completes.
@@ -239,6 +246,10 @@ function menu.onUpdate()
 		if snapshot then menu.publishMetrics(snapshot) end
 	end
 	menu.updateStatusStrip()
+	if menu.logisticsNeedsSpace and menu.frame and not menu.expandedNode then
+		menu.display(true)
+	end
+	menu.updateLogisticsStrip()
 	if menu.managementFrame then menu.managementFrame:update() end
 end
 
@@ -307,6 +318,258 @@ end
 -- ---------------------------------------------------------------------------------
 -- Node decoration
 -- ---------------------------------------------------------------------------------
+
+local function logisticsTint(text, severity)
+	local color = severity == "critical" and "text_error" or severity == "warning" and "text_warning" or nil
+	return color and (Helper.convertColorToText(Color[color]) .. text .. "\27X") or text
+end
+
+local function logisticsCount(value, known)
+	return known and tostring(value) or "?"
+end
+
+local function logisticsIdleLabel(idle, total, percent)
+	-- Also handle translations cached before /reloadui; native font lacks this dash.
+	return (T(3173, idle, total, percent):gsub("—", "-"):gsub("–", "-"))
+end
+
+local function dockLabel(logistics, size, includeSize)
+	local dock = logistics and logistics.docks and logistics.docks[size]
+	local text = (includeSize and string.upper(size) .. " " or "") .. (dock and (dock.free .. "/" .. dock.total) or "?/?")
+	return logisticsTint(text, dock and dock.total > 0 and dock.free == 0 and "warning" or "ok")
+end
+
+function menu.logisticsSummary(logistics)
+	local texts = {}
+	for _, entry in ipairs(menu.logisticsEntries(logistics)) do texts[#texts + 1] = entry.text end
+	return table.concat(texts, "  ")
+end
+
+function menu.idleText(logistics)
+	local totals = SCV_Graph.logisticsTotals(logistics)
+	-- Never round a sub-threshold ratio up to a displayed 50% or 75%.
+	local percent = totals.idleKnown and (totals.total > 0 and string.format("%.1f%%", math.floor(1000 * totals.idle / totals.total) / 10) or "0.0%") or "?"
+	return logisticsIdleLabel(logisticsCount(totals.idle, totals.idleKnown), logisticsCount(totals.total, totals.shipsKnown), percent)
+end
+
+function menu.logisticsTooltip(logistics)
+	local totals = SCV_Graph.logisticsTotals(logistics)
+	return T(3171) .. "\n" .. T(3172) .. "\n"
+		.. menu.idleText(logistics)
+		.. "\n" .. T(3174) .. "\n" .. T(3175)
+		.. ((not totals.shipsKnown) and ("\n" .. T(3181)) or "")
+end
+
+-- Each icon/count pair is a separate native text widget with its own mouseover.
+-- Size/purpose rank and icon preference match the map's property-owned list.
+function menu.logisticsEntries(logistics)
+	local data, entries = logistics or {}, {}
+	entries[1] = { text = "\27[stationbuildst_dock]", header = "\27[stationbuildst_dock]", count = "",
+		tip = T(3180) .. "\n\n" .. T(3171) .. "\n\n" .. T(3179) .. "\n\n" .. T(3172) }
+	for _, size in ipairs({ "s", "m", "l" }) do
+		entries[#entries + 1] = {
+			text = dockLabel(data, size, true),
+			tip = T(3180) .. " " .. string.upper(size) .. ": " .. dockLabel(data, size, false)
+				.. "\n\n" .. T(3171) .. "\n\n" .. T(3179) .. "\n\n" .. T(3172) .. (not data.shipsKnown and ("\n\n" .. T(3181)) or ""),
+		}
+	end
+	entries[#entries + 1] = { text = "\27[ship_xs_drone_trade_01] " .. logisticsCount(data.drones, data.drones ~= nil), color = data.factionColor,
+		groupStart = true,
+		tip = T(3178) .. ": " .. logisticsCount(data.drones, data.drones ~= nil) }
+	local categories = {}
+	if data.shipsKnown then
+		for _, bucket in pairs(data.categories or {}) do
+			if bucket.total > 0 then categories[#categories + 1] = bucket end
+		end
+	end
+	table.sort(categories, function (a, b) return a.rank > b.rank end)
+	for _, bucket in ipairs(categories) do
+		local name = bucket.name or (string.upper(bucket.size) .. " " .. bucket.purpose)
+		local percent = not bucket.idleUnknown and string.format("%.1f%%", math.floor(1000 * bucket.idle / bucket.total) / 10) or "?"
+		entries[#entries + 1] = { text = "\27[" .. (bucket.icon or "ship_m_transporter_01") .. "] " .. bucket.total,
+			color = data.factionColor,
+			tip = string.upper(bucket.size) .. ": " .. name .. ": " .. bucket.total .. "\n\n"
+				.. logisticsIdleLabel(logisticsCount(bucket.idle, not bucket.idleUnknown), tostring(bucket.total), percent) .. "\n\n" .. T(3174) }
+	end
+	if not data.shipsKnown then
+		entries[#entries + 1] = { text = "\27[ship_m_transporter_01] ?", color = data.factionColor, tip = T(3181) }
+	end
+	local totals = SCV_Graph.logisticsTotals(data)
+	entries[#entries + 1] = { text = logisticsTint("\27[ships_idling_01] " .. logisticsCount(totals.idle, totals.idleKnown), totals.severity),
+		tip = T(3176) .. " + " .. T(3177) .. "\n\n" .. menu.idleText(data) .. "\n\n" .. T(3174) .. "\n\n" .. T(3175) }
+	return entries
+end
+
+function menu.logisticsRows(logistics)
+	local entries = {}
+	local scale = Helper.uiScale or (Helper.scaleY(1000) / 1000)
+	local fontsize = Helper.scaleFont and Helper.scaleFont(Helper.standardFont, Helper.standardFontSize) or math.ceil(Helper.standardFontSize * scale)
+	local height = 2 * fontsize + 4 * scale
+	for _, entry in ipairs(menu.logisticsEntries(logistics)) do
+		if entry.groupStart then entries[#entries + 1] = { text = "", tip = "", width = 10 * scale } end
+		-- Keep colour escapes on both lines, including a trailing native reset.
+		local header, count = entry.text:match("^(.*) ([^ ]+)$")
+		header, count = entry.header or header, entry.count or count
+		entry.text = header .. "\n" .. count
+		local ok, w = pcall(function ()
+			return math.max(C.GetTextWidth(header, Helper.standardFont, fontsize), C.GetTextWidth(count, Helper.standardFont, fontsize))
+		end)
+		entry.width = math.ceil((ok and w or 40 * scale) + 4 * scale)
+		local hok, h = pcall(function () return C.GetTextHeight(entry.text, Helper.standardFont, fontsize, 0) end)
+		if hok then height = math.max(height, math.ceil(h)) end
+		entries[#entries + 1] = entry
+	end
+	return { { entries = entries, height = height } }
+end
+
+-- Grow shared widths until a full presentation rebuild. Twelve overlay tables
+-- leave nine slots for the chart's controls, status and expanded native panels.
+function menu.prepareLogisticsColumns(graph, viewportWidth, reset)
+	if reset or menu.logisticsLayoutGraph ~= graph then
+		menu.logisticsColumnLayouts = {}
+		menu.logisticsLayoutGraph = graph
+	end
+	local layouts = menu.logisticsColumnLayouts or {}
+	menu.logisticsColumnLayouts = layouts
+	local changed, maxChunks = false, 1
+	for _, node in ipairs(graph.nodes) do
+		if node.scvkind == "station" and node.col then
+			local layout = layouts[node.col] or { widths = {}, height = 0, count = 0 }
+			layouts[node.col] = layout
+			local line = node.logisticsRows[1]
+			line.baseEntries = line.baseEntries or line.entries
+			layout.count = math.max(layout.count, #line.baseEntries)
+		end
+	end
+	for _, node in ipairs(graph.nodes) do
+		if node.scvkind == "station" and node.col then
+			local layout, line = layouts[node.col], node.logisticsRows[1]
+			local entries, base = {}, line.baseEntries
+			for i = 1, 5 do entries[i] = base[i] end
+			local padding = layout.count - #base
+			for i = 1, padding do entries[5+i] = {text="", tip="", width=1} end
+			for i = 6, #base do entries[i+padding] = base[i] end
+			line.entries = entries
+			for i, entry in ipairs(entries) do
+				if i ~= 5 and entry.width > (layout.widths[i] or 0) then layout.widths[i], changed = entry.width, true end
+			end
+			layout.widths[5] = 10 * (Helper.uiScale or Helper.scaleY(1000)/1000)
+			if line.height > layout.height then layout.height, changed = line.height, true end
+			maxChunks = math.max(maxChunks, math.ceil(layout.count / config.logisticsColumns))
+		end
+	end
+	for _, layout in pairs(layouts) do
+		layout.width = math.max(0, #layout.widths - 1) * (Helper.borderSize or 1)
+		for _, w in ipairs(layout.widths) do layout.width = layout.width + w end
+		local targetWidth = math.max(layout.width, layout.previousWidth or 0, Helper.scaleY(config.stationNodeWidth))
+		layout.widths[5] = layout.widths[5] + targetWidth - layout.width
+		layout.width, layout.previousWidth = targetWidth, targetWidth
+		local chunks = math.ceil(#layout.widths / config.logisticsColumns)
+		local budgetWidth = (viewportWidth or 0) * chunks / math.max(1, 12 - 2 * maxChunks)
+		local required = math.max(Helper.scaleY(config.stationNodeWidth + 40), layout.width + Helper.scaleY(40), budgetWidth)
+		if required > (layout.minWidth or 0) then layout.minWidth, changed = required, true end
+	end
+	for _, node in ipairs(graph.nodes) do
+		local layout = node.scvkind == "station" and layouts[node.col]
+		if layout then node[1].properties.y = (layout.height / (Helper.scaleY(1000) / 1000) + 3 + Helper.standardFontSize * 1.5) / 2 end
+	end
+	return changed
+end
+
+function menu.onDockMetrics()
+	if not menu.closed and menu.graph then menu.updateMetricDisplay() end
+end
+
+function menu.clearLogisticsStrip()
+	if menu.logisticsFrame then Helper.clearFrame(menu, config.logisticsFrameLayer) end
+	menu.logisticsFrame, menu.logisticsKey = nil, nil
+end
+
+-- Use the very same screen-space anchor as native node expansion. Only visible
+-- nodes have anchors. Rebuild these light text tables when scrolling changes the
+-- anchors; the flowchart, its edges and its node pool remain untouched.
+-- Shared tables split at thirteen metric columns; graph spacing budgets the native pool.
+function menu.updateLogisticsStrip()
+	local chart = menu.flowchart
+	if menu.closed or menu.mode ~= "chain" or not chart or not chart.id or not menu.graph then
+		menu.clearLogisticsStrip()
+		return
+	end
+	local width, height = GetSize(chart.id)
+	local left, top = chart.properties.x, chart.properties.y
+	menu.prepareLogisticsColumns(menu.graph, width, false)
+	local columns, keys = {}, { tostring(left), tostring(top), tostring(width), tostring(height) }
+	local panel = menu.expandedMenuFrame and menu.expandedMenuFrame.properties
+	for _, data in ipairs(menu.graph.nodes) do
+		local widget = data.scvkind == "station" and data[1] and data[1].node
+		local layout = menu.logisticsColumnLayouts[data.col]
+		if widget and widget.id and layout then
+			local x, y = GetFlowchartNodeExpandedFrameData(widget.id)
+			if x then
+				local _, nodeHeight = GetSize(widget.id)
+				local sx, sy = math.floor(x - layout.width / 2), math.floor(y + nodeHeight / 2 + Helper.scaleY(3))
+				local bottom = sy + layout.height
+				local overlaps = panel and sx < panel.x + panel.width + 4 and sx + layout.width > panel.x - 4
+					and sy < panel.y + panel.height + 4 and bottom > panel.y - 4
+				if not overlaps and sy >= top and bottom <= top + height then
+					local cx = sx
+					for i, w in ipairs(layout.widths) do
+						-- Clip at whole metric boundaries, preserving complete numbers.
+						if cx >= left and cx + w <= left + width then
+							local id = data.col .. ":" .. math.floor((i - 1) / config.logisticsColumns)
+							local column = columns[id]
+							if not column then column = { x = cx, first = i, last = i, items = {}, layout = layout }; columns[id] = column end
+							column.last = math.max(column.last, i)
+							if i == column.first then column.items[#column.items + 1] = { y = sy, data = data } end
+							keys[#keys + 1] = tostring(widget.id) .. ":" .. cx .. ":" .. sy .. ":" .. i .. ":" .. w .. ":" .. layout.height
+						end
+						cx = cx + w + (Helper.borderSize or 1)
+					end
+				end
+			end
+		end
+	end
+	local key = table.concat(keys, "|")
+	if key == menu.logisticsKey then
+		if menu.logisticsFrame then menu.logisticsFrame:update() end
+		return
+	end
+	menu.clearLogisticsStrip()
+	menu.logisticsKey = key
+	if next(columns) == nil then return end
+	local frame = Helper.createFrameHandle(menu, { layer = config.logisticsFrameLayer,
+		x = left, y = top, width = width, height = height, standardButtons = {},
+		startAnimation = false, blurBackground = false, enableDefaultInteractions = false })
+	local tableCount = 0
+	for _ in pairs(columns) do tableCount = tableCount + 1 end
+	assert(tableCount <= 12, "SCV logistics overlay exceeds reserved native table budget")
+	for _, column in pairs(columns) do
+		table.sort(column.items, function (a, b) return a.y < b.y end)
+		local firstY, layout = column.items[1].y, column.layout
+		local ncols = column.last - column.first + 1
+		local tableWidth = (ncols - 1) * (Helper.borderSize or 1)
+		for i = column.first, column.last do tableWidth = tableWidth + layout.widths[i] end
+		local ftable = frame:addTable(ncols, { tabOrder = 0, borderEnabled = true,
+			x = column.x - left, y = firstY - top, width = tableWidth, reserveScrollBar = false, highlightMode = "off" })
+		for i = column.first, column.last do ftable:setColWidth(i - column.first + 1, layout.widths[i], false) end
+		for _, item in ipairs(column.items) do
+			local row = ftable:addRow(false, { fixed = true, borderBelow = false,
+				paddingTop = math.max(0, item.y - firstY - ftable:getFullHeight()),
+				bgColor = { r = 0, g = 0, b = 0, a = 0, glow = 0 } })
+			for i = column.first, column.last do
+				local index = i
+				local function entry() return item.data.logisticsRows[1].entries[index] or {} end
+				row[i - column.first + 1]:createText(function () return entry().text or "" end, {
+					scaling = false, fontsize = Helper.scaleFont(Helper.standardFont, Helper.standardFontSize),
+					height = layout.height, minRowHeight = layout.height, halign = "center", x = 0, y = 0,
+					color = function () return entry().color or Color["text_normal"] end,
+					mouseOverText = function () return entry().tip or "" end })
+			end
+		end
+	end
+	menu.logisticsFrame = frame
+	frame:display()
+end
 
 local function severityColor(severity)
 	if severity == "critical" then
@@ -539,14 +802,17 @@ function menu.decorateNodes(graph)
 			end
 			if not node.healthKnown then parts[#parts + 1] = T(3065) end
 
-			node.text = node.name
+			node.text = node.name or node.scvid or "?"
+			node.logisticsRows = menu.logisticsRows(node.logistics)
 			node.type = "container"
 			node[1] = {
 				properties = {
 					shape         = "rectangle",
 					width         = config.stationNodeWidth,
-					mouseOverText = warningReason(warningName, warningHealth, parts)
-						or ((#parts > 0) and table.concat(parts, "\n") or T(3014)),
+					x             = config.nodeOffsetX,
+					y             = (node.logisticsRows[1].height / (Helper.scaleY(1000) / 1000) + 3 + Helper.standardFontSize * 1.5) / 2,
+					mouseOverText = (warningReason(warningName, warningHealth, parts)
+						or ((#parts > 0) and table.concat(parts, "\n") or T(3014))),
 				},
 				statuscolor = severityColor(node.severity),
 				outlinecolor = severityColor(node.severity),
@@ -603,10 +869,16 @@ end
 function menu.updateMetricDisplay()
 	menu.metricRevision = (menu.metricRevision or 0) + 1
 	menu.decorateNodes(menu.graph)
+	if menu.prepareLogisticsColumns(menu.graph, menu.logisticsViewportWidth, false) then menu.logisticsNeedsSpace = true end
 	for _, data in ipairs(menu.graph.nodes) do
 		local display = data[1]
 		local widget = display and display.node
 		if widget then
+			if data.scvkind == "station" and widget.properties and display.properties.y > (widget.properties.y or 0) then
+				-- A wider category or count may need more graph space. Recreate only
+				-- presentation with the cached layout, never rescan/rebuild topology.
+				menu.logisticsNeedsSpace = true
+			end
 			widget.customdata.moduledata = display
 			-- Passing explicit defaults clears a warning when a station recovers.
 			widget:updateOutlineColor(display.outlinecolor or widget.scvDefaultOutline)
@@ -623,6 +895,10 @@ function menu.updateMetricDisplay()
 	-- station reads or graph reconstruction happen in frame:update().
 	if menu.frame then menu.frame:update() end
 	if menu.expandedMenuFrame then menu.expandedMenuFrame:update() end
+	if menu.logisticsNeedsSpace and menu.frame and not menu.expandedNode then
+		menu.logisticsNeedsSpace = nil
+		menu.display(true)
+	end
 end
 
 function menu.setWareWarnings(stationCode, ware, enabled)
@@ -650,6 +926,14 @@ local function availableHeight(y)
 end
 
 function menu.display(presentationOnly)
+	menu.logisticsScroll = nil
+	if presentationOnly and menu.flowchart and menu.flowchart.id then
+		local row, col = GetFlowchartFirstVisibleCell(menu.flowchart.id)
+		local selectedRow, selectedCol = GetFlowchartSelectedCell(menu.flowchart.id)
+		menu.logisticsScroll = { row, col, selectedRow, selectedCol }
+	end
+	menu.clearLogisticsStrip()
+	menu.flowchart, menu.logisticsNeedsSpace = nil, nil
 	local managementMode = menu.managementMode
 	if not presentationOnly then
 		menu.closeManagement()
@@ -1176,13 +1460,20 @@ function menu.displayChain(frame, x, y, width, reuseGraph)
 		chartY = y + ntable:getFullHeight()
 	end
 
+	menu.logisticsViewportWidth = width
+	menu.prepareLogisticsColumns(graph, width, not reuseGraph)
+	local scroll = menu.logisticsScroll or {}
 	menu.flowchart = frame:addFlowchart(numrows, numcols, {
+		firstVisibleRow = scroll[1], firstVisibleCol = scroll[2], selectedRow = scroll[3], selectedCol = scroll[4],
 		borderHeight = 3,
 		borderColor  = Color["row_background_blue"],
 		minRowHeight = 45,
 		minColWidth  = 80,
 		x = x, y = chartY, width = width,
 	})
+	for col, layout in pairs(menu.logisticsColumnLayouts) do
+		menu.flowchart:setColWidthMin(col, layout.minWidth, 1, false)
+	end
 	menu.flowchart:setDefaultNodeProperties({
 		expandedFrameLayer      = config.expandedMenuFrameLayer,
 		expandedTableNumColumns = 4,
@@ -1479,6 +1770,26 @@ function menu.expandStation(node, frame, ftable, nodedata)
 		if not GetComponentData(id64, "isplayerowned") then return end
 		menu.openMenu("StationConfigurationMenu", { 0, 0, id64 })
 	end
+
+	sectionHeader(ftable, T(3170))
+	row = ftable:addRow(false, {})
+	row[1]:setColSpan(4):createText(T(3171) .. " " .. T(3172), { wordwrap = true })
+	for _, size in ipairs({ "s", "m", "l" }) do
+		local dockSize = size
+		row = ftable:addRow(false, {})
+		row[1]:createText(function ()
+			local dock = nodedata.logistics and nodedata.logistics.docks and nodedata.logistics.docks[dockSize]
+			return logisticsTint(T(3180) .. " " .. (dockSize == "l" and "L/XL" or string.upper(dockSize)),
+				dock and dock.total > 0 and dock.free == 0 and "warning" or "ok")
+		end)
+		row[2]:setColSpan(3):createText(function () return dockLabel(nodedata.logistics, dockSize, false) end, { halign = "right" })
+	end
+	row = ftable:addRow(false, {})
+	row[1]:createText(T(3178))
+	row[2]:setColSpan(3):createText(function ()
+		local drones = nodedata.logistics and nodedata.logistics.drones
+		return logisticsCount(drones, drones ~= nil)
+	end, { halign = "right" })
 
 	if (#inputs == 0) and (#outputs == 0) then
 		row = ftable:addRow(false, {})
