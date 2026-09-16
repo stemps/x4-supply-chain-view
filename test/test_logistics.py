@@ -161,21 +161,41 @@ assert(menu.logisticsTooltip(a):find('100.0%',1,true))
 -- Out-of-order response from a superseded station refresh.
 local old=SCV_Data.readLogistics('A'); local stale=requests[#requests][2]
 local fresh=SCV_Data.readLogistics('A'); local current=requests[#requests][2]
+assert(fresh.docks.m.total==6, 'keep known berth counts while the next response is pending')
 deliver({[stale]={'AAA',1,1,1,1,1,1}})
-assert(next(old.docks)==nil and next(fresh.docks)==nil)
+assert(old.docks.m.total==6 and fresh.docks.m.total==6, 'stale responses must not replace the retained sample')
 deliver({[current]={'AAA',1,1,2,2,3,3}})
 assert(fresh.docks.m.free==2)
 local timeout=SCV_Data.readLogistics('A'); local late=requests[#requests][2]
+assert(timeout.docks.m.free==2)
+local beforeTimeout=changes
 now=now+5; deliver({[late]={'AAA',1,1,1,1,1,1}})
-assert(next(timeout.docks)==nil)
+assert(next(timeout.docks)==nil and changes==beforeTimeout+1, 'timeout clears and republishes retained counts')
 for _,bad in ipairs({{'WRONG',1,1,1,1,1,1},{'AAA',2,1,0,0,0,0},
  {'AAA',-1,1,0,0,0,0},{'AAA',0.5,1,0,0,0,0},{'AAA',0,0}}) do
+ local seed=SCV_Data.readLogistics('A'); local seedToken=requests[#requests][2]
+ deliver({[seedToken]={'AAA',1,1,2,2,3,3}})
  local record=SCV_Data.readLogistics('A'); local token=requests[#requests][2]
- deliver({[token]=bad}); assert(next(record.docks)==nil)
+ assert(record.docks.m.free==2)
+ local beforeInvalid=changes
+ deliver({[token]=bad}); assert(next(record.docks)==nil and changes==beforeInvalid+1)
 end
+local seed=SCV_Data.readLogistics('A'); deliver({[requests[#requests][2]]={'AAA',1,1,2,2,3,3}})
 local sold=SCV_Data.readLogistics('A'); local token=requests[#requests][2]
+assert(sold.docks.m.free==2)
 world.A.owned=false; deliver({[token]={'AAA',1,1,1,1,1,1}})
 assert(next(sold.docks)==nil); world.A.owned=true
+-- Replacing an in-flight request cannot indefinitely extend retained data.
+local waiting=SCV_Data.readLogistics('B')
+now=now+4
+local replacement=SCV_Data.readLogistics('B')
+assert(replacement.docks.s.free==1)
+now=now+1; SCV_Data.expireDockRequests(now)
+assert(next(replacement.docks)==nil)
+local seeded=SCV_Data.readLogistics('B'); deliver({[requests[#requests][2]]={'BBB',1,2,0,0,0,0}})
+world.B.code='NEW'
+assert(next(SCV_Data.readLogistics('B').docks)==nil, 'different station code must not inherit berth counts')
+world.B.code='BBB'
 local previous=SCV_Data.readLogistics('A'); token=requests[#requests][2]
 SCV_Data.invalidate(); deliver({[token]={'AAA',1,1,1,1,1,1}})
 assert(next(previous.docks)==nil, 'changed chain cannot consume old replies')
@@ -183,6 +203,7 @@ SCV_Data.stopLogistics(); local count=#requests
 SCV_Data.readLogistics('A'); assert(#requests==count and next(events)==nil)
 SCV_Data.onDockCapacity() -- stale native callback is harmless
 SCV_Data.startLogistics(function() changes=changes+1 end)
+assert(next(SCV_Data.readLogistics('B').docks)==nil, 'new session has no retained dock counts')
 deliver({[token]={'AAA',1,1,1,1,1,1}})
 assert(next(previous.docks)==nil, 'save/reopen cannot consume previous session data')
 

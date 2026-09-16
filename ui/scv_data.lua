@@ -680,6 +680,7 @@ end
 local dockEvent = "scv_dock_capacity_ready"
 local dockMailbox = "$scv_dock_results"
 local dockPending, dockStations, dockSerial = {}, {}, 0
+local dockLast = {}
 local dockActive, dockCallback, dockSession = false, nil, nil
 
 local function clearDockMailbox()
@@ -693,6 +694,7 @@ function SCV_Data.stopLogistics()
 	if dockActive then UnregisterEvent(dockEvent, SCV_Data.onDockCapacity) end
 	dockActive, dockCallback, dockSession = false, nil, nil
 	dockPending, dockStations = {}, {}
+	dockLast = {}
 end
 
 function SCV_Data.startLogistics(callback)
@@ -705,25 +707,37 @@ end
 
 function SCV_Data.requestDocks(id64, logistics)
 	if not dockActive then return end
+	SCV_Data.expireDockRequests(getElapsedTime())
 	local id = tostring(id64)
+	local pending = dockStations[id] and dockPending[dockStations[id]]
 	if dockStations[id] then dockPending[dockStations[id]] = nil end
 	dockSerial = dockSerial + 1
 	-- MD string table keys must start with '$' (scriptproperties.xml, table).
 	local token = "$scv_" .. dockSession .. ":" .. tostring(dockSerial)
 	local code = safe(nil, GetComponentData, id64, "idcode")
 	if type(code) ~= "string" or code == "" then return end
+	-- Preserve the last successful sample while its replacement is in flight.
+	-- The cache is session-local and guarded by the station's persistent code.
+	local previous = dockLast[id]
+	if previous and previous.code == code then logistics.docks = previous.docks end
 	dockStations[id] = token
-	dockPending[token] = { id = id, code = code, logistics = logistics, deadline = getElapsedTime() + SCV_Data.REFRESH_INTERVAL }
+	dockPending[token] = { id = id, code = code, logistics = logistics,
+		deadline = pending and pending.code == code and pending.deadline or getElapsedTime() + SCV_Data.REFRESH_INTERVAL }
 	safe(nil, AddUITriggeredEvent, "SCVSupplyChainMenu", "dock_capacity",
 		{ ConvertStringToLuaID(tostring(id64)), token, code })
 end
 
 function SCV_Data.expireDockRequests(now)
+	local changed = false
 	for token, request in pairs(dockPending) do
 		if now >= request.deadline then
 			dockPending[token], dockStations[request.id] = nil, nil
+			dockLast[request.id] = nil
+			if next(request.logistics.docks) then changed = true end
+			request.logistics.docks = {}
 		end
 	end
+	if changed and dockCallback then dockCallback() end
 end
 
 function SCV_Data.onDockCapacity()
@@ -753,7 +767,15 @@ function SCV_Data.onDockCapacity()
 					docks[size] = { free = free, total = total }
 				end
 			end
-			if valid then request.logistics.docks = docks; changed = true end
+			if valid then
+				request.logistics.docks = docks
+				dockLast[request.id] = { code = request.code, docks = docks }
+				changed = true
+			else
+				dockLast[request.id] = nil
+				if next(request.logistics.docks) then changed = true end
+				request.logistics.docks = {}
+			end
 		end
 	end
 	if changed and dockCallback then dockCallback() end

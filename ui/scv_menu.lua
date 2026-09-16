@@ -469,7 +469,9 @@ end
 -- Use the very same screen-space anchor as native node expansion. Only visible
 -- nodes have anchors. Rebuild these light text tables when scrolling changes the
 -- anchors; the flowchart, its edges and its node pool remain untouched.
--- Shared tables split at thirteen metric columns, the native table limit.
+-- Each strip has its own table: native table mouse-pick rectangles include empty
+-- row padding, so pooling a whole column would block the factory nodes below it.
+-- Split at thirteen metric columns, the native table limit.
 function menu.updateLogisticsStrip()
 	local chart = menu.flowchart
 	if menu.closed or menu.mode ~= "chain" or not chart or not chart.id or not menu.graph then
@@ -497,7 +499,7 @@ function menu.updateLogisticsStrip()
 					for i, w in ipairs(layout.widths) do
 						-- Clip at whole metric boundaries, preserving complete numbers.
 						if cx >= left and cx + w <= left + width then
-							local id = data.col .. ":" .. math.floor((i - 1) / config.logisticsColumns)
+							local id = tostring(widget.id) .. ":" .. math.floor((i - 1) / config.logisticsColumns)
 							local column = columns[id]
 							if not column then column = { x = cx, first = i, last = i, items = {}, layout = layout }; columns[id] = column end
 							column.last = math.max(column.last, i)
@@ -523,7 +525,10 @@ function menu.updateLogisticsStrip()
 		startAnimation = false, blurBackground = false, enableDefaultInteractions = false })
 	local orderedColumns = {}
 	for _, column in pairs(columns) do orderedColumns[#orderedColumns + 1] = column end
-	table.sort(orderedColumns, function (a, b) return a.x < b.x end)
+	table.sort(orderedColumns, function (a, b)
+		if a.x == b.x then return a.items[1].y < b.items[1].y end
+		return a.x < b.x
+	end)
 	for index, column in ipairs(orderedColumns) do
 		-- Reserve the remaining native tables for controls and expanded panels.
 		if index > 12 then break end
@@ -537,7 +542,6 @@ function menu.updateLogisticsStrip()
 		for i = column.first, column.last do ftable:setColWidth(i - column.first + 1, layout.widths[i], false) end
 		for _, item in ipairs(column.items) do
 			local row = ftable:addRow(false, { fixed = true, borderBelow = false,
-				paddingTop = math.max(0, item.y - firstY - ftable:getFullHeight()),
 				bgColor = { r = 0, g = 0, b = 0, a = 0, glow = 0 } })
 			for i = column.first, column.last do
 				local index = i

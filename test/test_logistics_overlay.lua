@@ -25,7 +25,7 @@ function Helper.createFrameHandle(_, properties)
 		function t:setColWidth(i, w, scaling) assert(scaling == false); self.widths[i] = w end
 		function t:getFullHeight()
 			local h = 0
-			for _, row in ipairs(self.rows) do h = h + row.properties.paddingTop + (row.measuredHeight or 0) end
+			for _, row in ipairs(self.rows) do h = h + (row.properties.paddingTop or 0) + (row.measuredHeight or 0) end
 			return h
 		end
 		function t:addRow(_, rowprops)
@@ -42,7 +42,7 @@ function Helper.createFrameHandle(_, properties)
 				row[i] = cell
 			end
 			self.rows[#self.rows + 1] = row
-			self.height = self.height + rowprops.paddingTop + 22 * scale
+			self.height = self.height + (rowprops.paddingTop or 0) + 22 * scale
 			return row
 		end
 		self.tables[#self.tables + 1] = t
@@ -100,7 +100,16 @@ menu.flowchart = { id = "chart", properties = { x = 0, y = 0 } }
 menu.mode, menu.closed, menu.metricRevision = "chain", false, 1
 menu.expandedMenuFrame = nil
 menu.updateLogisticsStrip()
-assert(#menu.logisticsFrame.tables == 2, "share one table per column, not per station")
+assert(#menu.logisticsFrame.tables == 3, "each station strip has its own mouse-hit rectangle")
+for _, t in ipairs(menu.logisticsFrame.tables) do
+	assert(#t.rows == 1 and (t.rows[1].properties.paddingTop or 0) == 0)
+	for _, anchor in pairs(anchors) do
+		local x, y = anchor[1], anchor[2]
+		assert(not (x >= t.properties.x and x <= t.properties.x + t.properties.width
+			and y >= t.properties.y and y <= t.properties.y + t:getFullHeight()),
+			"dock table mouse-hit rectangle covers a factory node")
+	end
+end
 local layout = menu.logisticsColumnLayouts[1]
 assert(layout.width == 310, "dock and ship groups span exactly the station width")
 assert(menu.logisticsFrame.tables[1].properties.x == 145 or menu.logisticsFrame.tables[1].properties.x == 745)
@@ -112,7 +121,7 @@ assert(displays == count, "stable anchors must not recreate the overlay")
 local shipTips, dockTips, droneTips, droneCell = 0, 0, 0, nil
 local function value(v) return type(v)=="function" and v() or v end
 for _, t in ipairs(menu.logisticsFrame.tables) do
-	assert(t.properties.y == 118, "strip is outside, below the 30px node")
+	assert(t.properties.y == 118 or t.properties.y == 368, "strip is outside, below its own node")
 	for _, row in ipairs(t.rows) do
 		for _, cell in ipairs(row) do
 			local props = cell.properties
@@ -142,7 +151,7 @@ menu.updateLogisticsStrip()
 assert(displays == count + 1, "scrolling must move tooltips with the station")
 anchors.c = nil -- native node is no longer visible
 menu.updateLogisticsStrip()
-assert(#menu.logisticsFrame.tables == 1)
+assert(#menu.logisticsFrame.tables == 2)
 menu.expandedMenuFrame = { properties = { x = 0, y = 170, width = 600, height = 500 } }
 menu.updateLogisticsStrip()
 assert(menu.logisticsFrame == nil, "strip must not draw over an expanded panel")
@@ -197,11 +206,11 @@ anchors.a, anchors.b = {750,100}, {750,350}
 for _, data in ipairs(menu.graph.nodes) do data.logisticsRows = menu.logisticsRows(snapshot) end
 menu.prepareLogisticsColumns(menu.graph)
 menu.updateLogisticsStrip()
-assert(#menu.logisticsFrame.tables == 2)
+assert(#menu.logisticsFrame.tables == 4)
 local columns = 0
 for _, t in ipairs(menu.logisticsFrame.tables) do
 	columns = columns + t.ncols
-	assert(t.properties.y == 118)
+	assert(t.properties.y == 118 or t.properties.y == 368)
 	for _, row in ipairs(t.rows) do
 		for _, cell in ipairs(row) do
 			local text = value(cell.text)
@@ -213,7 +222,7 @@ for _, t in ipairs(menu.logisticsFrame.tables) do
 		end
 	end
 end
-assert(columns == 23, "all nonzero categories are retained")
+assert(columns == 46, "all nonzero categories are retained for both stations")
 -- Stations with fewer categories keep their final ship cell at the right edge.
 local short = node("short",1)
 short.logisticsRows = menu.logisticsRows({shipsKnown=true,drones=3,categories={}})
