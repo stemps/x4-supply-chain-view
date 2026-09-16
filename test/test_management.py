@@ -169,7 +169,7 @@ menu.openManagement('actions')
 frames[1].tables[1].rows[2][1].handlers.onClick()
 assert(menu.managementMode=='rename')
 local edit=frames[1].tables[1].rows[2]
-edit[1].handlers.onEditBoxDeactivated(nil,' Renamed ',true); edit[2].handlers.onClick()
+edit[1].handlers.onTextChanged(nil,' Renamed '); edit[2].handlers.onClick()
 assert(SCV_Store.get(1).name=='Renamed' and menu.graph==graph and builds==before)
 assert(toolbar()[2].options[1].text=='Renamed')
 menu.openManagement('rename')
@@ -178,9 +178,28 @@ menu.scanDone=false; menu.refresh=1
 menu.onUpdate()
 assert(menu.managementMode=='rename' and frames[1].tables[1].rows[2]==edit and builds==before)
 menu.scanDone=true; menu.refresh=nil
-edit[1].handlers.onEditBoxDeactivated(nil,'   ',true); edit[2].handlers.onClick()
+edit[1].handlers.onTextChanged(nil,'   '); edit[2].handlers.onClick()
 assert(menu.managementMode=='rename' and SCV_Store.get(1).name=='Renamed')
 menu.onCloseElement('back',1); assert(menu.renameIndex==nil and closed==0)
+
+-- Native rename overlay focuses once and accepts Enter through the same save path.
+local focusCount=0
+function ActivateEditBox(id) assert(id==77); focusCount=focusCount+1 end
+menu.openManagement('rename')
+edit=frames[1].tables[1].rows[2]
+assert(edit[1].properties.selectTextOnActivation)
+edit[1].id=77
+menu.onUpdate(); menu.onUpdate(); assert(focusCount==1)
+edit[1].handlers.onTextChanged(nil,' Keyboard rename ')
+edit[1].handlers.onEditBoxDeactivated(nil,' Keyboard rename ',true,true)
+edit[2].handlers.onClick()
+assert(SCV_Store.get(1).name=='Keyboard rename' and menu.managementMode==nil)
+assert(menu.nameEntry==nil and menu.graph==graph and builds==before)
+menu.openManagement('rename')
+edit=frames[1].tables[1].rows[2]
+menu.onCloseElement('back',1)
+edit[1].handlers.onEditBoxDeactivated(nil,'Cancelled',true,true)
+assert(SCV_Store.get(1).name=='Keyboard rename' and menu.nameEntry==nil)
 
 -- Status is on the canvas, warning rows first, independent of management.
 menu.notice='Added 7 stations.'; menu.missingMembers=2

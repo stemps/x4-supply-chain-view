@@ -140,6 +140,7 @@ end
 
 function menu.cleanup()
 	menu.closed = true
+	menu.nameEntry = nil
 	menu.clearLogisticsStrip()
 	if SCV_Data.stopLogistics then SCV_Data.stopLogistics() end
 	if menu.statusFrame then Helper.clearFrame(menu, config.statusFrameLayer) end
@@ -218,6 +219,13 @@ menu.updateInterval = 0.2
 
 function menu.onUpdate()
 	if menu.closed then return end
+	local entry = menu.nameEntry
+	if entry and entry.focusPending and entry.widget.id then
+		entry.focusPending = nil
+		ActivateEditBox(entry.widget.id)
+	end
+	-- Creation owns the main frame; defer queued scans/redraws until it closes.
+	if menu.mode == "name" then return end
 	if SCV_Data.expireDockRequests then SCV_Data.expireDockRequests(getElapsedTime()) end
 	-- Chunked scanning: pull stations in a few at a time until the chain is fully read,
 	-- then redraw once. A full rescan inside one callback is the crash risk this avoids.
@@ -949,6 +957,8 @@ end
 
 -- Creation and renaming share the same cell-sized name field.
 function menu.displayNameEntry(frame, x, y, width)
+	local entry = { focusPending = true }
+	menu.nameEntry = entry
 	local ftable = frame:addTable(2, { tabOrder = 1, width = math.min(width, Helper.scaleX(700)),
 		x = x, y = y, maxVisibleHeight = availableHeight(y) })
 	ftable:setColWidth(2, Helper.scaleX(140), false)
@@ -965,22 +975,27 @@ function menu.displayNameEntry(frame, x, y, width)
 
 	row = ftable:addRow(true, { fixed = true })
 	-- Let the cell supply its width; an explicit scaled width is scaled again by Helper.
-	row[1]:createEditBox({ description = menu.renameIndex and ReadText(1001, 1114) or T(2000) })
+	entry.widget = row[1]:createEditBox({ description = menu.renameIndex and ReadText(1001, 1114) or T(2000),
+		selectTextOnActivation = true })
 		:setText(menu.nameText or "", { halign = "left", x = Helper.standardTextOffsetx })
-	-- Capture on deactivation, which is vanilla's own rename pattern (menu_map.lua:13756
-	-- does exactly this for renaming an object). Clicking the Create button moves focus and
-	-- therefore deactivates the box first, so the text is captured before onClick runs.
-	row[1].handlers.onEditBoxDeactivated = function (_, text, textchanged)
-		if textchanged and text then
-			menu.nameText = text
+	-- Vanilla's rename dialog captures every edit before either confirmation path.
+	row[1].handlers.onTextChanged = function (_, text)
+		if menu.nameEntry == entry then menu.nameText = text end
+	end
+	row[1].handlers.onEditBoxDeactivated = function (_, text, _, isconfirmed)
+		if menu.nameEntry == entry and isconfirmed then
+			if text ~= nil then menu.nameText = text end
+			menu.confirmName(entry)
 		end
 	end
 	row[2]:createButton():setText(menu.renameIndex and ReadText(1001, 1114) or T(1010), { halign = "center" })
-	row[2].handlers.onClick = menu.confirmName
+	row[2].handlers.onClick = function () menu.confirmName(entry) end
 
 	row = ftable:addRow(true, { fixed = true })
 	row[1]:setColSpan(2):createButton():setText(T(1011), { halign = "center" })
 	row[1].handlers.onClick = function ()
+		if menu.nameEntry ~= entry then return end
+		menu.nameEntry = nil
 		if menu.managementMode == "rename" then menu.closeManagement(); return end
 		menu.mode = "chain"
 		menu.pendingStations = nil
@@ -1004,10 +1019,12 @@ function menu.displayNameEntry(frame, x, y, width)
 	end
 end
 
-function menu.confirmName()
+function menu.confirmName(entry)
+	if not entry or menu.nameEntry ~= entry then return end
 	local name = menu.nameText and menu.nameText:match("^%s*(.-)%s*$")
 	if menu.renameIndex then
 		if not SCV_Store.rename(menu.renameIndex, name) then return end
+		menu.nameEntry = nil
 		if menu.managementMode == "rename" then
 			menu.closeManagement()
 			menu.display(true)
@@ -1022,6 +1039,7 @@ function menu.confirmName()
 	if (not name) or (name == "") then
 		name = T(1014, tostring(SCV_Store.count() + 1))
 	end
+	menu.nameEntry = nil
 	SCV_Store.create(name, menu.pendingStations or {})
 	menu.pendingStations = nil
 	menu.nameText = nil
@@ -1108,6 +1126,7 @@ function menu.hasWarning()
 end
 
 function menu.closeManagement()
+	if menu.managementMode == "rename" then menu.nameEntry = nil end
 	if menu.managementFrame then Helper.clearFrame(menu, config.managementFrameLayer) end
 	if menu.managementMode == "rename" then
 		menu.renameIndex = nil

@@ -52,7 +52,7 @@ ENGINE_GLOBALS = {
     "getElapsedTime",
     "RegisterEvent", "UnregisterEvent", "OpenMenu", "AddUITriggeredEvent", "SetScript", "registerForEvent",
     "unregisterForEvent", "getElement", "CallWidgetEventScripts",
-    "GetEditBoxText", "SetSliderCellValue",
+    "GetEditBoxText", "SetSliderCellValue", "ActivateEditBox",  # vanilla menu_map rename focus
     # sn_mod_support_apis, probed with type() before use
     "Register_OnLoad_Init", "Register_Require_Response",
 }
