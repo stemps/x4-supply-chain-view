@@ -306,14 +306,11 @@ assert(SCV_Data.refreshStep(state, 20)[1].missing)
 changedCodeID = nil
 assert(not SCV_Data.refreshStep(state, 25)[1].missing)
 
--- A delayed callback does just one read; disabling the diagnostic A/B switch does none.
+-- A delayed callback does just one read.
 local two = { { id = "1" }, { id = "2" } }
 state = SCV_Data.newRefresh(two, 0)
 reads = {}
 assert(SCV_Data.refreshStep(state, 1000) == nil and #reads == 1)
-SCV_Data.REFRESH_ENABLED = false
-assert(SCV_Data.refreshStep(state, 2000) == nil and #reads == 1)
-SCV_Data.REFRESH_ENABLED = true
 
 -- The menu itself publishes once at sweep completion, without calling display/layout.
 local display = menu.display

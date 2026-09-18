@@ -19,21 +19,19 @@ local menu = {
 }
 
 local config = {
-	-- Lower layers draw in front: dialogs, logistics, status, node details, graph.
+	-- Lower layers draw in front: dialogs, status, node details, graph.
 	mainFrameLayer         = 5,
 	-- Match vanilla LSO's 5 -> 4 node expansion. The native central fill and
 	-- background are coplanar; layer 2 produces hover-dependent fill occlusion.
 	expandedMenuFrameLayer = 4,
 	managementFrameLayer   = 1,
 	statusFrameLayer       = 3,
-	logisticsFrameLayer    = 2,
 	topLevelId             = "scv_supplychain",
 	textPage               = 90210,
 	-- Station names run long ("2 - Factory - Asteroid Belt - Computronic Substrate") and the
 	-- node must also fit a status figure on the right; at 250px they were cut off mid-word.
 	-- Leave room for long ware names beside partial supply/demand labels.
 	stationNodeWidth       = 310,
-	logisticsColumns       = 13, -- native table limit
 	logisticsFontSize      = 8, -- quieter than station names; icons scale with text
 	wareNodeWidth          = 300,
 	nodeOffsetX            = 20,
@@ -175,6 +173,12 @@ end
 
 function menu.onShowMenu()
 	menu.closed = false
+	menu.nativeLogisticsFailed = nil
+	if menu.nativeLogistics then
+		pcall(function () menu.nativeLogistics:reset() end)
+		menu.nativeLogistics = nil -- reconnect to the current native scene on reopen/load
+	end
+	menu.nextSlowUpdate = nil
 	if SCV_Data.startLogistics then SCV_Data.startLogistics(menu.onDockMetrics) end
 	SCV_Store.load()
 
@@ -215,10 +219,14 @@ function menu.onShowMenu()
 	menu.display()
 end
 
-menu.updateInterval = 0.2
+menu.updateInterval = 0 -- Native logistics follows scrolling and hover every frame.
 
 function menu.onUpdate()
 	if menu.closed then return end
+	menu.updateLogisticsStrip()
+	local now = GetCurRealTime()
+	if menu.nextSlowUpdate and now < menu.nextSlowUpdate then return end
+	menu.nextSlowUpdate = now + 0.2
 	local entry = menu.nameEntry
 	if entry and entry.focusPending and entry.widget.id then
 		entry.focusPending = nil
@@ -254,7 +262,6 @@ function menu.onUpdate()
 		if snapshot then menu.publishMetrics(snapshot) end
 	end
 	menu.updateStatusStrip()
-	menu.updateLogisticsStrip()
 	if menu.managementFrame then menu.managementFrame:update() end
 end
 
@@ -312,6 +319,8 @@ function menu.currentMembers()
 end
 
 function menu.markDirty()
+	if menu.nativeLogistics then menu.nativeLogistics:reset() end
+	menu.nativeLayoutGraph, menu.nativeLayoutRevision = nil, nil
 	menu.graphLayout = nil
 	SCV_Data.invalidate()
 	menu.refreshState = nil
@@ -372,8 +381,10 @@ function menu.logisticsEntries(logistics)
 	entries[1] = { text = "\27[stationbuildst_dock]", header = "\27[stationbuildst_dock]", count = "",
 		tip = T(3180) .. "\n\n" .. T(3171) .. "\n\n" .. T(3179) .. "\n\n" .. T(3172) }
 	for _, size in ipairs({ "s", "m", "l" }) do
+		local dock = data.docks and data.docks[size]
 		entries[#entries + 1] = {
 			text = dockLabel(data, size, true),
+			color = dock and dock.total > 0 and dock.free == 0 and Color.text_warning or nil,
 			tip = T(3180) .. " " .. string.upper(size) .. ": " .. dockLabel(data, size, false)
 				.. "\n\n" .. T(3171) .. "\n\n" .. T(3179) .. "\n\n" .. T(3172) .. (not data.shipsKnown and ("\n\n" .. T(3181)) or ""),
 		}
@@ -401,6 +412,7 @@ function menu.logisticsEntries(logistics)
 	end
 	local totals = SCV_Graph.logisticsTotals(data)
 	entries[#entries + 1] = { text = logisticsTint("\27[ships_idling_01] " .. logisticsCount(totals.idle, totals.idleKnown), totals.severity),
+		color = totals.severity == "critical" and Color.text_error or totals.severity == "warning" and Color.text_warning or nil,
 		tip = T(3176) .. " + " .. T(3177) .. "\n\n" .. menu.idleText(data) .. "\n\n" .. T(3174) .. "\n\n" .. T(3175) }
 	return entries
 end
@@ -469,101 +481,60 @@ function menu.onDockMetrics()
 	if not menu.closed and menu.graph then menu.updateMetricDisplay() end
 end
 
-function menu.clearLogisticsStrip()
-	if menu.logisticsFrame then Helper.clearFrame(menu, config.logisticsFrameLayer) end
-	menu.logisticsFrame, menu.logisticsKey = nil, nil
-end
-
--- Use the very same screen-space anchor as native node expansion. Only visible
--- nodes have anchors. Rebuild these light text tables when scrolling changes the
--- anchors; the flowchart, its edges and its node pool remain untouched.
--- Each strip has its own table: native table mouse-pick rectangles include empty
--- row padding, so pooling a whole column would block the factory nodes below it.
--- Split at thirteen metric columns, the native table limit.
 function menu.updateLogisticsStrip()
+	if menu.nativeLogisticsFailed then return end
 	local chart = menu.flowchart
-	if menu.closed or menu.mode ~= "chain" or not chart or not chart.id or not menu.graph then
-		menu.clearLogisticsStrip()
-		return
+	local function hide()
+		if menu.nativeLogistics then pcall(function () menu.nativeLogistics:hide() end) end
 	end
-	local width, height = GetSize(chart.id)
-	local left, top = chart.properties.x, chart.properties.y
-	menu.prepareLogisticsColumns(menu.graph)
-	local columns, keys = {}, { tostring(left), tostring(top), tostring(width), tostring(height) }
-	local panel = menu.expandedMenuFrame and menu.expandedMenuFrame.properties
-	for _, data in ipairs(menu.graph.nodes) do
-		local widget = data.scvkind == "station" and data[1] and data[1].node
-		local layout = menu.logisticsColumnLayouts[data.col]
-		if widget and widget.id and layout then
-			local x, y = GetFlowchartNodeExpandedFrameData(widget.id)
-			if x then
-				local _, nodeHeight = GetSize(widget.id)
-				local sx, sy = math.floor(x - layout.width / 2), math.floor(y + nodeHeight / 2 + Helper.scaleY(3))
-				local bottom = sy + layout.height
-				local overlaps = panel and sx < panel.x + panel.width + 4 and sx + layout.width > panel.x - 4
-					and sy < panel.y + panel.height + 4 and bottom > panel.y - 4
-				if not overlaps and sy >= top and bottom <= top + height then
-					local cx = sx
-					for i, w in ipairs(layout.widths) do
-						-- Clip at whole metric boundaries, preserving complete numbers.
-						if cx >= left and cx + w <= left + width then
-							local id = tostring(widget.id) .. ":" .. math.floor((i - 1) / config.logisticsColumns)
-							local column = columns[id]
-							if not column then column = { x = cx, first = i, last = i, items = {}, layout = layout }; columns[id] = column end
-							column.last = math.max(column.last, i)
-							if i == column.first then column.items[#column.items + 1] = { y = sy, data = data } end
-							keys[#keys + 1] = tostring(widget.id) .. ":" .. cx .. ":" .. sy .. ":" .. i .. ":" .. w .. ":" .. layout.height
-						end
-						cx = cx + w + (Helper.borderSize or 1)
-					end
+	if menu.closed or menu.mode ~= "chain" or menu.refresh or not chart or not chart.id or not menu.graph then hide(); return end
+	local ok, err = pcall(function ()
+		if not menu.nativeLogistics then menu.nativeLogistics = SCV_Overlay.newView() end
+		local obstacles = {}
+		for _, field in ipairs({ "expandedMenuFrame", "managementFrame", "statusFrame" }) do
+			local panel = menu[field]
+			if panel then
+				if not panel.id then hide(); return end
+				local p = panel.properties
+				obstacles[#obstacles+1] = { x=p.x-4, y=p.y-4, width=p.width+8, height=p.height+8 }
+			end
+		end
+		if menu.nativeLayoutGraph ~= menu.graph or menu.nativeLayoutRevision ~= menu.metricRevision then
+			menu.prepareLogisticsColumns(menu.graph)
+			menu.nativeLayoutGraph, menu.nativeLayoutRevision = menu.graph, menu.metricRevision
+			menu.nativeLogistics.widths = {}
+		end
+		local width, height = GetSize(chart.id)
+		local stations = {}
+		for _, data in ipairs(menu.graph.nodes) do
+			local widget = data.scvkind == "station" and data[1] and data[1].node
+			local layout = menu.logisticsColumnLayouts[data.col]
+			if widget and widget.id and layout then
+				local x,y = GetFlowchartNodeExpandedFrameData(widget.id)
+				if x then
+					local _, nh = GetSize(widget.id)
+					stations[#stations+1] = { key=data, line=data.logisticsRows[1], layout=layout,
+						x=math.floor(x-layout.width/2), y=math.floor(y+nh/2+Helper.scaleY(3)) }
 				end
 			end
 		end
-	end
-	local key = table.concat(keys, "|")
-	if key == menu.logisticsKey then
-		if menu.logisticsFrame then menu.logisticsFrame:update() end
-		return
-	end
-	menu.clearLogisticsStrip()
-	menu.logisticsKey = key
-	if next(columns) == nil then return end
-	local frame = Helper.createFrameHandle(menu, { layer = config.logisticsFrameLayer,
-		x = left, y = top, width = width, height = height, standardButtons = {},
-		startAnimation = false, blurBackground = false, enableDefaultInteractions = false })
-	local orderedColumns = {}
-	for _, column in pairs(columns) do orderedColumns[#orderedColumns + 1] = column end
-	table.sort(orderedColumns, function (a, b)
-		if a.x == b.x then return a.items[1].y < b.items[1].y end
-		return a.x < b.x
+		menu.nativeLogistics:update(stations,{x=chart.properties.x,y=chart.properties.y,width=width,height=height},
+			obstacles,chart.id,Helper.standardFont,Helper.scaleFont(Helper.standardFont,config.logisticsFontSize),Helper.uiScale)
 	end)
-	for index, column in ipairs(orderedColumns) do
-		-- Reserve the remaining native tables for controls and expanded panels.
-		if index > 12 then break end
-		table.sort(column.items, function (a, b) return a.y < b.y end)
-		local firstY, layout = column.items[1].y, column.layout
-		local ncols = column.last - column.first + 1
-		local tableWidth = (ncols - 1) * (Helper.borderSize or 1)
-		for i = column.first, column.last do tableWidth = tableWidth + layout.widths[i] end
-		local ftable = frame:addTable(ncols, { tabOrder = 0, borderEnabled = true,
-			x = column.x - left, y = firstY - top, width = tableWidth, reserveScrollBar = false, highlightMode = "off" })
-		for i = column.first, column.last do ftable:setColWidth(i - column.first + 1, layout.widths[i], false) end
-		for _, item in ipairs(column.items) do
-			local row = ftable:addRow(false, { fixed = true, borderBelow = false,
-				bgColor = { r = 0, g = 0, b = 0, a = 0, glow = 0 } })
-			for i = column.first, column.last do
-				local index = i
-				local function entry() return item.data.logisticsRows[1].entries[index] or {} end
-				row[i - column.first + 1]:createText(function () return entry().text or "" end, {
-					scaling = false, fontsize = Helper.scaleFont(Helper.standardFont, config.logisticsFontSize),
-					height = layout.height, minRowHeight = layout.height, halign = "center", x = 0, y = 0,
-					color = function () return entry().color or Color["text_normal"] end,
-					mouseOverText = function () return entry().tip or "" end })
-			end
-		end
+	if not ok then
+		hide(); menu.nativeLogisticsFailed=true
+		menu.nativeLogistics=nil
+		log("grouped logistics disabled: " .. tostring(err))
+		menu.notice=T(3184); menu.noticeUntil=nil
 	end
-	menu.logisticsFrame = frame
-	frame:display()
+end
+
+function menu.clearLogisticsStrip()
+	if menu.nativeLogistics then
+		local ok = pcall(function () menu.nativeLogistics:reset() end)
+		if not ok then menu.nativeLogistics=nil end
+	end
+	menu.nativeLayoutRevision, menu.nativeLayoutGraph = nil, nil
 end
 
 local function severityColor(severity)
@@ -1206,6 +1177,7 @@ function menu.confirmDelete()
 end
 
 function menu.openManagement(mode)
+	if menu.nativeLogistics then menu.nativeLogistics:hide() end
 	local chain, index = SCV_Store.selected()
 	if not chain or not menu.toolbarGeometry then return end
 	menu.closeManagement()
@@ -1869,6 +1841,7 @@ function menu.expandWare(node, frame, ftable, nodedata)
 end
 
 function menu.onFlowchartNodeExpanded(node, frame, ftable, ftable2)
+	if menu.nativeLogistics then menu.nativeLogistics:hide() end
 	menu.closeManagement()
 	-- One panel at a time, as vanilla does (menu_station_overview.lua onFlowchartNodeExpanded).
 	if node.flowchart and node.flowchart.collapseAllNodes then
@@ -1904,6 +1877,7 @@ end
 -- remove it - the menu has to. The previous version only forgot the node, so the panel's
 -- contents stayed drawn on screen after the popup closed.
 function menu.onFlowchartNodeCollapsed(node, frame)
+	if menu.nativeLogistics then menu.nativeLogistics:hide() end
 	if (menu.expandedNode == node) and (menu.expandedMenuFrame == frame) then
 		Helper.clearFrame(menu, config.expandedMenuFrameLayer)
 		menu.expandedNode = nil

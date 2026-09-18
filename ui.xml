@@ -7,6 +7,8 @@
     <file name="ui/scv_store.lua" />
     <file name="ui/scv_graph.lua" />
     <file name="ui/scv_data.lua" />
+    <file name="ui/scv_overlay.lua" />
+    <file name="ui/scv_overlay_view.lua" />
     <file name="ui/scv_menu.lua" />
     <file name="ui/scv_hotkey.lua" />
     <file name="ui/scv_interact.lua" />

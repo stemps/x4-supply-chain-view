@@ -95,6 +95,8 @@ SCV_Data={invalidate=function() invalidations=invalidations+1 end,
 ''')
 lua.execute((root/'ui/scv_store.lua').read_text(encoding='utf-8'))
 lua.globals().menu = lua.execute((root/'ui/scv_menu.lua').read_text(encoding='utf-8'))
+# Model callbacks separated by the legacy 0.2-second cadence.
+lua.execute('local now = 0; function GetCurRealTime() now = now + 0.25; return now end')
 lua.execute('''
 -- Replace only graph rendering: real display, toolbar and overlay paths run below.
 local nativeDisplayChain=menu.displayChain
@@ -322,6 +324,8 @@ assert(menu.nameText=='New chain' and frames[5].tables[1].rows[3][1].text=='New 
 lua.execute("__SCV_GROUPS=nil")
 lua.execute((root/'ui/scv_store.lua').read_text(encoding='utf-8'))
 lua.globals().menu = lua.execute((root/'ui/scv_menu.lua').read_text(encoding='utf-8'))
+# Model callbacks separated by the legacy 0.2-second cadence.
+lua.execute('local now = 0; function GetCurRealTime() now = now + 0.25; return now end')
 lua.execute("""
 assert(__SCV_GROUPS == nil, 'menu startup must not initialize or write storage')
 __SCV_GROUPS={version=5, selected=1, names={'Restored chain'}, members={'123|ABC-123'}}

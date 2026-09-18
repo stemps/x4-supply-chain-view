@@ -118,6 +118,8 @@ end
 for name in ['scv_graph.lua', 'scv_data.lua']:
     lua.execute((root/'ui'/name).read_text(encoding='utf-8'))
 menu = lua.execute((root/'ui/scv_menu.lua').read_text(encoding='utf-8'))
+# Model callbacks separated by the legacy 0.2-second cadence.
+lua.execute('local now = 0; function GetCurRealTime() now = now + 0.25; return now end')
 g.menu = menu
 lua.execute('''
 local valid, class, data = IsValidComponent, C.IsComponentClass, GetComponentData

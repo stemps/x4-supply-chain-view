@@ -150,5 +150,6 @@
     <t id="3179">Los puntos de atraque ocupados o reservados no están disponibles.</t>
     <t id="3180">Muelles</t>
     <t id="3181">Los recuentos de naves y muelles requieren una estación del jugador.</t>
+    <t id="3184">Vista de muelles y naves no disponible. Vuelve a abrir SCV.</t>
   </page>
 </language>

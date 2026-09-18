@@ -150,5 +150,6 @@
     <t id="3179">Les emplacements occupés ou réservés sont indisponibles.</t>
     <t id="3180">Quais</t>
     <t id="3181">Les nombres de vaisseaux et de quais sont réservés aux stations du joueur.</t>
+    <t id="3184">Affichage des docks et vaisseaux indisponible. Rouvrez SCV pour réessayer.</t>
   </page>
 </language>

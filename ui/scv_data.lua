@@ -27,7 +27,6 @@ SCV_Data.cache = {}
 -- over a few frames instead of stalling one.
 SCV_Data.SCAN_CHUNK = 4
 SCV_Data.REFRESH_INTERVAL = 5
-SCV_Data.REFRESH_ENABLED = true
 
 local function log(msg)
 	DebugError("SCV: " .. tostring(msg))
@@ -706,7 +705,9 @@ function SCV_Data.startLogistics(callback)
 end
 
 function SCV_Data.requestDocks(id64, logistics)
-	if not dockActive then return end
+	if not dockActive then
+		return
+	end
 	SCV_Data.expireDockRequests(getElapsedTime())
 	local id = tostring(id64)
 	local pending = dockStations[id] and dockPending[dockStations[id]]
@@ -715,7 +716,9 @@ function SCV_Data.requestDocks(id64, logistics)
 	-- MD string table keys must start with '$' (scriptproperties.xml, table).
 	local token = "$scv_" .. dockSession .. ":" .. tostring(dockSerial)
 	local code = safe(nil, GetComponentData, id64, "idcode")
-	if type(code) ~= "string" or code == "" then return end
+	if type(code) ~= "string" or code == "" then
+		return
+	end
 	-- Preserve the last successful sample while its replacement is in flight.
 	-- The cache is session-local and guarded by the station's persistent code.
 	local previous = dockLast[id]
@@ -979,7 +982,7 @@ function SCV_Data.newRefresh(members, now)
 end
 
 function SCV_Data.refreshStep(state, now)
-	if not SCV_Data.REFRESH_ENABLED or #state.members == 0 then return nil end
+	if #state.members == 0 then return nil end
 	if not state.pending then
 		if now < state.nextStart then return nil end
 		state.pending, state.cursor = {}, 1

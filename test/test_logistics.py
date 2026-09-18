@@ -95,6 +95,8 @@ end
     for name in ['scv_graph.lua', 'scv_data.lua']:
         lua.execute((ROOT/'ui'/name).read_text(encoding='utf-8'))
     lua.globals().menu = lua.execute((ROOT/'ui/scv_menu.lua').read_text(encoding='utf-8'))
+    lua.execute('assert(menu.updateInterval == 0 and menu.toggleLogisticsRenderer == nil)')
+    lua.execute('local clock = 0; function GetCurRealTime() clock = clock + 0.25; return clock end')
     lua.execute('''
 local data=SCV_Data.readLogistics('A')
 assert(data.shipsKnown and data.idleKnown and data.drones==24)
@@ -257,7 +259,19 @@ assert(dockCell.text()=='?/?')
 assert(not menu.logisticsSummary(nil):find('<text_',1,true))
 SCV_Data.stopLogistics()
 ''')
+    lua.execute((ROOT/'test/test_refresh_coverage.lua').read_text(encoding='utf-8'))
     lua.execute((ROOT/'test/test_logistics_overlay.lua').read_text(encoding='utf-8'))
+    colors = ET.parse(ROOT.parents[1]/'reference/libraries/colors.xml')
+    palette = {}
+    for name in ('text_normal', 'text_warning', 'text_error'):
+        ref = colors.find(f'.//mapping[@id="{name}"]').get('ref')
+        color = colors.find(f'.//color[@id="{ref}"]')
+        palette[name] = {k: int(color.get(k)) for k in ('r','g','b')}
+        palette[name].update(a=int(color.get('a'))*100/255, glow=float(color.get('glow','0')))
+    lua.globals().nativePalette = lua.table_from(palette, recursive=True)
+    lua.execute((ROOT/'ui/scv_overlay.lua').read_text(encoding='utf-8'))
+    lua.execute((ROOT/'ui/scv_overlay_view.lua').read_text(encoding='utf-8'))
+    lua.execute((ROOT/'test/test_native_overlay.lua').read_text(encoding='utf-8'))
 
 
 for runtime in [LuaRuntime, LuaJITRuntime]:

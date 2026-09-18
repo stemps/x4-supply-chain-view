@@ -39,6 +39,8 @@ end}
 ''')
 lua.execute((root/'ui/scv_store.lua').read_text(encoding='utf-8'))
 lua.globals().menu = lua.execute((root/'ui/scv_menu.lua').read_text(encoding='utf-8'))
+# Model callbacks separated by the legacy 0.2-second cadence.
+lua.execute('local now = 0; function GetCurRealTime() now = now + 0.25; return now end')
 lua.execute('''
 menu.markDirty=function() end
 SCV_Store.create('First', {{id='10',code='AAA-001'}})

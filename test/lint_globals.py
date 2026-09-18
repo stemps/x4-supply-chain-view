@@ -28,6 +28,7 @@ LUA_KEYWORDS = {
 }
 
 LUA_BUILTINS = {
+    "getfenv",  # Lua 5.1: native widget environment access
     "assert", "collectgarbage", "dofile", "error", "getmetatable", "ipairs", "load",
     "loadstring", "next", "pairs", "pcall", "print", "rawequal", "rawget", "rawlen",
     "rawset", "require", "select", "setmetatable", "tonumber", "tostring", "type",
@@ -37,6 +38,7 @@ LUA_BUILTINS = {
 # X4 engine globals this mod uses. Every entry was verified against reference/ui/ as a
 # GLOBAL (not a C.<name> ffi function) before being added here.
 ENGINE_GLOBALS = {
+    "GetWidgetSystemSize", "GetLocalMousePosition", "SetMouseOverOverride", "GetCurRealTime",  # native logistics overlay
 	"GetSize", "GetFactionData", "GetFlowchartNodeExpandedFrameData",  # helper.lua expand(): native shape padding
     "ConvertStringTo64Bit", "ConvertIDTo64Bit", "ConvertStringToLuaID",
     "DebugError", "ReadText", "TraceBack",
