@@ -8,6 +8,10 @@ reference := env('X4_REFERENCE', toolkit + '/reference')
 default:
     @just --list
 
+# Follow the active profile's game log; press Ctrl+C to stop.
+log:
+    Get-Content "$env:USERPROFILE\Documents\Egosoft\X4\64920437\debug.txt" -Tail 30 -Wait
+
 # Run every automated check (stops on the first failure).
 check: translations test lint syntax xml validate
 
