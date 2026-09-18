@@ -3,6 +3,7 @@
 These verify our use of engine results, not the engine's implementation of ignorestate.
 Run from any directory: uv run --with lupa python test_metrics.py
 """
+from addon_loader import load_modules
 from pathlib import Path
 import re
 from xml.etree import ElementTree as ET
@@ -116,8 +117,8 @@ function plainStatus(text)
 end
 ''')
 for name in ['scv_graph.lua', 'scv_data.lua', 'scv_store.lua']:
-    lua.execute((root/'ui'/name).read_text(encoding='utf-8'))
-menu = lua.execute((root/'ui/scv_menu.lua').read_text(encoding='utf-8'))
+    load_modules(lua, name)
+menu = load_modules(lua, 'scv_menu.lua', reload=True)
 # Model callbacks separated by the legacy 0.2-second cadence.
 lua.execute('local now = 0; function GetCurRealTime() now = now + 0.25; return now end')
 g.menu = menu
@@ -605,5 +606,5 @@ for runtime in [LuaRuntime, LuaJITRuntime]:
         ''')
     future_tests = future_lua.execute((root/'test/test_future_roles.lua').read_text(encoding='utf-8'))
     for name in ['scv_graph.lua', 'scv_data.lua', 'scv_store.lua']:
-        future_lua.execute((root/'ui'/name).read_text(encoding='utf-8'))
+        load_modules(future_lua, name)
     future_tests()

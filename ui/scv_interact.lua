@@ -1,3 +1,4 @@
+-- Depends: scv_text.lua
 -- Supply Chain View — the map context menu.
 --
 -- Right-click one or more stations on the map - yours or anyone's - and get a "Supply
@@ -43,19 +44,7 @@ local function log(msg)
 	DebugError("SCV: " .. tostring(msg))
 end
 
-local function T(id, ...)
-	local ok, s = pcall(ReadText, config.textPage, id)
-	if (not ok) or (type(s) ~= "string") or (s == "") then
-		return "SCV#" .. tostring(id)
-	end
-	if select("#", ...) > 0 then
-		local okf, formatted = pcall(string.format, s, ...)
-		if okf then
-			return formatted
-		end
-	end
-	return s
-end
+local T = SCV_Text.forPage(config.textPage)
 
 -- ---------------------------------------------------------------------------------
 -- Which stations is this menu about

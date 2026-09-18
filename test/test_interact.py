@@ -1,5 +1,6 @@
 """Map action labels and membership callbacks against the real Lua store."""
 from pathlib import Path
+from addon_loader import load_modules
 import re
 from xml.etree import ElementTree as ET
 from lupa import LuaRuntime
@@ -42,7 +43,7 @@ Helper={getMenu=function() return interact end,
     closeMenuAndOpenNewMenu=function() opened=opened+1 end}
 ''')
     lua.execute((root/'ui/scv_store.lua').read_text(encoding='utf-8'))
-    lua.execute((root/'ui/scv_interact.lua').read_text(encoding='utf-8'))
+    load_modules(lua, 'scv_interact.lua')
     lua.execute('''
 -- Include percent signs and parentheses: names are data, never format strings.
 local name='Energy 100% (West)'

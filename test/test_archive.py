@@ -18,6 +18,19 @@ class ArchiveTests(unittest.TestCase):
         self.addCleanup(self.fixture.doCleanups)
         self.root = self.fixture.root
 
+    def test_current_manifest_modules_are_included(self):
+        from addon_loader import ROOT, module_order, validate_manifest
+        validate_manifest()
+        self.fixture.write('ui.xml', (ROOT / 'ui.xml').read_text(encoding='utf-8'))
+        for name in module_order():
+            self.fixture.write(name, (ROOT / name).read_text(encoding='utf-8'))
+        # This archive exists only in the fixture's temporary repository.
+        archive = local_zip(self.root)
+        with zipfile.ZipFile(archive) as zipped:
+            for name in module_order():
+                self.assertEqual(zipped.read('supply_chain_view/' + name),
+                                 (self.root / name).read_bytes())
+
     def test_dirty_new_deleted_ignored_and_excluded(self):
         f = self.fixture
         f.cmd('checkout', '-b', 'experiment')

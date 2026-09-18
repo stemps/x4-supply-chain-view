@@ -1,4 +1,5 @@
 """Toolbar and management-frame contracts using the real Lua menu and store."""
+from addon_loader import load_modules
 from pathlib import Path
 from xml.etree import ElementTree as ET
 from lupa import LuaRuntime
@@ -95,7 +96,7 @@ SCV_Data={invalidate=function() invalidations=invalidations+1 end,
     refreshStep=function() refreshes=refreshes+1 end}
 ''')
 lua.execute((root/'ui/scv_store.lua').read_text(encoding='utf-8'))
-lua.globals().menu = lua.execute((root/'ui/scv_menu.lua').read_text(encoding='utf-8'))
+lua.globals().menu = load_modules(lua, 'scv_menu.lua', provided=('scv_data.lua', 'scv_store.lua'), reload=True)
 # Model callbacks separated by the legacy 0.2-second cadence.
 lua.execute('local now = 0; function GetCurRealTime() now = now + 0.25; return now end')
 lua.execute('''
@@ -356,7 +357,7 @@ assert(menu.nameText=='New chain' and frames[5].tables[1].rows[3][1].text=='New 
 # Addon loading must not initialize storage before X4 restores savegame variables.
 lua.execute("__SCV_GROUPS=nil")
 lua.execute((root/'ui/scv_store.lua').read_text(encoding='utf-8'))
-lua.globals().menu = lua.execute((root/'ui/scv_menu.lua').read_text(encoding='utf-8'))
+lua.globals().menu = load_modules(lua, 'scv_menu.lua', provided=('scv_data.lua', 'scv_store.lua'), reload=True)
 # Model callbacks separated by the legacy 0.2-second cadence.
 lua.execute('local now = 0; function GetCurRealTime() now = now + 0.25; return now end')
 lua.execute("""

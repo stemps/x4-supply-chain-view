@@ -1,4 +1,5 @@
 """Exercise creation/rename callbacks against the real store, outside X4."""
+from addon_loader import load_modules
 from pathlib import Path
 from xml.etree import ElementTree as ET
 from lupa import LuaRuntime
@@ -38,7 +39,7 @@ frame = {addTable=function()
 end}
 ''')
 lua.execute((root/'ui/scv_store.lua').read_text(encoding='utf-8'))
-lua.globals().menu = lua.execute((root/'ui/scv_menu.lua').read_text(encoding='utf-8'))
+lua.globals().menu = load_modules(lua, 'scv_menu.lua', provided=('scv_data.lua', 'scv_store.lua'), reload=True)
 # Model callbacks separated by the legacy 0.2-second cadence.
 lua.execute('local now = 0; function GetCurRealTime() now = now + 0.25; return now end')
 lua.execute('''

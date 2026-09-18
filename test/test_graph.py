@@ -5,14 +5,11 @@ load-save cycle.
 Run:  uv run --with lupa python test/test_graph.py
 """
 import sys
-from pathlib import Path
 from lupa import LuaRuntime
-
-MOD = Path(__file__).resolve().parents[1] / "ui" / "scv_graph.lua"
+from addon_loader import load_modules
 
 lua = LuaRuntime(unpack_returned_tuples=True)
-with open(MOD, encoding="utf-8") as fh:
-    lua.execute(fh.read())
+load_modules(lua, "scv_graph.lua")
 
 G = lua.globals().SCV_Graph
 fails = []

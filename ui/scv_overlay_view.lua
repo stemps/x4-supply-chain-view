@@ -1,3 +1,4 @@
+-- Depends: scv_overlay.lua
 -- Adapt cached SCV logistics rows to owned native visuals. No station reads.
 local P = SCV_Overlay
 local C = require("ffi").C

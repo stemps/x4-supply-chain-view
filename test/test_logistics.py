@@ -3,6 +3,7 @@
 The fake engine controls dock availability. Actual reservation semantics must
 still be verified in X4; this suite does not pretend to simulate the engine.
 """
+from addon_loader import load_modules
 from pathlib import Path
 from xml.etree import ElementTree as ET
 from lupa import LuaRuntime
@@ -93,8 +94,8 @@ function deliver(entries,preserve)
 end
 ''')
     for name in ['scv_graph.lua', 'scv_data.lua', 'scv_store.lua']:
-        lua.execute((ROOT/'ui'/name).read_text(encoding='utf-8'))
-    lua.globals().menu = lua.execute((ROOT/'ui/scv_menu.lua').read_text(encoding='utf-8'))
+        load_modules(lua, name)
+    lua.globals().menu = load_modules(lua, 'scv_menu.lua', reload=True)
     lua.execute('assert(menu.updateInterval == 0 and menu.toggleLogisticsRenderer == nil)')
     lua.execute('local clock = 0; function GetCurRealTime() clock = clock + 0.25; return clock end')
     lua.execute('''
@@ -152,13 +153,17 @@ assert(first:sub(1,1)=='$', 'MD string table keys require a dollar prefix')
 local retained=SCV_Data.readLogistics('B'); local retainedKey=requests[#requests][2]
 deliver({[retainedKey]={'BBB',1,2,0,0,0,0}},true)
 assert(retained.docks.s.free==1, 'also accept bridges that preserve the dollar prefix')
-local summary=menu.logisticsSummary(a)
-assert(summary:find('<text_warning>M 0/6',1,true))
-assert(not summary:find('<text_warning>S 0/0',1,true))
-assert(summary:find('<text_warning>'..string.char(27)..'[ships_idling_01] 2',1,true))
+local entries=menu.logisticsEntries(a)
+assert(entries[3].text:find('<text_warning>M 0/6',1,true))
+assert(entries[3].color==Color.text_warning)
+assert(not entries[2].text:find('<text_warning>S 0/0',1,true))
+assert(entries[#entries].text:find('<text_warning>'..string.char(27)..'[ships_idling_01] 2',1,true))
+assert(entries[#entries].color==Color.text_warning)
 a.miners.l.idle=1
-assert(menu.logisticsSummary(a):find('<text_error>'..string.char(27)..'[ships_idling_01] 3',1,true))
-assert(menu.logisticsTooltip(a):find('100.0%',1,true))
+entries=menu.logisticsEntries(a)
+assert(entries[#entries].text:find('<text_error>'..string.char(27)..'[ships_idling_01] 3',1,true))
+assert(entries[#entries].color==Color.text_error)
+assert(entries[#entries].tip:find('100.0%',1,true))
 
 -- Out-of-order response from a superseded station refresh.
 local old=SCV_Data.readLogistics('A'); local stale=requests[#requests][2]
@@ -256,7 +261,9 @@ end
 SCV_Graph.refreshMetrics(graph,{{id='A',name='A',wares={},failed=true}})
 assert(node.logistics==nil)
 assert(dockCell.text()=='?/?')
-assert(not menu.logisticsSummary(nil):find('<text_',1,true))
+for _,entry in ipairs(menu.logisticsEntries(nil)) do
+ assert(not entry.text:find('<text_',1,true))
+end
 SCV_Data.stopLogistics()
 ''')
     lua.execute((ROOT/'test/test_refresh_coverage.lua').read_text(encoding='utf-8'))

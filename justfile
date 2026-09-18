@@ -49,9 +49,15 @@ test-hotkey:
 # Graph construction, layout, cycles, and budgets.
 test-graph:
     uv run --with lupa python test/test_graph.py
+    uv run --with lupa python test/test_metric_module.py
 
 # Reader, graph, and popup contracts with a fake engine.
 test-metrics:
+    uv run --with lupa python test/test_data_modules.py
+    uv run --with lupa python test/test_text.py
+    uv run --with lupa python test/test_presentation.py
+    uv run --with lupa python test/test_details_module.py
+    uv run --with lupa python test/test_chart_components.py
     uv run --with lupa python test/test_metrics.py
     uv run --with lupa python test/test_logistics.py
 
@@ -59,12 +65,15 @@ test-metrics:
 test-store:
     uv run --with lupa python test/test_store.py
     uv run --with lupa python test/test_name_entry.py
+    uv run --with lupa python test/test_management_component.py
     uv run --with lupa python test/test_management.py
     uv run --with lupa python test/test_interact.py
 
 # Flag undefined Lua globals and function calls.
 lint:
+    uv run python test/test_module_loading.py
     uv run python test/lint_globals.py
+    uv run --with lupa python test/test_addon_boot.py
 
 # Compile every Lua source without executing it.
 syntax:

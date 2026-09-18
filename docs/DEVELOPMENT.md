@@ -1,5 +1,8 @@
 # Development of the Mod
 
+See [Runtime architecture](ARCHITECTURE.md) for module responsibilities, state
+lifetimes, compatibility contracts and the native acceptance checklist.
+
 ## Dependencies
 
 - [uv](https://docs.astral.sh/uv/) Python package manager
