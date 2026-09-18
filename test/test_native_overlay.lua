@@ -53,7 +53,8 @@ end
 menu.closed=false; menu.mode='chain'; menu.refresh=nil; menu.nativeLogisticsFailed=nil
 menu.expandedMenuFrame=nil; menu.managementFrame=nil; menu.statusFrame=nil
 menu.graph={nodes=nodes}; menu.metricRevision=1
-menu.flowchart={id='chart',properties={x=0,y=0}}
+menu.flowchart={id='chart',properties={x=0,y=0,borderHeight=3},
+    hasScrollBar=function() return false end,hasHorizontalScrollBar=function() return false end}
 local graph,chart=menu.graph,menu.flowchart
 menu.updateLogisticsStrip()
 assert(menu.nativeLogistics, 'native access succeeded')
@@ -72,6 +73,27 @@ assert(menu.logisticsFrame==nil, 'custom renderer consumes no logistics tables')
 local beforeWrites,beforeDraws=writes,draws
 menu.updateLogisticsStrip()
 assert(writes==beforeWrites and draws==beforeDraws, 'unchanged SCV frame reuses visuals')
+-- Bottom-border clipping must use the inner content bounds, also before the
+-- last scroll position. Every excluded entry must lose its hover target.
+local savedY=anchors.native1[2]
+local entryCount=#view.cache[nodes[1]].entries
+local stripHeight=menu.logisticsColumnLayouts[nodes[1].col].height
+anchors.native1[2]=1000-stripHeight-18
+menu.updateLogisticsStrip()
+assert(#hits==expected-entryCount, 'strip touching outer chart bottom must not cover border')
+anchors.native1[2]=anchors.native1[2]-4
+menu.updateLogisticsStrip()
+assert(#hits==expected, 'strip ending at inner content boundary remains visible')
+Helper.scrollbarWidth=20
+chart.hasHorizontalScrollBar=function() return true end
+menu.updateLogisticsStrip()
+assert(#hits==expected-entryCount, 'horizontal scrollbar is outside strip drawing and hover area')
+anchors.native1[2]=anchors.native1[2]-20
+menu.updateLogisticsStrip()
+assert(#hits==expected, 'strip fits above scrollbar')
+chart.hasHorizontalScrollBar=function() return false end
+anchors.native1[2]=savedY
+menu.updateLogisticsStrip()
 local hit=hits[2]
 mx=hit.x+1-Helper.viewWidth/2; my=Helper.viewHeight/2-hit.y-1
 menu.updateLogisticsStrip(); assert(tip==hit.tip, 'individual tooltip')

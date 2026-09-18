@@ -7,6 +7,8 @@ function SCV_LogisticsView.new(menu, config, presentation)
 	local component = {}
 	local T = presentation.T
 	local function log(msg) DebugError("SCV: " .. tostring(msg)) end
+	-- Temporary single-row investigation: one snapshot per rendered chart.
+	local diagnosedChart
 
 function component.prepareLogisticsColumns(graph)
 	local layouts = {}
@@ -70,21 +72,69 @@ function component.updateLogisticsStrip()
 			menu.nativeLogistics.widths = {}
 		end
 		local width, height = GetSize(chart.id)
+		-- Match the native flowchart content rectangle, excluding its blue
+		-- borders, inner padding and scrollbars (Helper values are pixels).
+		local inset = Helper.scaleY(chart.properties.borderHeight or 0, chart.properties.scaling) + Helper.borderSize
+		local verticalScrollbar = chart:hasScrollBar()
+		local horizontalScrollbar = chart:hasHorizontalScrollBar()
+		local viewport = { x=chart.properties.x, y=chart.properties.y+inset,
+			width=math.max(0,width-(verticalScrollbar and Helper.scrollbarWidth or 0)),
+			height=math.max(0,height-2*inset-(horizontalScrollbar and Helper.scrollbarWidth or 0)) }
+		local diagnose = diagnosedChart ~= chart
+		local diagnostic = {}
 		local stations = {}
 		for _, data in ipairs(menu.graph.nodes) do
 			local widget = data.scvkind == "station" and data[1] and data[1].node
 			local layout = menu.logisticsColumnLayouts[data.col]
 			if widget and widget.id and layout then
 				local x,y = GetFlowchartNodeExpandedFrameData(widget.id)
+				if diagnose then diagnostic[#diagnostic+1] = "station=" .. tostring(data.id)
+					.. " row=" .. tostring(data.row) .. " col=" .. tostring(data.col)
+					.. " anchor=" .. tostring(x) .. "," .. tostring(y) end
 				if x then
 					local _, nh = GetSize(widget.id)
+					if diagnose then diagnostic[#diagnostic+1] = "nodeHeight=" .. tostring(nh) end
 					stations[#stations+1] = { key=data, line=data.logisticsRows[1], layout=layout,
 						x=math.floor(x-layout.width/2), y=math.floor(y+nh/2+Helper.scaleY(3)) }
 				end
+			elseif diagnose and data.scvkind == "station" then
+				diagnostic[#diagnostic+1] = "station=" .. tostring(data.id)
+					.. " widget=" .. tostring(widget and widget.id) .. " layout=" .. tostring(layout ~= nil)
 			end
 		end
-		menu.nativeLogistics:update(stations,{x=chart.properties.x,y=chart.properties.y,width=width,height=height},
+		menu.nativeLogistics:update(stations,viewport,
 			obstacles,chart.id,Helper.standardFont,Helper.scaleFont(Helper.standardFont,config.logisticsFontSize),Helper.uiScale)
+		if diagnose then
+			diagnosedChart = chart
+			-- Keep diagnostics isolated from the renderer's failure latch.
+			local diagnosticOK, diagnosticError = pcall(function ()
+				local function bounds(rect)
+					return table.concat({tostring(rect.x),tostring(rect.y),tostring(rect.width),tostring(rect.height)}, ",")
+				end
+				log("strip-diag chart=" .. tostring(chart.id) .. " rows=" .. tostring(menu.graphLayout and menu.graphLayout.rows)
+					.. " viewport=" .. bounds(viewport) .. " maxHeight=" .. tostring(chart.properties.maxVisibleHeight)
+					.. " stations=" .. #stations .. " panels=" .. #obstacles)
+				for _, message in ipairs(diagnostic) do log("strip-diag " .. message) end
+				for i, panel in ipairs(obstacles) do log("strip-diag panel=" .. i .. " bounds=" .. bounds(panel)) end
+				for _, station in ipairs(stations) do
+					local cache = menu.nativeLogistics.cache and menu.nativeLogistics.cache[station.key]
+					local outside, blocked, visible = 0, 0, 0
+					for _, entry in ipairs(cache and cache.entries or {}) do
+						local inside, intersects = SCV_Overlay.inside(entry,viewport), false
+						for _, panel in ipairs(obstacles) do
+							if SCV_Overlay.intersects(entry,panel) then intersects=true; break end
+						end
+						if not inside then outside=outside+1 end
+						if intersects then blocked=blocked+1 end
+						if inside and not intersects then visible=visible+1 end
+					end
+					log("strip-diag station=" .. tostring(station.key.id) .. " strip=" .. bounds({x=station.x,y=station.y,
+						width=station.layout.width,height=station.layout.height}) .. " cache=" .. tostring(cache ~= nil)
+						.. " visible=" .. visible .. " outside=" .. outside .. " blocked=" .. blocked)
+				end
+			end)
+			if not diagnosticOK then log("strip-diag logging failed: " .. tostring(diagnosticError)) end
+		end
 	end)
 	if not ok then
 		hide(); menu.nativeLogisticsFailed=true
@@ -95,6 +145,7 @@ function component.updateLogisticsStrip()
 end
 
 function component.clearLogisticsStrip()
+	diagnosedChart = nil
 	if menu.nativeLogistics then
 		local ok = pcall(function () menu.nativeLogistics:reset() end)
 		if not ok then menu.nativeLogistics=nil end

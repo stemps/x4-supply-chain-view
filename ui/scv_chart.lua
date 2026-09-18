@@ -243,6 +243,14 @@ function component.displayChain(frame, x, y, width, reuseGraph)
 		minColWidth  = 80,
 		x = x, y = chartY, width = width,
 	})
+	if numrows == 1 then
+		-- Native visible-cell counting uses a strict '<' fit. Helper's exact
+		-- content height otherwise leaves this one row uncounted (numRows=1).
+		local getVisibleHeight = menu.flowchart.getVisibleHeight
+		menu.flowchart.getVisibleHeight = function (chart)
+			return math.min(getVisibleHeight(chart) + 1, chart:getMaxVisibleHeight())
+		end
+	end
 	menu.flowchart:setDefaultNodeProperties({
 		expandedFrameLayer      = config.expandedMenuFrameLayer,
 		expandedTableNumColumns = 4,
@@ -283,6 +291,14 @@ function component.renderFlowchart(graph, junctions)
 			-- Function-valued mouseovers register with frame:update at creation.
 			local properties = {}
 			for key, value in pairs(moduledata.properties) do properties[key] = value end
+			if nodedata.logisticsRows then
+				-- Every row must contain its strip, including the last visible row.
+				-- Native node padding is symmetric. Reserve the full strip and gap
+				-- below the centre, with one pixel for native rounding, then unscale.
+				properties.y = math.max(properties.y or 0,
+					(math.ceil(nodedata.logisticsRows[1].height) + math.ceil(Helper.scaleY(3)) + 1)
+						/ (Helper.scaleY(1000) / 1000))
+			end
 			properties.mouseOverText = function () return nodedata[1].properties.mouseOverText end
 			local node = menu.flowchart:addNode(nodedata.row, nodedata.col,
 				{ nodedata = nodedata, moduledata = moduledata }, properties)

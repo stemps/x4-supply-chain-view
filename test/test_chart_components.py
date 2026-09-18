@@ -62,6 +62,75 @@ def run(runtime):
     view.updateLogisticsStrip()
     assert(hidden==2)
     ''')
+    lua.execute('''
+    -- Reproduce a compact row using Helper's symmetric node-padding model.
+    -- The native renderer counts a visible row only for rowHeight < available.
+    Color={}; Helper.borderSize=1; Helper.frameBorder=5
+    SCV_Store.selected=function() return {} end
+    SCV_Graph={LIMITS={maxCols=20,maxNodes=100,maxEdges=100}}
+    for _,scale in ipairs({1,1.48,2}) do
+      Helper.scaleY=function(value) return value*scale end
+      for _,rows in ipairs({1,13}) do
+        for _,show in ipairs({true,false}) do
+          local stripHeight=39*scale/1.48
+          local originalY=(stripHeight/scale+3+13.5)/2
+          local station={scvkind='station',row=1,col=1,text='Station',predecessors={},
+            logisticsRows=show and {{height=stripHeight}} or nil,
+            [1]={properties={y=originalY}}}
+          local graph={nodes={station},wareNodes={ore={}},collapsedWares={},
+            droppedStations={},droppedEdges={}}
+          local menu={graph=graph,graphLayout={rows=rows,cols=1,junctions={}},decorateNodes=function() end}
+          local component=SCV_Chart.new(menu,{}, {T=function() return 'Legend' end})
+          menu.renderFlowchart=component.renderFlowchart
+          menu.drawChainLegend=component.drawChainLegend
+          local frame={getAvailableHeight=function() return 1800 end}
+          local footer={properties={},getFullHeight=function() return 30 end,
+            addRow=function() return {{createText=function() end}} end}
+          function frame:addTable() return footer end
+          function frame:addFlowchart(nrows,_,props)
+            local chart={properties=props}
+            function chart:setDefaultNodeProperties() end
+            function chart:addNode(_,_,_,properties)
+              self.nodeProperties=properties
+              local widget={properties={text={},statustext={}},handlers={}}
+              function widget:setText() return self end
+              return widget
+            end
+            function chart:getMaxVisibleHeight() return self.properties.maxVisibleHeight end
+            function chart:getVisibleHeight()
+              self.rowHeight=44*scale/1.48+2*self.nodeProperties.y*scale
+              self.borderHeight=2*(3*scale+Helper.borderSize)
+              return math.min(nrows*self.rowHeight+self.borderHeight,self:getMaxVisibleHeight())
+            end
+            return chart
+          end
+          component.displayChain(frame,18,173,3742,true)
+          local chart=menu.flowchart
+          local height=chart:getVisibleHeight()
+          assert(station[1].properties.y==originalY, 'render padding must not mutate graph records')
+          assert(footer.properties.y==173+height+Helper.borderSize)
+          if show then
+            -- Last visible row ends at the native content boundary, regardless
+            -- of scroll position. Its strip must fit in that row's lower half.
+            local stripBottom=chart.rowHeight/2+22*scale/1.48+math.ceil(3*scale)+stripHeight
+            assert(stripBottom<=chart.rowHeight-1,
+              'every station strip must fit within its own row with rounding clearance')
+          end
+          if rows==1 then
+            assert(chart.rowHeight < height-chart.borderHeight, 'native strict fit must count the row')
+            if show then
+              local stripBottom=height/2+22*scale/1.48+3*scale+stripHeight
+              assert(stripBottom<=height-chart.borderHeight/2,
+                'complete strip must fit above compact chart border and inner padding')
+            end
+            chart.properties.maxVisibleHeight=height-10
+            assert(chart:getVisibleHeight()==height-10, 'never exceed available frame space')
+          end
+          if not show then assert(chart.nodeProperties.y==originalY) end
+        end
+      end
+    end
+    ''')
 
 
 if __name__ == '__main__':
