@@ -224,8 +224,7 @@ function SCV_Details.new(menu, config, presentation)
 		end
 
 		sectionHeader(ftable, T(3170))
-		row = ftable:addRow(false, {})
-		row[1]:setColSpan(4):createText(T(3171) .. " " .. T(3172), { wordwrap = true })
+		local dockTip = T(3171) .. "\n\n" .. T(3172)
 		for _, size in ipairs({ "s", "m", "l" }) do
 			local dockSize = size
 			row = ftable:addRow(false, {})
@@ -233,8 +232,9 @@ function SCV_Details.new(menu, config, presentation)
 				local dock = nodedata.logistics and nodedata.logistics.docks and nodedata.logistics.docks[dockSize]
 				return logisticsTint(T(3180) .. " " .. (dockSize == "l" and "L/XL" or string.upper(dockSize)),
 					dock and dock.total > 0 and dock.free == 0 and "warning" or "ok")
-			end)
-			row[2]:setColSpan(3):createText(function () return dockLabel(nodedata.logistics, dockSize, false) end, { halign = "right" })
+			end, { mouseOverText = dockTip })
+			row[2]:setColSpan(3):createText(function () return dockLabel(nodedata.logistics, dockSize, false) end,
+				{ halign = "right", mouseOverText = dockTip })
 		end
 		row = ftable:addRow(false, {})
 		row[1]:createText(T(3178))
