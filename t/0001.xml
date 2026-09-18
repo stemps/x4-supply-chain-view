@@ -173,5 +173,7 @@
     <t id="3180">Docks</t>
     <t id="3181">Ship and dock counts require player ownership.</t>
     <t id="3184">Dock/ship display unavailable. Reopen SCV to retry.</t>
+    <t id="3185">Settings</t>
+    <t id="3186">Show docks/subordinates</t>
   </page>
 </language>

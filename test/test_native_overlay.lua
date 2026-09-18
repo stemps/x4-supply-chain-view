@@ -75,6 +75,15 @@ assert(writes==beforeWrites and draws==beforeDraws, 'unchanged SCV frame reuses 
 local hit=hits[2]
 mx=hit.x+1-Helper.viewWidth/2; my=Helper.viewHeight/2-hit.y-1
 menu.updateLogisticsStrip(); assert(tip==hit.tip, 'individual tooltip')
+SCV_Store.setShowLogistics(false)
+local hiddenDraws=draws
+menu.updateLogisticsStrip()
+assert(active()==0 and tip==nil, 'disabled display clears visuals and hovered tooltip')
+menu.updateLogisticsStrip()
+assert(draws==hiddenDraws, 'disabled display does not render')
+SCV_Store.setShowLogistics(true)
+menu.updateLogisticsStrip()
+assert(active()>0 and tip==hit.tip, 're-enabled display restores visuals and hover')
 mx,my=nil,nil
 menu.updateLogisticsStrip(); assert(tip==nil, 'blank pointer clears tooltip')
 local capacity=clones

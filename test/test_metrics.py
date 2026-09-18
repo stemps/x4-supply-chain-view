@@ -115,7 +115,7 @@ function plainStatus(text)
     return (text:gsub(string.char(27) .. '#%x+#', ''):gsub(string.char(27) .. 'X', ''))
 end
 ''')
-for name in ['scv_graph.lua', 'scv_data.lua']:
+for name in ['scv_graph.lua', 'scv_data.lua', 'scv_store.lua']:
     lua.execute((root/'ui'/name).read_text(encoding='utf-8'))
 menu = lua.execute((root/'ui/scv_menu.lua').read_text(encoding='utf-8'))
 # Model callbacks separated by the legacy 0.2-second cadence.
@@ -455,6 +455,28 @@ menu.decorateNodes(graph)
 assert(w[1].properties.value==150 and w[1].properties.max==500)
 assert(w[1].properties.slider1==-1 and w[1].properties.slider2==-1)
 assert(w[1].statusText=='-30/h (-38%)' and w[1].color==nil)
+local station=graph.stationNodes.a
+local expandedOffset=station[1].properties.y
+assert(expandedOffset>0 and station.logisticsRows)
+SCV_Store.setShowLogistics(false)
+local measure=menu.logisticsRows
+menu.logisticsRows=function() error('hidden strips must not be measured') end
+menu.decorateNodes(graph)
+assert(station[1].properties.y==0 and station.logisticsRows==nil, 'hidden strips reclaim vertical spacing')
+assert(w[1].properties.value==150 and w[1].properties.max==500, 'ware metrics unaffected')
+local details=tableMock()
+menu.expandStation(nil,{properties={height=220}},details,station)
+local dockDetail=false
+for _,row in ipairs(details.rows) do
+    local text=row[1] and row[1].text
+    text=type(text)=='function' and text() or text
+    if type(text)=='string' and text:find('Docks',1,true) then dockDetail=true end
+end
+assert(dockDetail, 'expanded station retains dock information while strips are hidden')
+menu.logisticsRows=measure
+SCV_Store.setShowLogistics(true)
+menu.decorateNodes(graph)
+assert(station[1].properties.y==expandedOffset and station.logisticsRows, 'visible spacing restored')
 menu.graph=graph
 local t=tableMock()
 menu.expandWare(nil,{properties={height=220}},t,w)
@@ -529,7 +551,7 @@ lua.execute('''
 local reads, builds, displays = 0, 0, 0
 menu.closed = false -- simulate reopening after the preceding cleanup test
 local members = {}
-SCV_Store = { selected=function() return {} end }
+SCV_Store.selected = function() return {} end
 menu.currentMembers = function() return members end
 function getElapsedTime() return 100 end
 local frame = { addTable=function() return tableMock() end }
@@ -582,6 +604,6 @@ for runtime in [LuaRuntime, LuaJITRuntime]:
             package.loaded.ffi = nil
         ''')
     future_tests = future_lua.execute((root/'test/test_future_roles.lua').read_text(encoding='utf-8'))
-    for name in ['scv_graph.lua', 'scv_data.lua']:
+    for name in ['scv_graph.lua', 'scv_data.lua', 'scv_store.lua']:
         future_lua.execute((root/'ui'/name).read_text(encoding='utf-8'))
     future_tests()

@@ -482,11 +482,12 @@ function menu.onDockMetrics()
 end
 
 function menu.updateLogisticsStrip()
-	if menu.nativeLogisticsFailed then return end
 	local chart = menu.flowchart
 	local function hide()
 		if menu.nativeLogistics then pcall(function () menu.nativeLogistics:hide() end) end
 	end
+	if not SCV_Store.getShowLogistics() then hide(); return end
+	if menu.nativeLogisticsFailed then return end
 	if menu.closed or menu.mode ~= "chain" or menu.refresh or not chart or not chart.id or not menu.graph then hide(); return end
 	local ok, err = pcall(function ()
 		if not menu.nativeLogistics then menu.nativeLogistics = SCV_Overlay.newView() end
@@ -769,14 +770,14 @@ function menu.decorateNodes(graph)
 			if not node.healthKnown then parts[#parts + 1] = T(3065) end
 
 			node.text = node.name or node.scvid or "?"
-			node.logisticsRows = menu.logisticsRows(node.logistics)
+			node.logisticsRows = SCV_Store.getShowLogistics() and menu.logisticsRows(node.logistics) or nil
 			node.type = "container"
 			node[1] = {
 				properties = {
 					shape         = "rectangle",
 					width         = config.stationNodeWidth,
 					x             = config.nodeOffsetX,
-					y             = (node.logisticsRows[1].height / (Helper.scaleY(1000) / 1000) + 3 + Helper.standardFontSize * 1.5) / 2,
+					y             = node.logisticsRows and (node.logisticsRows[1].height / (Helper.scaleY(1000) / 1000) + 3 + Helper.standardFontSize * 1.5) / 2 or 0,
 					mouseOverText = (warningReason(warningName, warningHealth, parts)
 						or ((#parts > 0) and table.concat(parts, "\n") or T(3014))),
 				},
@@ -920,7 +921,7 @@ function menu.display(presentationOnly)
 	menu.frame:display()
 	if menu.mode == "chain" then
 		if not presentationOnly then
-			if managementMode == "stations" then menu.openManagement("stations") end
+			if managementMode == "stations" or managementMode == "settings" then menu.openManagement(managementMode) end
 			menu.updateStatusStrip()
 		end
 	end
@@ -1129,10 +1130,10 @@ function menu.displayToolbar(frame)
 	local toolbarX = geo.x + (geo.width - toolbarWidth) / 2
 	-- Like vanilla LSO's title table, share the graph's main frame so expanded
 	-- nodes on layer 4 cover these controls without changing native node depth.
-	local ftable = frame:addTable(5, { tabOrder = 1, width = toolbarWidth, x = toolbarX, y = geo.y })
+	local ftable = frame:addTable(6, { tabOrder = 1, width = toolbarWidth, x = toolbarX, y = geo.y })
 	local buttonWidth = Helper.scaleX(Helper.standardButtonHeight)
 	local stationsWidth = math.min(Helper.scaleX(180), toolbarWidth * 0.28)
-	for _, col in ipairs({ 1, 3, 5 }) do ftable:setColWidth(col, buttonWidth, false) end
+	for _, col in ipairs({ 1, 3, 5, 6 }) do ftable:setColWidth(col, buttonWidth, false) end
 	ftable:setColWidth(4, stationsWidth, false)
 	local chain, index = SCV_Store.selected()
 	local chains, options = SCV_Store.chains(), {}
@@ -1155,15 +1156,27 @@ function menu.displayToolbar(frame)
 	row[4]:createButton({ active = chain ~= nil, mouseOverText = T(2005) })
 		:setText(T(2005) .. " (" .. tostring(chain and #chain.members or 0) .. ")", { halign = "center" })
 	row[4].handlers.onClick = function () menu.toggleManagement("stations") end
-	row[5]:createButton({ active = chain ~= nil, mouseOverText = ReadText(1001, 7865) }):setText("...", { halign = "center" })
-	row[5].handlers.onClick = function () menu.toggleManagement("actions") end
+	row[5]:createButton({ mouseOverText = T(3185) })
+	setCenteredButtonIcon(row[5], "menu_options")
+	row[5].handlers.onClick = function () menu.toggleManagement("settings") end
+	row[6]:createButton({ active = chain ~= nil, mouseOverText = ReadText(1001, 7865) }):setText("...", { halign = "center" })
+	row[6].handlers.onClick = function () menu.toggleManagement("actions") end
 	-- Store the station button's left edge in screen pixels, including table borders.
-	geo.anchorX = toolbarX + toolbarWidth - stationsWidth - buttonWidth - Helper.borderSize
+	geo.anchorX = toolbarX + toolbarWidth - stationsWidth - 2 * buttonWidth - 2 * Helper.borderSize
+	geo.settingsX = toolbarX + toolbarWidth - 2 * buttonWidth - Helper.borderSize
 	geo.overlayY = geo.y + Helper.scaleY(Helper.standardButtonHeight) + Helper.borderSize
 end
 
 function menu.toggleManagement(mode)
 	if menu.managementMode == mode then menu.closeManagement() else menu.openManagement(mode) end
+end
+
+function menu.setShowLogistics(enabled)
+	if not SCV_Store.setShowLogistics(enabled) then return end
+	menu.closeManagement()
+	-- Recreate widgets with compact node spacing, retaining topology and scan cursors.
+	menu.display(true)
+	menu.openManagement("settings")
 end
 
 function menu.confirmDelete()
@@ -1176,10 +1189,19 @@ function menu.confirmDelete()
 	menu.markDirty()
 end
 
+-- Shared title and close control for management overlays.
+function menu.displayManagementHeader(ftable, columns, title)
+	local row = ftable:addRow(true, { fixed = true })
+	row[1]:setColSpan(columns - 1):createText(title, { wordwrap = true })
+	row[columns]:createButton({ mouseOverText = ReadText(1001, 2670) }):setText("x", { halign = "center" })
+	row[columns].handlers.onClick = menu.closeManagement
+	return row
+end
+
 function menu.openManagement(mode)
 	if menu.nativeLogistics then menu.nativeLogistics:hide() end
 	local chain, index = SCV_Store.selected()
-	if not chain or not menu.toolbarGeometry then return end
+	if (not chain and mode ~= "settings") or not menu.toolbarGeometry then return end
 	menu.closeManagement()
 	if menu.expandedNode then menu.expandedNode:collapse() end
 	menu.expandedNode = nil
@@ -1187,17 +1209,28 @@ function menu.openManagement(mode)
 	menu.managementMode = mode
 	menu.managementChain = chain
 	local geo, border = menu.toolbarGeometry, Helper.frameBorder
-	local width = math.min(Helper.scaleX(mode == "actions" and 240 or 600), Helper.viewWidth - 2 * border)
-	local x = math.max(border, math.min(geo.anchorX, Helper.viewWidth - width - border))
+	local width = math.min(Helper.scaleX(mode == "actions" and 240 or mode == "settings" and 400 or 600), Helper.viewWidth - 2 * border)
+	local x = math.max(border, math.min(mode == "settings" and geo.settingsX or geo.anchorX, Helper.viewWidth - width - border))
 	local y = math.min(geo.overlayY + (menu.statusHeight or 0), Helper.viewHeight - Helper.scaleY(160) - border)
 	y = math.max(border, y)
 	local height = Helper.viewHeight - y - border
 	local frame = Helper.createFrameHandle(menu, { layer = config.managementFrameLayer,
 		standardButtons = {}, -- Management supplies its own Close/Cancel controls.
-		x = x, y = y, width = width, height = height, closeOnUnhandledClick = false })
+		x = x, y = y, width = width, height = height, closeOnUnhandledClick = mode == "settings" })
 	menu.managementFrame = frame
 	frame:setBackground("solid", { color = Color["frame_background_semitransparent"] })
-	if mode == "rename" then
+	if mode == "settings" then
+		local ftable = frame:addTable(3, { tabOrder = 1, x = border, y = border,
+			width = width - 2 * border, maxVisibleHeight = height - 2 * border })
+		ftable:setColWidth(1, Helper.scaleX(Helper.standardTextHeight), false)
+		ftable:setColWidth(3, Helper.scaleX(30), false)
+		menu.displayManagementHeader(ftable, 3, T(3185))
+		local row = ftable:addRow(true, { fixed = true })
+		row[1]:createCheckBox(SCV_Store.getShowLogistics(), { width = Helper.standardTextHeight, height = Helper.standardTextHeight })
+		row[1].handlers.onClick = function (_, checked) menu.setShowLogistics(checked) end
+		row[2]:setColSpan(2):createText(T(3186), { wordwrap = true })
+		frame.properties.height = math.min(height, ftable:getVisibleHeight() + 2 * border)
+	elseif mode == "rename" then
 		menu.renameIndex, menu.nameText = index, chain.name
 		menu.displayNameEntry(frame, border, border, width - 2 * border)
 		frame.properties.height = math.min(height, frame:getUsedHeight() + 2 * border)
@@ -1206,10 +1239,7 @@ function menu.openManagement(mode)
 		local ftable = frame:addTable(columns, { tabOrder = 1, x = border, y = border,
 			width = width - 2 * border, maxVisibleHeight = height - 2 * border })
 		for column = 2, columns do ftable:setColWidth(column, Helper.scaleX(30), false) end
-		local row = ftable:addRow(true, { fixed = true })
-		row[1]:setColSpan(columns - 1):createText(chain.name, { wordwrap = true })
-		row[columns]:createButton({ mouseOverText = ReadText(1001, 2670) }):setText("x", { halign = "center" })
-		row[columns].handlers.onClick = menu.closeManagement
+		local row = menu.displayManagementHeader(ftable, columns, chain.name)
 		if mode == "stations" then
 			menu.displayStations(ftable, chain, index)
 		elseif mode == "actions" then

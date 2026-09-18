@@ -92,7 +92,7 @@ function deliver(entries,preserve)
  events.scv_dock_capacity_ready()
 end
 ''')
-    for name in ['scv_graph.lua', 'scv_data.lua']:
+    for name in ['scv_graph.lua', 'scv_data.lua', 'scv_store.lua']:
         lua.execute((ROOT/'ui'/name).read_text(encoding='utf-8'))
     lua.globals().menu = lua.execute((ROOT/'ui/scv_menu.lua').read_text(encoding='utf-8'))
     lua.execute('assert(menu.updateInterval == 0 and menu.toggleLogisticsRenderer == nil)')

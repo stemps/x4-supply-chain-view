@@ -60,6 +60,7 @@ function Helper.createFrameHandle(_, props)
                 local c={handlers={},span=1}
                 function c:setColSpan(span) self.span=span; return self end
                 function c:createText(text,pr) self.text=text; self.textprops=pr; return self end
+                function c:createCheckBox(checked,pr) self.checked=checked; self.properties=pr or {}; return self end
                 function c:createButton(pr) self.properties=pr or {}; return self end
                 function c:createEditBox(pr) self.properties=pr; return self end
                 function c:createDropDown(options,pr)
@@ -102,7 +103,7 @@ lua.execute('''
 local nativeDisplayChain=menu.displayChain
 function menu.displayChain(_,x,y,width,reuse)
     graphRect={x=x,y=y,width=width}
-    if reuse then return end
+    if reuse then menu.flowchart={}; return end
     builds=builds+1
     menu.currentMembers()
     menu.graph={stationNodes={}}; menu.flowchart={}; menu.refreshState={}; menu.scanDone=true
@@ -111,10 +112,16 @@ menu.mode='chain'; menu.display()
 local function toolbarTable() return frames[5].tables[1] end
 local function toolbar() return toolbarTable().rows[1] end
 local row=toolbar()
-for _,i in ipairs({1,2,3,4,5}) do assert(row[i].properties.active==false) end
+for _,i in ipairs({1,2,3,4,6}) do assert(row[i].properties.active==false) end
 row[1].handlers.onClick(); row[3].handlers.onClick()
 assert(SCV_Store.count()==0)
 assert(row[2].options[1].id=='0')
+assert(row[5].icon=='menu_options' and row[6].text=='...', 'cog immediately precedes actions')
+row[5].handlers.onClick()
+assert(menu.managementMode=='settings' and frames[1].properties.closeOnUnhandledClick)
+assert(frames[1].tables[1].rows[2][1].checked==true, 'settings work without a selected chain')
+menu.onCloseElement('back',1)
+assert(not frames[1] and closed==0)
 assert(graphRect.x==Helper.frameBorder)
 assert(graphRect.width==1280-45-5-5-2, 'graph uses all available width')
 assert(not frames[2], 'toolbar must not create a foreground frame over expanded nodes')
@@ -156,6 +163,32 @@ assert(#row[2].options==8 and row[2].options[8].text=='Chain 8')
 assert(row[1].properties.active and row[3].properties.active)
 
 local graph,flow,refresh,before=menu.graph,menu.flowchart,menu.refreshState,builds
+row[5].handlers.onClick()
+local settings=frames[1].tables[1].rows[2]
+assert(settings[2].text=='Show docks/subordinates')
+assert(settings[1].properties.width==Helper.standardTextHeight and settings[1].properties.height==Helper.standardTextHeight)
+assert(frames[1].tables[1].widths[1]==Helper.scaleX(Helper.standardTextHeight))
+local settingsHeader=frames[1].tables[1].rows[1]
+assert(settingsHeader[1].text=='Settings' and settingsHeader[3].text=='x')
+assert(settingsHeader[3].handlers.onClick==menu.closeManagement)
+settingsHeader[3].handlers.onClick()
+assert(not frames[1] and closed==0, 'settings X closes only its overlay')
+toolbar()[5].handlers.onClick()
+settings=frames[1].tables[1].rows[2]
+settings[1].handlers.onClick(nil,false)
+assert(menu.managementMode=='settings' and not frames[1].tables[1].rows[2][1].checked)
+assert(not SCV_Store.getShowLogistics() and menu.graph==graph and menu.refreshState==refresh and builds==before)
+frames[1].tables[1].rows[2][1].handlers.onClick(nil,true)
+assert(SCV_Store.getShowLogistics() and frames[1].tables[1].rows[2][1].checked)
+assert(menu.graph==graph and menu.refreshState==refresh and builds==before)
+menu.onCloseElement('close',1)
+assert(not frames[1] and closed==0, 'outside-click close dismisses only settings')
+toolbar()[5].handlers.onClick(); toolbar()[5].handlers.onClick()
+assert(not frames[1], 'second cog click dismisses settings')
+toolbar()[5].handlers.onClick(); toolbar()[6].handlers.onClick()
+assert(menu.managementMode=='actions', 'actions replace settings')
+menu.closeManagement()
+flow=menu.flowchart -- toggling recreates native presentation, but not graph data
 menu.expandedNode={collapse=function() collapsed=true end}
 row[4].handlers.onClick()
 assert(collapsed and menu.expandedNode==nil and menu.managementMode=='stations')
@@ -207,7 +240,7 @@ assert(SCV_Store.get(1).name=='Keyboard rename' and menu.nameEntry==nil)
 menu.notice='Added 7 stations.'; menu.missingMembers=2
 menu.graph.structureChanged=true; menu.graph.refreshFailed=true; menu.graph.lockedCount=3
 menu.updateStatusStrip()
-assert(#toolbar()==5 and frames[3])
+assert(#toolbar()==6 and frames[3])
 local status=frames[3].tables[1]
 assert(#status.rows==5 and status.rows[1][1].text:find('could not be found',1,true))
 assert(status.rows[5][1].text=='Added 7 stations.')

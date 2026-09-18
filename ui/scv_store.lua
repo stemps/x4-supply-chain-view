@@ -31,18 +31,19 @@
 -- __CORE_DETAILMONITOR_MAPFILTER_SAVE["searchsectors"] (menu_map.lua:29243):
 --
 --   __SCV_GROUPS = {
---     version  = 5,
+--     version  = 6,
 --     selected = 1,
 --     names    = { "Ore Chain", "Shipyard Feed" },
 --     members  = { "506813|HEA-485,501323|CXG-006", "422158|PHM-325" },
 --     ignoredWarnings = { "HEA-485|ore" },
+--     showLogistics = true,
 --   }
 --
 -- Confirmed in game: this shape survives both /reloadui and a real save + load.
 
 SCV_Store = {}
 
-local CURRENT_VERSION = 5
+local CURRENT_VERSION = 6
 local SEP_MEMBER = ","
 local SEP_FIELD  = "|"
 
@@ -56,6 +57,7 @@ end
 local chains = nil
 local selectedIdx = 1
 local ignoredWarnings = {}
+local showLogistics = true
 
 local function warningKey(code, ware)
 	if type(code) ~= "string" or code == "" or code:find("[|,]")
@@ -171,6 +173,7 @@ function SCV_Store.save()
 		names    = names,
 		members  = members,
 		ignoredWarnings = ignored,
+		showLogistics = showLogistics,
 	}
 end
 
@@ -178,12 +181,16 @@ local function rebuildFromStorage()
 	chains = {}
 	selectedIdx = 1
 	ignoredWarnings = {}
+	showLogistics = true
 
 	if type(__SCV_GROUPS) ~= "table" then
 		SCV_Store.save()
 		return
 	end
 
+	if type(__SCV_GROUPS.showLogistics) == "boolean" then
+		showLogistics = __SCV_GROUPS.showLogistics
+	end
 	if type(__SCV_GROUPS.ignoredWarnings) == "table" then
 		for _, key in ipairs(__SCV_GROUPS.ignoredWarnings) do
 			if type(key) == "string" then
@@ -245,6 +252,19 @@ end
 
 function SCV_Store.chains()
 	return SCV_Store.load()
+end
+
+function SCV_Store.getShowLogistics()
+	SCV_Store.load()
+	return showLogistics
+end
+
+function SCV_Store.setShowLogistics(enabled)
+	SCV_Store.load()
+	if type(enabled) ~= "boolean" or enabled == showLogistics then return false end
+	showLogistics = enabled
+	SCV_Store.save()
+	return true
 end
 
 function SCV_Store.isWarningIgnored(stationCode, wareId)
