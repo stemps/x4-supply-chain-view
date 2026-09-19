@@ -1,10 +1,5 @@
 # Runtime architecture
 
-This behavior-preserving refactor starts from `623baaa`. X4 still loads all runtime
-files through `ui.xml`, in order, into the addon environment. There is no custom
-Lua loader and no new runtime dependency. `-- Depends:` comments document direct
-module prerequisites for tests; they are not interpreted by the game.
-
 ## Layers and ownership
 
 | Module | Responsibility and lifetime |
@@ -75,99 +70,6 @@ Naming dialogs retain per-entry identity, deferred focus and confirmation guards
 Scan/redraw completion must not replace an active edit box. Expansion/collapse
 callbacks keep paired node/frame ownership, and cleanup completes before opening
 vanilla menus which reuse the same layers.
-
-## Localization policy
-
-The main screen and map context menu use `SCV_Text.forPage(page)`. It returns a
-`T(id, ...)` function; presentation retains its `T` interface. Each call reads the
-engine text again, allowing a failed lookup to recover without a cached fallback.
-Failed reads, non-string/empty results and `=ReadText` placeholders produce
-`SCV#<id>: <values>` or `SCV#<id>` with no arguments. Arguments are converted with
-`tostring` and joined with spaces, including explicit nil/false values. For example,
-a missing action label for Energy Chain becomes `SCV#2001: Energy Chain`.
-
-Missing-text warnings include page/id and restart guidance, once per page/id pair
-across both menus per addon load. `/reloadui` does not reload translation files.
-Successful templates retain normal formatting; formatting failures still return
-the original template. Vanilla-page lookups and hotkey labels retain their prior
-handling. This resolves the former main-screen/context-menu fallback difference.
-
-## Validation and development
-
-Run `just check` from this repository. Tests load selected runtime modules in
-manifest order using `test/addon_loader.py`; explicit fixture stubs may replace
-engine-facing dependencies. The manifest check rejects unlisted, missing,
-duplicate or incorrectly ordered modules. Reload tests explicitly reload their
-target rather than silently reconstructing all prerequisites.
-
-The globals linter no longer shares local helpers or parameters between files.
-It remains a lightweight file-level check, not a complete lexical-scope analyzer.
-Behavioral tests and Lua/LuaJIT execution remain necessary.
-
-Worker ownership during the refactor was split into model, data and presentation,
-then details, management and chart/logistics coordination. The coordinator alone
-integrated menu cutovers, manifest ordering and shared test runners.
-
-## Resolved cleanup and compatibility decision
-
-The follow-up to `c42c179` removes only the reviewed leftovers:
-
-| Removed item | Evidence and replacement |
-| --- | --- |
-| Menu `config.savedVersion` | No configuration consumer; persistence versioning remains in Store. |
-| Menu-local `availableHeight` | No lexical caller; the used Management helper retains the explanatory scrolling comment. |
-| Menu-local `C` and `ffi` | No native calls in the controller; native bindings remain in their owning modules. |
-| `menu.hasWarning` | No production/test caller or matching vanilla callback contract; live warning calculations and status collection remain. |
-| `menu.logisticsSummary` and `menu.logisticsTooltip`, plus Presentation equivalents | Their only remaining callers were tests; assertions now exercise rendered entries and their tooltip text. `idleText`, `logisticsEntries`, `logisticsRows` and dynamic dispatch remain. |
-
-Searches found no callers for the three public menu methods in SCV, its
-documentation, vanilla UI or searched loose installed sources. This does not
-exclude packed or uninstalled third-party consumers. Removing these three methods
-accepts that residual compatibility risk explicitly; it grants no permission to
-remove other methods based only on missing search results. Engine lifecycle,
-flowchart and integration callbacks remain registered and callable.
-
-## Deferred findings
-
-- Nexus API research was unavailable (no configured key and failed metadata
-  request). This refactor is grounded in local source and vanilla patterns.
-- The workspace canary cannot inspect its configured non-Git game/mod roots;
-  it provides no clean verdict on the installed modlist.
-
-## Native acceptance checklist
-
-Automated acceptance completed on 2026-09-18: full `just check` passed, including
-Lua/LuaJIT session/component tests, complete addon boot/reload, real-manifest
-archive inclusion, existing behavior suites, translations, lint, syntax,
-standalone addon/MD XSD validation and x4validate. `git diff --check` passed.
-The refactor run log is `.cache/refactor-check.log` (ignored by Git).
-The localization/cleanup follow-up also passed full `just check` on 2026-09-18;
-its log is `.cache/text-cleanup-check.log`. Expanded registration checks passed
-again in Lua and LuaJIT after the full run. Working and staged diff checks passed.
-
-The original refactor retained 13 Data, 22 Graph and 46 menu functions. The
-approved cleanup removes three menu functions; all Data/Graph APIs remain.
-Storage, the MD protocol, content manifest, version, translations and native
-backend remain unchanged. The context adapter now uses the shared text service.
-
-The follow-up runs in the existing development checkout exposed by the installed
-junction. Fully restart X4 for the new addon file list; `/reloadui` alone is not
-the acceptance step. Check the main screen, map actions, logistics tooltips and
-resulting `debug.txt`. Missing-text cases are tested offline without altering
-installed translations. Native acceptance of this follow-up remains pending.
-Automated tests do not establish rendering/input acceptance. The broader
-regression checklist remains:
-
-- Save/load and UI reload; saved false/true logistics preferences survive.
-- Repeated open/close and chain switching; no stale hover, requests or visuals.
-- Rename with Enter and the button while scans/refreshes are active.
-- Settings dismissal and checkbox sizing; graph position and refresh continue.
-- Station and ware expansion/collapse; values update while panels stay open.
-- Scrolling and UI scales; clipping, panel occlusion, station clicks and tooltips.
-- Large-chain docks/subordinates update; hiding strips retains expanded details.
-- Navigation to vanilla station overview/map/build menus and back.
-
-Release publication is separate from this implementation.
 
 ## Export visibility and cycle cuts
 
