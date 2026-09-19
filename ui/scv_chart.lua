@@ -63,7 +63,7 @@ function component.decorateNodes(graph)
 					shape         = "rectangle",
 					width         = config.stationNodeWidth,
 					x             = config.nodeOffsetX,
-					y             = node.logisticsRows and (node.logisticsRows[1].height / (Helper.scaleY(1000) / 1000) + 3 + Helper.standardFontSize * 1.5) / 2 or 0,
+					y             = node.logisticsRows and (node.logisticsRows[1].height / (Helper.scaleY(1000) / 1000) + 3 + Helper.standardFontSize) / 2 or 0,
 					mouseOverText = (warningReason(warningName, warningHealth, parts)
 						or ((#parts > 0) and table.concat(parts, "\n") or T(3014))),
 				},

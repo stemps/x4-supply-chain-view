@@ -252,7 +252,8 @@ local outline=node.severity
 menu.decorateNodes(graph)
 assert(node.severity==outline, 'logistics must not modify ware health')
 assert(not node.text:find(string.char(10),1,true))
-assert(node[1].properties.width==310 and node[1].properties.y>=20 and node[1].properties.y<28)
+assert(node[1].properties.width==310 and node[1].properties.y<20)
+assert(2*node[1].properties.y>=node.logisticsRows[1].height+3, "retain room for the measured strip and gap")
 assert(not node[1].properties.mouseOverText:find('Docks:',1,true))
 for _,row in ipairs(rows.entries) do
  local label=type(row[1].text)=='function' and row[1].text() or row[1].text or ''

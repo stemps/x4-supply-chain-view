@@ -74,7 +74,7 @@ def run(runtime):
       for _,rows in ipairs({1,2,13}) do
         for _,show in ipairs({true,false}) do
           local stripHeight=39*scale/1.48
-          local originalY=(stripHeight/scale+3+13.5)/2
+          local originalY=(stripHeight/scale+3+9)/2
           local station={scvkind='station',row=rows,col=1,text='Station',predecessors={},
             logisticsRows=show and {{height=stripHeight}} or nil,
             [1]={properties={y=originalY}}}
