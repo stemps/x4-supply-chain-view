@@ -26,7 +26,7 @@
     <t id="3006">Nikt tutaj nie odbiera tego towaru</t>
     <t id="3010">Dostawa w toku</t>
     <t id="3011">Brak zaplanowanej dostawy</t>
-    <t id="3012">Handel wzajemny: połączenia pokazane tylko w jednym kierunku: %s \(%s\)</t>
+    <t id="3012">Ukryte połączenia zużycia w celu uniknięcia cykli: %s. Popyt pozostaje uwzględniony.</t>
     <t id="3013">Najgorszy wynik: %s</t>
     <t id="3014">Brak ostrzeżeń o zapasach lub pojemności przy pełnej pracy.</t>
     <t id="3015">Dostawcy: %s, odbiorcy: %s</t>
@@ -130,14 +130,14 @@
     <t id="3154">Ostrzeżenia dla tego towaru na tej stacji są ignorowane. Kliknij, aby je włączyć.</t>
     <t id="3155">+%s</t>
     <t id="3156">-%s</t>
-    <t id="3157">%s*</t>
+    <t id="3157">%s%s</t>
     <t id="3159">%s / %s</t>
     <t id="3160">Bilans niedostępny: dane podaży lub popytu są niepełne.</t>
     <t id="3161">Dane podaży są niepełne.</t>
     <t id="3162">Dane popytu są niepełne.</t>
     <t id="3163">Dane podaży i popytu są niepełne.</t>
-    <t id="3164">* Tylko znane ilości; bilans netto niedostępny. Wartości na godzinę.</t>
-    <t id="3166">* dokładny bilans nieznany z powodu producentów/odbiorców o nieznanych lub zmiennych ilościach \(np. górników lub stoczni\)</t>
+    <t id="3164">Tylko znane ilości; bilans netto niedostępny. Wartości na godzinę.</t>
+    <t id="3166">dokładny bilans nieznany z powodu producentów/odbiorców o nieznanych lub zmiennych ilościach \(np. górników lub stoczni\)</t>
     <t id="3170">Logistyka</t>
     <t id="3171">Doki: wolne / ogółem. Pomarańczowy oznacza brak wolnych miejsc.</t>
     <t id="3172">L obejmuje wspólne miejsca L/XL; magazyn wewnętrzny jest wykluczony.</t>
@@ -153,5 +153,15 @@
     <t id="3184">Widok doków i statków jest niedostępny. Otwórz SCV ponownie.</t>
     <t id="3185">Ustawienia</t>
     <t id="3186">Pokaż doki/podwładnych</t>
+    <t id="3187">Produkcja: %s; zużycie obecnej załogi: %s; rezerwa dla pełnej załogi: %s; nadwyżka eksportowa: %s; średni moduł: %s. %s</t>
+    <t id="3188">Znaczny eksport: wyjście widoczne.</t>
+    <t id="3189">Głównie samowystarczalna: połączenie ukryte.</t>
+    <t id="3190">Pełna załoga wymaga dostaw zewnętrznych: wejście widoczne.</t>
+    <t id="3191">Nieznana nadwyżka: wyjście tymczasowo zachowane. Niepełne dane produkcji, podziału załogi lub modułów.</t>
+    <t id="3192">Zmiany połączeń zostaną zastosowane po przebudowaniu widoku.</t>
+    <t id="3193">Ukryte połączenia zużycia w celu zmieszczenia diagramu: %s. Popyt pozostaje uwzględniony.</t>
+    <t id="3194">Po zmniejszeniu diagram nadal przekracza limity: %s/%s węzłów, %s/%s segmentów połączeń, %s/%s kolumn. Podziel ten łańcuch.</t>
+    <t id="3195">Niektóre połączenia przychodzące są ukryte, aby uniknąć cykli</t>
+    <t id="3196">Niektóre połączenia przychodzące są ukryte ze względu na ograniczenia komponentu schematów blokowych w interfejsie gry</t>
   </page>
 </language>

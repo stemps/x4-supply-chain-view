@@ -26,7 +26,7 @@
     <t id="3006">Burada bu malı alan yok</t>
     <t id="3010">Teslimat sürüyor</t>
     <t id="3011">Planlanmış teslimat yok</t>
-    <t id="3012">Karşılıklı ticaret: %s bağlantı yalnızca tek yönde çizildi \(%s\)</t>
+    <t id="3012">Döngüleri önlemek için %s tüketim bağlantısı gizlendi; talep hesaba katılmaya devam eder.</t>
     <t id="3013">En kötü: %s</t>
     <t id="3014">Tam kapasitede stok süresi veya depo kapasitesi uyarısı yok.</t>
     <t id="3015">%s tedarikçi, %s alıcı</t>
@@ -130,14 +130,14 @@
     <t id="3154">Bu istasyondaki bu mal için uyarılar yok sayılıyor. Etkinleştirmek için tıklayın.</t>
     <t id="3155">+%s</t>
     <t id="3156">-%s</t>
-    <t id="3157">%s*</t>
+    <t id="3157">%s%s</t>
     <t id="3159">%s / %s</t>
     <t id="3160">Denge hesaplanamıyor: arz veya talep verileri eksik.</t>
     <t id="3161">Arz verileri eksik.</t>
     <t id="3162">Talep verileri eksik.</t>
     <t id="3163">Arz ve talep verileri eksik.</t>
-    <t id="3164">* Yalnızca bilinen miktarlar; net denge hesaplanamıyor. Değerler saat başınadır.</t>
-    <t id="3166">* miktarı bilinmeyen veya değişken üreticiler/tüketiciler \(ör. madenciler veya tersaneler\) nedeniyle kesin denge bilinmiyor</t>
+    <t id="3164">Yalnızca bilinen miktarlar; net denge hesaplanamıyor. Değerler saat başınadır.</t>
+    <t id="3166">miktarı bilinmeyen veya değişken üreticiler/tüketiciler \(ör. madenciler veya tersaneler\) nedeniyle kesin denge bilinmiyor</t>
     <t id="3170">Lojistik</t>
     <t id="3171">İskeleler: boş / toplam. Turuncu, boş yer olmadığını gösterir.</t>
     <t id="3172">L, ortak L/XL yerlerini içerir; iç depolama hariçtir.</t>
@@ -153,5 +153,15 @@
     <t id="3184">Rıhtım/gemi görünümü kullanılamıyor. SCV’yi yeniden açın.</t>
     <t id="3185">Ayarlar</t>
     <t id="3186">Rıhtımları/astları göster</t>
+    <t id="3187">Üretim: %s; mevcut iş gücü talebi: %s; tam kadro rezervi: %s; ihracat fazlası: %s; ortalama modül: %s. %s</t>
+    <t id="3188">Önemli ihracat: çıkış gösteriliyor.</t>
+    <t id="3189">Çoğunlukla kendi ihtiyacı için: bağlantı gizli.</t>
+    <t id="3190">Tam kadro dış tedarik gerektiriyor: giriş gösteriliyor.</t>
+    <t id="3191">İhracat fazlası bilinmiyor: çıkış geçici olarak korunuyor. Üretim, iş gücü dağılımı veya modül bilgileri eksik.</t>
+    <t id="3192">Bağlantı değişiklikleri görünüm yeniden oluşturulduktan sonra uygulanır.</t>
+    <t id="3193">Diyagramı sığdırmak için %s tüketim bağlantısı gizlendi; talep hesaba katılmaya devam eder.</t>
+    <t id="3194">Küçültmeden sonra diyagram hâlâ sınırları aşıyor: %s/%s düğüm, %s/%s bağlantı parçası, %s/%s sütun. Bu zinciri bölün.</t>
+    <t id="3195">Döngüleri önlemek için bazı gelen bağlantılar gizlendi</t>
+    <t id="3196">Oyunun akış şeması arayüz bileşeninin sınırlarına uymak için bazı gelen bağlantılar gizlendi</t>
   </page>
 </language>

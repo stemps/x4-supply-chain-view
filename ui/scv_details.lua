@@ -193,6 +193,20 @@ function SCV_Details.new(menu, config, presentation)
 		r = metricRow(false)
 		r[1]:setColSpan(4):createText(fields("coverage"),
 			{ wordwrap = true, mouseOverText = fields("coverageTip"), color = Color["text_inactive"] })
+		if w.export then
+			r = metricRow(false)
+			r[1]:setColSpan(4):createText(function ()
+				local e = w.export or { state = "unknown" }
+				local function rate(value) return value ~= nil and formatRate(value) or "?" end
+				local state = ({ export = 3188, self = 3189, import = 3190, unknown = 3191 })[e.state] or 3191
+				local text = T(3187, rate(e.production), w.workforceKnown == false and "?" or rate(w.workforce), rate(e.reserve), rate(e.surplus), rate(e.moduleCapacity), T(state))
+				local output = e.state == "export" or e.state == "unknown"
+				if output ~= not not w.output or (e.state == "import") ~= not not w.input then
+					text = text .. " " .. T(3192)
+				end
+				return text
+			end, { wordwrap = true, color = Color["text_inactive"] })
+		end
 		-- A small full-width spacer, following vanilla's explicit-height text rows.
 		r = ftable:addRow(false, { borderBelow = false })
 		r[1]:setColSpan(4):createText(" ", { fontsize = 1, height = 2 })
@@ -202,8 +216,8 @@ function SCV_Details.new(menu, config, presentation)
 		capToFrame(frame, ftable)
 		setupColumns(ftable)
 
-		local inputs  = sortedWares(nodedata.wares, function (w) return w.input end)
-		local outputs = sortedWares(nodedata.wares, function (w) return w.output end)
+		local inputs  = sortedWares(nodedata.wares, function (w) return SCV_Graph.metricInput(w) end)
+		local outputs = sortedWares(nodedata.wares, function (w) return SCV_Graph.metricOutput(w) end)
 
 		-- The Logical Station Overview link. It lives here rather than on the node itself
 		-- because the widget system dispatches only expand/collapse and slider events for a
@@ -312,7 +326,7 @@ function SCV_Details.new(menu, config, presentation)
 		local function stationsFor(ids)
 			local out = {}
 			for _, sid in ipairs(ids or {}) do
-				local sn = graph and graph.stationNodes[sid]
+				local sn = graph and (graph.metricStations or graph.stationNodes)[sid]
 				local w = sn and sn.wares[nodedata.scvware]
 				if w then
 					out[#out + 1] = { node = sn, w = w }
@@ -333,8 +347,8 @@ function SCV_Details.new(menu, config, presentation)
 			end
 		end
 
-		section(T(3033), stationsFor(nodedata.producers), false)
-		section(T(3034), stationsFor(nodedata.consumers), true)
+		section(T(3033), stationsFor(nodedata.metricProducers or nodedata.producers), false)
+		section(T(3034), stationsFor(nodedata.metricConsumers or nodedata.consumers), true)
 	end
 
 	return details

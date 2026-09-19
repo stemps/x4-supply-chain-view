@@ -309,9 +309,16 @@ function menu.clearLogisticsStrip(...) return logisticsView.clearLogisticsStrip(
 function menu.decorateNodes(...) return chart.decorateNodes(...) end
 
 function menu.publishMetrics(snapshot)
+	local expanded = menu.expandedNode
+	local data = expanded and expanded.customdata and expanded.customdata.nodedata
+	local signature = data and data.contributorSignature
 	SCV_Graph.refreshMetrics(menu.graph, snapshot)
 	for _, st in ipairs(snapshot) do SCV_Data.cache[st.id] = st end
 	menu.updateMetricDisplay()
+	if expanded and data and signature ~= data.contributorSignature then
+		expanded:collapse()
+		expanded:expand()
+	end
 end
 
 function menu.updateMetricDisplay()

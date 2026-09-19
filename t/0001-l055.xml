@@ -26,7 +26,7 @@
     <t id="3006">Ninguém aqui recolhe esta mercadoria</t>
     <t id="3010">Entrega em andamento</t>
     <t id="3011">Nenhuma entrega agendada</t>
-    <t id="3012">Comércio recíproco: %s conexões exibidas em apenas um sentido \(%s\)</t>
+    <t id="3012">%s ligações de consumo ocultadas para evitar ciclos; a procura continua incluída.</t>
     <t id="3013">Pior: %s</t>
     <t id="3014">Nenhum alerta de autonomia de estoque ou capacidade em operação plena.</t>
     <t id="3015">%s fornecedores, %s recebedores</t>
@@ -130,14 +130,14 @@
     <t id="3154">Avisos ignorados para esta mercadoria nesta estação. Clique para ativá-los.</t>
     <t id="3155">+%s</t>
     <t id="3156">-%s</t>
-    <t id="3157">%s*</t>
+    <t id="3157">%s%s</t>
     <t id="3159">%s / %s</t>
     <t id="3160">Saldo indisponível: os dados de oferta ou demanda estão incompletos.</t>
     <t id="3161">Dados de oferta incompletos.</t>
     <t id="3162">Dados de demanda incompletos.</t>
     <t id="3163">Dados de oferta e demanda incompletos.</t>
-    <t id="3164">* Apenas contribuições conhecidas; saldo líquido indisponível. Taxas por hora.</t>
-    <t id="3166">* saldo exato desconhecido devido a produtores/consumidores com volumes desconhecidos ou variáveis \(por exemplo, mineradores ou estaleiros\)</t>
+    <t id="3164">Apenas contribuições conhecidas; saldo líquido indisponível. Taxas por hora.</t>
+    <t id="3166">saldo exato desconhecido devido a produtores/consumidores com volumes desconhecidos ou variáveis \(por exemplo, mineradores ou estaleiros\)</t>
     <t id="3170">Logística</t>
     <t id="3171">Docas: livres / total. Laranja significa nenhuma vaga livre.</t>
     <t id="3172">L inclui vagas compartilhadas L/XL; armazenamento interno não é contado.</t>
@@ -153,5 +153,15 @@
     <t id="3184">Exibição de docas e naves indisponível. Reabra o SCV.</t>
     <t id="3185">Configurações</t>
     <t id="3186">Exibir docas/subordinados</t>
+    <t id="3187">Produção: %s; consumo dos trabalhadores atuais: %s; reserva com pessoal completo: %s; excedente exportável: %s; módulo médio: %s. %s</t>
+    <t id="3188">Exportação significativa: saída visível.</t>
+    <t id="3189">Principalmente autossuficiente: ligação oculta.</t>
+    <t id="3190">Pessoal completo requer abastecimento externo: entrada visível.</t>
+    <t id="3191">Excedente desconhecido: saída mantida provisoriamente. Dados de produção, distribuição de pessoal ou módulos incompletos.</t>
+    <t id="3192">As alterações de ligações aplicam-se após reconstruir a vista.</t>
+    <t id="3193">%s ligações de consumo ocultadas para ajustar o diagrama; a procura continua incluída.</t>
+    <t id="3194">Após as reduções, o diagrama ainda excede os limites: %s/%s nós, %s/%s segmentos de ligação, %s/%s colunas. Divida esta cadeia.</t>
+    <t id="3195">Algumas ligações de entrada estão ocultas para evitar ciclos</t>
+    <t id="3196">Algumas ligações de entrada estão ocultas para respeitar os limites do componente de fluxogramas da interface do jogo</t>
   </page>
 </language>

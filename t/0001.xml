@@ -34,7 +34,7 @@
     <t id="3006">Nobody here takes this</t>
     <t id="3010">Delivery in progress</t>
     <t id="3011">No delivery scheduled</t>
-    <t id="3012">Mutual trade: %s link\(s\) drawn one way only \(%s\)</t>
+    <t id="3012">%s consumption links hidden to avoid cycles; demand remains included.</t>
     <t id="3013">Worst: %s</t>
     <t id="3014">No stock coverage or capacity warning at full operation.</t>
     <t id="3015">%s supplying, %s taking</t>
@@ -152,14 +152,14 @@
     <t id="3154">Warnings ignored for this ware at this station. Click to enable.</t>
     <t id="3155">+%s</t>
     <t id="3156">-%s</t>
-    <t id="3157">%s*</t>
+    <t id="3157">%s%s</t>
     <t id="3159">%s / %s</t>
     <t id="3160">Balance unavailable: supply or demand is incomplete.</t>
     <t id="3161">Supply is incomplete.</t>
     <t id="3162">Demand is incomplete.</t>
     <t id="3163">Supply and demand are incomplete.</t>
-    <t id="3164">* Known contributions only; net balance unavailable. Rates are per hour.</t>
-    <t id="3166">* exact balance unknown due producers/consumers with unknown or variable volume \(e.g. miners or shipyards\)</t>
+    <t id="3164">Known contributions only; net balance unavailable. Rates are per hour.</t>
+    <t id="3166">exact balance unknown due producers/consumers with unknown or variable volume \(e.g. miners or shipyards\)</t>
     <t id="3170">Logistics</t>
     <t id="3171">Docks: free / total. Orange means no free berths.</t>
     <t id="3172">L includes shared L/XL berths; internal storage is excluded.</t>
@@ -175,5 +175,15 @@
     <t id="3184">Dock/ship display unavailable. Reopen SCV to retry.</t>
     <t id="3185">Settings</t>
     <t id="3186">Show docks/subordinates</t>
+    <t id="3187">Production: %s; current workforce demand: %s; full-staffing reserve: %s; export surplus: %s; average module: %s. %s</t>
+    <t id="3188">Significant export: output shown.</t>
+    <t id="3189">Mostly self-supplied: connection hidden.</t>
+    <t id="3190">Full staffing needs outside supply: input shown.</t>
+    <t id="3191">Export surplus unknown: output retained provisionally. Production, workforce allocation or module coverage is incomplete.</t>
+    <t id="3192">Connection changes apply after rebuilding the view.</t>
+    <t id="3193">%s consumption links hidden to fit the diagram; demand remains included.</t>
+    <t id="3194">Diagram still exceeds its limits after reductions: %s/%s nodes, %s/%s connection segments, %s/%s columns. Split this chain into smaller ones.</t>
+    <t id="3195">Some incoming connections hidden to avoid cycles</t>
+    <t id="3196">Some incoming connections hidden to fit constraints of the game's flowchart UI component</t>
   </page>
 </language>

@@ -168,3 +168,65 @@ regression checklist remains:
 - Navigation to vanilla station overview/map/build menus and back.
 
 Release publication is separate from this implementation.
+
+## Export visibility and cycle cuts
+
+Reader separates `metricOutput` / `metricInput` from visible `output` / `input`.
+Completed recipe membership is collected before operational eligibility; real
+recipe/build/future consumers remain exclusions. `inputProvenance` is `workforce`
+only with complete, unambiguous consumer coverage; trade and uncertain use are
+`other`. `export` records P, D, N, P-D, P/N and the decision state.
+
+The reserve follows vanilla workforce resource recipes and rounding. A single
+habitat race gets global `GetWorkForceInfo(..., "").optimal`; mixed races use native
+workforce influence targets only when their sum equals that global requirement.
+Current and capacity coverage must also match global values. No normalization or
+per-race duplication of the whole requirement is allowed. Actual demand and the
+full-staffing reserve remain separate. Production retains current modifiers.
+
+Shared ware nodes use visible endpoints for edges, and `metricProducers` /
+`metricConsumers` over `metricStations` for numbers and details. Their union
+supplies deduplicated stock. This also preserves contributors removed by budgeting.
+Failed reads retain demand obligations as unknown. Contributor signatures govern
+popup rebuilding; numeric refreshes preserve ware table identity and displayed roles.
+
+Cycle handling uses iterative Kosaraju SCCs, removes one eligible input edge per
+pass, then attempts reverse-order restoration. Candidates sort by workforce-only
+priority, ware ID, destination code and ID. Restoration tests reachability from
+destination to source. Every remaining cut is individually necessary; this is not
+a globally minimum feedback-edge set. Output edges and nodes are untouched by this
+step. Budgeting remains a separate pass; the cycle note counts only cuts whose
+endpoints survive the budget.
+
+### Layout-aware budget fallback
+
+The chart requests `deferBudget` and calls `SCV_Graph.fitLayout` with the native
+layout helper. Each trial rematerializes predecessors from logical edges, because
+vanilla mutates those maps to insert routing junctions. Routed node/edge counts and
+column count are measured, not estimated. Cuts prefer workforce-only inputs, then
+more routed segments, with ware/code/ID tie breaks. Reverse-order restoration tests
+the full native allocation again. A rejected trial restores the last accepted
+predecessor maps and positions, including its junction references.
+
+`budgetDroppedEdges` is separate from cyclic `droppedEdges`. No metric contributor
+lists change. Existing common-ware/station reductions are a last resort after input
+cuts cannot fit; their lost endpoints are excluded from restoration. Layout is cached
+for ordinary metric refreshes and status redraws. Local regression tests extract
+only the relevant helper into memory from the user's reference tree; no game source
+is copied into the mod or tests.
+
+### Shared footnotes and compact station spacing
+
+Presentation owns an ordered footnote registry: partial rates (`*`), cycle cuts
+(`[1]`) and layout-budget cuts (`[2]`). The registry supplies caption markers,
+tooltip text and footer lines. Translations contain the explanation without a
+hardcoded marker. Chart decoration attributes cut footnotes to the destination
+station only when both endpoints survive, preserving the underlying name. Footer
+height reserves every wrapped line before setting the chart's visible height.
+
+Native flowchart node Y padding is symmetric and nodes remain centered in their
+cells. Restore the original compact padding for interior rows; apply full strip
+containment padding only to logistics nodes in the final layout row. This avoids
+growing every inter-station gap to solve a lower-border clearance issue. Native
+content-rectangle clipping remains unchanged at intermediate scroll positions;
+partly visible strips remain hidden. No extra graph nodes, edges or rows are added.

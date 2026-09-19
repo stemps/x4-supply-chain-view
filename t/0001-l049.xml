@@ -26,7 +26,7 @@
     <t id="3006">Hier nimmt niemand diese Ware ab</t>
     <t id="3010">Lieferung unterwegs</t>
     <t id="3011">Keine Lieferung geplant</t>
-    <t id="3012">Gegenseitiger Handel: %s Verbindungen nur in eine Richtung dargestellt \(%s\)</t>
+    <t id="3012">%s Verbrauchsverbindungen zur Vermeidung von Kreisläufen ausgeblendet; der Bedarf bleibt eingerechnet.</t>
     <t id="3013">Schlechtester Wert: %s</t>
     <t id="3014">Keine Warnung zu Vorratsreichweite oder Lagerkapazität bei Vollbetrieb.</t>
     <t id="3015">%s Lieferanten, %s Abnehmer</t>
@@ -130,14 +130,14 @@
     <t id="3154">Warnungen für diese Ware an dieser Station werden ignoriert. Klicken, um sie zu aktivieren.</t>
     <t id="3155">+%s</t>
     <t id="3156">-%s</t>
-    <t id="3157">%s*</t>
+    <t id="3157">%s%s</t>
     <t id="3159">%s / %s</t>
     <t id="3160">Bilanz nicht verfügbar: Angebot oder Bedarf ist unvollständig erfasst.</t>
     <t id="3161">Angebot unvollständig erfasst.</t>
     <t id="3162">Bedarf unvollständig erfasst.</t>
     <t id="3163">Angebot und Bedarf unvollständig erfasst.</t>
-    <t id="3164">* Nur bekannte Beiträge; Nettobilanz nicht verfügbar. Raten pro Stunde.</t>
-    <t id="3166">* genaue Bilanz unbekannt wegen Produzenten/Verbrauchern mit unbekannten oder variablen Mengen \(z. B. Bergbauschiffen oder Werften\)</t>
+    <t id="3164">Nur bekannte Beiträge; Nettobilanz nicht verfügbar. Raten pro Stunde.</t>
+    <t id="3166">genaue Bilanz unbekannt wegen Produzenten/Verbrauchern mit unbekannten oder variablen Mengen \(z. B. Bergbauschiffen oder Werften\)</t>
     <t id="3170">Logistik</t>
     <t id="3171">Docks: frei / gesamt. Orange bedeutet keine freien Liegeplätze.</t>
     <t id="3172">L umfasst gemeinsame L/XL-Liegeplätze; interne Lagerplätze zählen nicht.</t>
@@ -153,5 +153,15 @@
     <t id="3184">Dock-/Schiffsanzeige nicht verfügbar. SCV zum erneuten Versuch wieder öffnen.</t>
     <t id="3185">Einstellungen</t>
     <t id="3186">Docks/Untergebene anzeigen</t>
+    <t id="3187">Produktion: %s; aktueller Belegschaftsbedarf: %s; Reserve bei voller Besetzung: %s; Exportüberschuss: %s; durchschnittliches Modul: %s. %s</t>
+    <t id="3188">Bedeutender Export: Ausgang sichtbar.</t>
+    <t id="3189">Überwiegend Eigenversorgung: Verbindung ausgeblendet.</t>
+    <t id="3190">Volle Besetzung benötigt externe Versorgung: Eingang sichtbar.</t>
+    <t id="3191">Exportüberschuss unbekannt: Ausgang vorläufig beibehalten. Produktionsdaten, Belegschaftsverteilung oder Modulerfassung unvollständig.</t>
+    <t id="3192">Verbindungsänderungen gelten nach dem Neuaufbau der Ansicht.</t>
+    <t id="3193">%s Verbrauchsverbindungen ausgeblendet, damit das Diagramm passt; der Bedarf bleibt eingerechnet.</t>
+    <t id="3194">Auch nach Verkleinerung überschreitet das Diagramm die Grenzen: %s/%s Knoten, %s/%s Verbindungssegmente, %s/%s Spalten. Teile diese Lieferkette auf.</t>
+    <t id="3195">Einige eingehende Verbindungen sind ausgeblendet, um Kreisläufe zu vermeiden</t>
+    <t id="3196">Einige eingehende Verbindungen sind ausgeblendet, um die Grenzen der Flussdiagramm-Komponente der Spieloberfläche einzuhalten</t>
   </page>
 </language>

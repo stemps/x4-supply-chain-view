@@ -44,6 +44,8 @@ state = { modules=true, build=false, stockKnown=true, reservations=true, workfor
           prod=4800000, cons=2400000, cargo={energycells=120000, food=10000},
           incoming=2000, outgoing=12000 }
 C = {}
+function GetWorkForceRaceResources() return {} end
+function C.GetWorkForceInfo() return {optimal=0,current=0,capacity=0} end
 function C.GetPlayerID() return 'player' end
 function C.GetNumStoredUnits() return 0 end
 function C.GetNumPlannedStationModules() return 0 end
@@ -197,7 +199,7 @@ function GetComponentData(id, key)
     if key == 'intermediatewares' then return {'energycells'} end
     return originalData(id, key)
 end
-assert(read().wares.energycells == nil, 'internal intermediates must remain excluded')
+assert(read().wares.energycells.output, 'recipe product without a real consumer survives intermediate engine listing')
 GetComponentData = originalData
 state.stockKnown=false
 local hidden=read().wares.energycells
@@ -546,6 +548,8 @@ g.germanTexts = lua.table_from({int(t.attrib['id']): read_text(''.join(t.itertex
     for t in ET.parse(root/'t/0001-l049.xml').iter('t')})
 lua.execute((root/'test/test_aggregate_labels.lua').read_text(encoding='utf-8'))
 lua.execute((root/'test/test_refresh.lua').read_text(encoding='utf-8'))
+lua.execute((root/'test/test_export_details.lua').read_text(encoding='utf-8'))
+lua.execute((root/'test/test_footnotes.lua').read_text(encoding='utf-8'))
 lua.execute('''
 -- Exercise the real chunked scanner and menu lifecycle. No graph may be built from
 -- a partial scan, including a refresh arriving while the scan is in progress.

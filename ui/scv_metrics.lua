@@ -2,6 +2,26 @@
 -- No engine or UI dependencies.
 SCV_Metrics = {}
 
+-- Presentation policy only. Accounting always retains the full production/demand.
+function SCV_Metrics.exportDecision(production, reserve, modules, known)
+	local result = { production = production, reserve = reserve, modules = modules, state = "unknown" }
+	if not known or not SCV_Metrics.validRate(production) or not SCV_Metrics.validRate(reserve)
+		or not SCV_Metrics.validRate(modules) or modules < 1 or modules ~= math.floor(modules) then
+		return result
+	end
+	result.surplus = production - reserve
+	result.moduleCapacity = production / modules
+	if production > 0 and result.surplus > 0
+		and (result.surplus > production * 0.5 or result.surplus >= result.moduleCapacity) then
+		result.state = "export"
+	elseif result.surplus < 0 then
+		result.state = "import"
+	else
+		result.state = "self"
+	end
+	return result
+end
+
 -- Hours of headroom below which a ware is flagged.
 SCV_Metrics.THRESHOLDS = {
 	criticalHours = 0.25,

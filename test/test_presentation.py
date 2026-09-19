@@ -32,6 +32,11 @@ for runtime in (LuaRuntime, LuaJITRuntime):
         local dispatch = {}
         local p = SCV_Presentation.new({textPage=90210, logisticsFontSize=8,
             consumptionColor='consumption'}, dispatch)
+        p.footnotes[#p.footnotes+1]={key='extra',marker='[3]',legend=3166}
+        assert(p.footnoteMarkers({extra=true,cycle=true,partial=true}) == ' *[1][3]')
+        local template=texts[3157]; texts[3157]='%s%s'
+        assert(p.markFootnote('Custom','extra') == 'Custom[3]')
+        texts[3157]=template
         assert(p.formatAmount(12400)=='12.4k')
         assert(p.formatAmount(-2500000)=='-2.5M')
         assert(p.formatRate(0)=='0/h')

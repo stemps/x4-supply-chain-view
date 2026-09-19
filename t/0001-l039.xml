@@ -26,7 +26,7 @@
     <t id="3006">Nessuno qui ritira questa merce</t>
     <t id="3010">Consegna in corso</t>
     <t id="3011">Nessuna consegna pianificata</t>
-    <t id="3012">Commercio reciproco: %s collegamenti rappresentati in una sola direzione \(%s\)</t>
+    <t id="3012">%s collegamenti di consumo nascosti per evitare cicli; la domanda resta inclusa.</t>
     <t id="3013">Peggiore: %s</t>
     <t id="3014">Nessun avviso su autonomia delle scorte o capacità a pieno regime.</t>
     <t id="3015">%s fornitori, %s destinatari</t>
@@ -130,14 +130,14 @@
     <t id="3154">Avvisi ignorati per questa merce in questa stazione. Clicca per attivarli.</t>
     <t id="3155">+%s</t>
     <t id="3156">-%s</t>
-    <t id="3157">%s*</t>
+    <t id="3157">%s%s</t>
     <t id="3159">%s / %s</t>
     <t id="3160">Saldo non disponibile: i dati di offerta o domanda sono incompleti.</t>
     <t id="3161">Dati di offerta incompleti.</t>
     <t id="3162">Dati di domanda incompleti.</t>
     <t id="3163">Dati di offerta e domanda incompleti.</t>
-    <t id="3164">* Solo contributi noti; saldo netto non disponibile. Quantità per ora.</t>
-    <t id="3166">* saldo esatto sconosciuto a causa di produttori/consumatori con volumi sconosciuti o variabili \(ad es. minatori o cantieri navali\)</t>
+    <t id="3164">Solo contributi noti; saldo netto non disponibile. Quantità per ora.</t>
+    <t id="3166">saldo esatto sconosciuto a causa di produttori/consumatori con volumi sconosciuti o variabili \(ad es. minatori o cantieri navali\)</t>
     <t id="3170">Logistica</t>
     <t id="3171">Attracchi: liberi / totali. Arancione: nessun posto libero.</t>
     <t id="3172">L include gli attracchi condivisi L/XL; il deposito interno è escluso.</t>
@@ -153,5 +153,15 @@
     <t id="3184">Visualizzazione di attracchi e navi non disponibile. Riapri SCV.</t>
     <t id="3185">Impostazioni</t>
     <t id="3186">Mostra attracchi/subordinati</t>
+    <t id="3187">Produzione: %s; consumo del personale attuale: %s; riserva a pieno organico: %s; surplus esportabile: %s; modulo medio: %s. %s</t>
+    <t id="3188">Esportazione significativa: uscita visibile.</t>
+    <t id="3189">Prevalentemente autosufficiente: collegamento nascosto.</t>
+    <t id="3190">Il pieno organico richiede forniture esterne: ingresso visibile.</t>
+    <t id="3191">Surplus sconosciuto: uscita mantenuta provvisoriamente. Dati di produzione, ripartizione del personale o moduli incompleti.</t>
+    <t id="3192">Le modifiche ai collegamenti si applicano ricostruendo la vista.</t>
+    <t id="3193">%s collegamenti di consumo nascosti per adattare il diagramma; la domanda resta inclusa.</t>
+    <t id="3194">Dopo le riduzioni il diagramma supera ancora i limiti: %s/%s nodi, %s/%s segmenti di collegamento, %s/%s colonne. Dividi questa catena.</t>
+    <t id="3195">Alcuni collegamenti in entrata sono nascosti per evitare cicli</t>
+    <t id="3196">Alcuni collegamenti in entrata sono nascosti per rispettare i limiti del componente dei diagrammi di flusso dell’interfaccia di gioco</t>
   </page>
 </language>

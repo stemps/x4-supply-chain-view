@@ -26,7 +26,7 @@
     <t id="3006">Toto zboží zde nikdo neodebírá</t>
     <t id="3010">Probíhá dodávka</t>
     <t id="3011">Žádná plánovaná dodávka</t>
-    <t id="3012">Vzájemný obchod: počet spojení vykreslených pouze jedním směrem: %s \(%s\)</t>
+    <t id="3012">Skryté spotřební vazby kvůli cyklům: %s. Poptávka zůstává započítána.</t>
     <t id="3013">Nejhorší: %s</t>
     <t id="3014">Bez varování před nedostatkem zásob nebo kapacity při plném provozu.</t>
     <t id="3015">Dodavatelé: %s, odběratelé: %s</t>
@@ -130,14 +130,14 @@
     <t id="3154">Varování pro toto zboží na této stanici jsou ignorována. Kliknutím je zapnete.</t>
     <t id="3155">+%s</t>
     <t id="3156">-%s</t>
-    <t id="3157">%s*</t>
+    <t id="3157">%s%s</t>
     <t id="3159">%s / %s</t>
     <t id="3160">Bilance není k dispozici: údaje o nabídce nebo poptávce jsou neúplné.</t>
     <t id="3161">Údaje o nabídce jsou neúplné.</t>
     <t id="3162">Údaje o poptávce jsou neúplné.</t>
     <t id="3163">Údaje o nabídce a poptávce jsou neúplné.</t>
-    <t id="3164">* Pouze známé příspěvky; čistá bilance není k dispozici. Hodnoty jsou za hodinu.</t>
-    <t id="3166">* přesná bilance není známa kvůli výrobcům/spotřebitelům s neznámým nebo proměnlivým objemem \(např. těžařům či loděnicím\)</t>
+    <t id="3164">Pouze známé příspěvky; čistá bilance není k dispozici. Hodnoty jsou za hodinu.</t>
+    <t id="3166">přesná bilance není známa kvůli výrobcům/spotřebitelům s neznámým nebo proměnlivým objemem \(např. těžařům či loděnicím\)</t>
     <t id="3170">Logistika</t>
     <t id="3171">Doky: volné / celkem. Oranžová znamená žádná volná místa.</t>
     <t id="3172">L zahrnuje sdílená stání L/XL; vnitřní skladování je vyloučeno.</t>
@@ -153,5 +153,15 @@
     <t id="3184">Zobrazení doků a lodí není dostupné. Znovu otevřete SCV.</t>
     <t id="3185">Nastavení</t>
     <t id="3186">Zobrazit doky/podřízené</t>
+    <t id="3187">Výroba: %s; spotřeba současných pracovníků: %s; rezerva pro plné obsazení: %s; přebytek na vývoz: %s; průměrný modul: %s. %s</t>
+    <t id="3188">Významný vývoz: výstup zobrazen.</t>
+    <t id="3189">Převážně soběstačné: vazba skryta.</t>
+    <t id="3190">Plné obsazení potřebuje vnější dodávky: vstup zobrazen.</t>
+    <t id="3191">Neznámý přebytek: výstup prozatím zachován. Neúplné údaje o výrobě, rozdělení pracovníků nebo modulech.</t>
+    <t id="3192">Změny vazeb se použijí po obnovení zobrazení.</t>
+    <t id="3193">Skryté spotřební vazby pro zmenšení diagramu: %s. Poptávka zůstává započítána.</t>
+    <t id="3194">Diagram i po zmenšení překračuje limity: %s/%s uzlů, %s/%s úseků vazeb, %s/%s sloupců. Rozdělte řetězec.</t>
+    <t id="3195">Některé příchozí vazby jsou skryty, aby se zabránilo cyklům</t>
+    <t id="3196">Některé příchozí vazby jsou skryty kvůli omezením komponenty vývojových diagramů v rozhraní hry</t>
   </page>
 </language>

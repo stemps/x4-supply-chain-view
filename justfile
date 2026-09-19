@@ -52,6 +52,8 @@ test-hotkey:
 
 # Graph construction, layout, cycles, and budgets.
 test-graph:
+    uv run --with lupa python test/test_layout_budget.py "{{reference}}"
+    uv run --with lupa python test/test_exports.py
     uv run --with lupa python test/test_graph.py
     uv run --with lupa python test/test_metric_module.py
 

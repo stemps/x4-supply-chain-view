@@ -16,6 +16,7 @@ def run(runtime):
         'scv_store.lua', 'scv_overlay_view.lua'))
     lua.execute('''
     local presentation={T=function(id) return tostring(id) end,
+      footnoteMarkers=function() return "" end, footnoteLine=function(key) return key end,
       severityColor=function(s) return s end,warningReason=function() return nil end}
     local config={stationNodeWidth=310,nodeOffsetX=20}
     local first,second={},{}
@@ -70,17 +71,22 @@ def run(runtime):
     SCV_Graph={LIMITS={maxCols=20,maxNodes=100,maxEdges=100}}
     for _,scale in ipairs({1,1.48,2}) do
       Helper.scaleY=function(value) return value*scale end
-      for _,rows in ipairs({1,13}) do
+      for _,rows in ipairs({1,2,13}) do
         for _,show in ipairs({true,false}) do
           local stripHeight=39*scale/1.48
           local originalY=(stripHeight/scale+3+13.5)/2
-          local station={scvkind='station',row=1,col=1,text='Station',predecessors={},
+          local station={scvkind='station',row=rows,col=1,text='Station',predecessors={},
             logisticsRows=show and {{height=stripHeight}} or nil,
             [1]={properties={y=originalY}}}
-          local graph={nodes={station},wareNodes={ore={}},collapsedWares={},
+          local nodes={station}
+          for row=1,rows-1 do
+            nodes[#nodes+1]={scvkind='station',row=row,col=1,text='Interior',predecessors={},
+              logisticsRows=station.logisticsRows,[1]={properties={y=originalY}}}
+          end
+          local graph={nodes=nodes,wareNodes={ore={}},collapsedWares={},
             droppedStations={},droppedEdges={}}
-          local menu={graph=graph,graphLayout={rows=rows,cols=1,junctions={}},decorateNodes=function() end}
-          local component=SCV_Chart.new(menu,{}, {T=function() return 'Legend' end})
+          local menu={graph=graph,graphLayout={rows=rows,cols=1,junctions={},fits=true},decorateNodes=function() end}
+          local component=SCV_Chart.new(menu,{}, {T=function() return 'Legend' end, footnoteLine=function() return 'Legend' end})
           menu.renderFlowchart=component.renderFlowchart
           menu.drawChainLegend=component.drawChainLegend
           local frame={getAvailableHeight=function() return 1800 end}
@@ -88,19 +94,25 @@ def run(runtime):
             addRow=function() return {{createText=function() end}} end}
           function frame:addTable() return footer end
           function frame:addFlowchart(nrows,_,props)
-            local chart={properties=props}
+            local chart={properties=props,nodePropertiesByRow={}}
             function chart:setDefaultNodeProperties() end
-            function chart:addNode(_,_,_,properties)
-              self.nodeProperties=properties
+            function chart:addNode(row,_,_,properties)
+              self.nodePropertiesByRow[row]=properties
               local widget={properties={text={},statustext={}},handlers={}}
               function widget:setText() return self end
               return widget
             end
             function chart:getMaxVisibleHeight() return self.properties.maxVisibleHeight end
             function chart:getVisibleHeight()
-              self.rowHeight=44*scale/1.48+2*self.nodeProperties.y*scale
+              local total=0
+              self.rowHeights={}
+              for row=1,nrows do
+                self.rowHeights[row]=44*scale/1.48+2*self.nodePropertiesByRow[row].y*scale
+                total=total+self.rowHeights[row]
+              end
+              self.rowHeight=self.rowHeights[nrows]
               self.borderHeight=2*(3*scale+Helper.borderSize)
-              return math.min(nrows*self.rowHeight+self.borderHeight,self:getMaxVisibleHeight())
+              return math.min(total+self.borderHeight,self:getMaxVisibleHeight())
             end
             return chart
           end
@@ -114,7 +126,7 @@ def run(runtime):
             -- of scroll position. Its strip must fit in that row's lower half.
             local stripBottom=chart.rowHeight/2+22*scale/1.48+math.ceil(3*scale)+stripHeight
             assert(stripBottom<=chart.rowHeight-1,
-              'every station strip must fit within its own row with rounding clearance')
+              'final station strip must clear the bottom border')
           end
           if rows==1 then
             assert(chart.rowHeight < height-chart.borderHeight, 'native strict fit must count the row')
@@ -126,7 +138,15 @@ def run(runtime):
             chart.properties.maxVisibleHeight=height-10
             assert(chart:getVisibleHeight()==height-10, 'never exceed available frame space')
           end
-          if not show then assert(chart.nodeProperties.y==originalY) end
+          for row=1,rows do
+            if not show or row<rows then assert(chart.nodePropertiesByRow[row].y==originalY) end
+            if show and row<rows then
+              assert(chart.rowHeights[row]<chart.rowHeights[rows], 'interior rows are tighter')
+              local stripBottom=22*scale/1.48+math.ceil(3*scale)+stripHeight
+              local nextTop=(chart.rowHeights[row]+chart.rowHeights[row+1])/2-22*scale/1.48
+              assert(stripBottom<nextTop, 'metrics must not overlap the next station')
+            end
+          end
         end
       end
     end

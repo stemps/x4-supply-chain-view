@@ -12,6 +12,36 @@ function SCV_Presentation.new(config, dispatch)
 
 	local T = SCV_Text.forPage(config.textPage)
 
+	-- Stable markers shared by captions, tooltips and the footer. Markers live in
+	-- one registry rather than being embedded in translated sentences.
+	local footnotes = {
+		{ key = "partial", marker = "*", legend = 3166, tooltip = 3164 },
+		{ key = "cycle", marker = "[1]", legend = 3195 },
+		{ key = "budget", marker = "[2]", legend = 3196 },
+	}
+	local function footnote(key)
+		for _, entry in ipairs(footnotes) do if entry.key == key then return entry end end
+		error("unknown footnote: " .. tostring(key))
+	end
+	local function markFootnote(text, key)
+		return T(3157, text, footnote(key).marker)
+	end
+	local function footnoteLine(key, tooltip)
+		local entry = footnote(key)
+		return entry.marker .. " " .. T(tooltip and entry.tooltip or entry.legend)
+	end
+	local function footnoteMarkers(keys)
+		local markers = {}
+		for _, entry in ipairs(footnotes) do
+			if keys[entry.key] then markers[#markers + 1] = entry.marker end
+		end
+		return #markers > 0 and (" " .. table.concat(markers)) or ""
+	end
+	presentation.footnotes = footnotes
+	presentation.markFootnote = markFootnote
+	presentation.footnoteLine = footnoteLine
+	presentation.footnoteMarkers = footnoteMarkers
+
 	local function logisticsTint(text, severity)
 		local color = severity == "critical" and "text_error" or severity == "warning" and "text_warning" or nil
 		return color and (Helper.convertColorToText(Color[color]) .. text .. "\27X") or text
@@ -156,14 +186,14 @@ function SCV_Presentation.new(config, dispatch)
 		-- Incomplete sides are subtotals, never a basis for a signed net balance.
 		local supply, demand = node.supplyCap or 0, node.demandCap or 0
 		local function side(value, isInput)
-			return T(3157, T(isInput and 3156 or 3155, formatRate(value))), isInput and config.consumptionColor or Color["text_positive"]
+			return markFootnote(T(isInput and 3156 or 3155, formatRate(value)), "partial"), isInput and config.consumptionColor or Color["text_positive"]
 		end
 		if node.supplyKnown and supply > 0 then return side(supply, false) end
 		if node.demandKnown and demand > 0 then return side(demand, true) end
 		if not node.supplyKnown and not node.demandKnown and supply > 0 and demand > 0 then
 			local supplyText = Helper.convertColorToText(Color["text_positive"]) .. T(3155, formatAmount(supply)) .. "\27X"
 			local demandText = Helper.convertColorToText(config.consumptionColor) .. T(3156, formatAmount(demand)) .. "\27X"
-			return T(3157, T(3159, supplyText, demandText)), color
+			return markFootnote(T(3159, supplyText, demandText), "partial"), color
 		end
 		if supply > 0 then return side(supply, false) end
 		if demand > 0 then return side(demand, true) end
@@ -236,8 +266,8 @@ function SCV_Presentation.new(config, dispatch)
 	end
 
 	local function hasContinuousDemand(graph, node)
-		for _, sid in ipairs(node.consumers or {}) do
-			local station = graph and graph.stationNodes[sid]
+		for _, sid in ipairs(node.metricConsumers or node.consumers or {}) do
+			local station = graph and (graph.metricStations or graph.stationNodes)[sid]
 			local ware = station and station.wares[node.scvware]
 			if ware and ware.rateBasis == "continuousProcessing" then return true end
 		end

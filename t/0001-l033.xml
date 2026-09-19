@@ -26,7 +26,7 @@
     <t id="3006">Aucun preneur ici</t>
     <t id="3010">Livraison en cours</t>
     <t id="3011">Aucune livraison prévue</t>
-    <t id="3012">Commerce réciproque : %s liaison\(s\) représentée\(s\) dans un seul sens \(%s\)</t>
+    <t id="3012">%s liaisons de consommation masquées pour éviter les cycles ; la demande reste incluse.</t>
     <t id="3013">Pire : %s</t>
     <t id="3014">Aucune alerte d'autonomie des stocks ou de capacité à plein régime.</t>
     <t id="3015">%s fournisseurs, %s preneurs</t>
@@ -130,14 +130,14 @@
     <t id="3154">Alertes ignorées pour cette marchandise dans cette station. Cliquez pour les activer.</t>
     <t id="3155">+%s</t>
     <t id="3156">-%s</t>
-    <t id="3157">%s*</t>
+    <t id="3157">%s%s</t>
     <t id="3159">%s / %s</t>
     <t id="3160">Bilan indisponible : les données d’offre ou de demande sont incomplètes.</t>
     <t id="3161">Données d’offre incomplètes.</t>
     <t id="3162">Données de demande incomplètes.</t>
     <t id="3163">Données d’offre et de demande incomplètes.</t>
-    <t id="3164">* Contributions connues uniquement ; bilan net indisponible. Les débits sont par heure.</t>
-    <t id="3166">* bilan exact inconnu en raison de producteurs/consommateurs aux volumes inconnus ou variables \(p. ex. mineurs ou chantiers navals\)</t>
+    <t id="3164">Contributions connues uniquement ; bilan net indisponible. Les débits sont par heure.</t>
+    <t id="3166">bilan exact inconnu en raison de producteurs/consommateurs aux volumes inconnus ou variables \(p. ex. mineurs ou chantiers navals\)</t>
     <t id="3170">Logistique</t>
     <t id="3171">Quais : libres / total. Orange : aucune place libre.</t>
     <t id="3172">L inclut les places communes L/XL ; le stockage interne est exclu.</t>
@@ -153,5 +153,15 @@
     <t id="3184">Affichage des docks et vaisseaux indisponible. Rouvrez SCV pour réessayer.</t>
     <t id="3185">Paramètres</t>
     <t id="3186">Afficher les docks/subordonnés</t>
+    <t id="3187">Production : %s ; demande du personnel actuel : %s ; réserve à effectif complet : %s ; excédent exportable : %s ; module moyen : %s. %s</t>
+    <t id="3188">Exportation significative : sortie affichée.</t>
+    <t id="3189">Principalement autonome : liaison masquée.</t>
+    <t id="3190">Effectif complet nécessitant un apport extérieur : entrée affichée.</t>
+    <t id="3191">Excédent exportable inconnu : sortie conservée provisoirement. Données de production, de répartition du personnel ou de modules incomplètes.</t>
+    <t id="3192">Les changements de liaison prennent effet après reconstruction de la vue.</t>
+    <t id="3193">%s liaisons de consommation masquées pour adapter le diagramme ; la demande reste incluse.</t>
+    <t id="3194">Après réduction, le diagramme dépasse encore les limites : %s/%s nœuds, %s/%s segments de liaison, %s/%s colonnes. Divisez cette chaîne.</t>
+    <t id="3195">Certaines connexions entrantes sont masquées pour éviter les cycles</t>
+    <t id="3196">Certaines connexions entrantes sont masquées pour respecter les limites du composant de diagramme de l’interface du jeu</t>
   </page>
 </language>

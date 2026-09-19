@@ -47,6 +47,8 @@ end
 function GetWareProductionLimit() return 100 end
 Helper = {getWorkforceConsumption=function() return 0 end}
 C = {}
+function GetWorkForceRaceResources() return {} end
+function C.GetWorkForceInfo() return {optimal=0,current=0,capacity=0} end
 function C.GetNumStoredUnits() return 0 end
 package.preload.ffi = function() return {C=C, new=function() return {} end, string=tostring} end
 function C.IsComponentClass() return true end

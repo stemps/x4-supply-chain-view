@@ -26,7 +26,7 @@
     <t id="3006">Nadie recoge esta mercancía aquí</t>
     <t id="3010">Entrega en curso</t>
     <t id="3011">Sin entrega programada</t>
-    <t id="3012">Comercio mutuo: %s enlaces dibujados en un solo sentido \(%s\)</t>
+    <t id="3012">%s conexiones de consumo ocultas para evitar ciclos; la demanda sigue incluida.</t>
     <t id="3013">Peor: %s</t>
     <t id="3014">Sin alertas de autonomía o capacidad a pleno rendimiento.</t>
     <t id="3015">%s proveedores, %s receptores</t>
@@ -130,14 +130,14 @@
     <t id="3154">Avisos ignorados para esta mercancía en esta estación. Haz clic para activarlos.</t>
     <t id="3155">+%s</t>
     <t id="3156">-%s</t>
-    <t id="3157">%s*</t>
+    <t id="3157">%s%s</t>
     <t id="3159">%s / %s</t>
     <t id="3160">Balance no disponible: la oferta o la demanda están incompletas.</t>
     <t id="3161">Oferta incompleta.</t>
     <t id="3162">Demanda incompleta.</t>
     <t id="3163">Oferta y demanda incompletas.</t>
-    <t id="3164">* Solo contribuciones conocidas; balance neto no disponible. Tasas por hora.</t>
-    <t id="3166">* balance exacto desconocido por productores/consumidores con volúmenes desconocidos o variables \(p. ej., mineros o astilleros\)</t>
+    <t id="3164">Solo contribuciones conocidas; balance neto no disponible. Tasas por hora.</t>
+    <t id="3166">balance exacto desconocido por productores/consumidores con volúmenes desconocidos o variables \(p. ej., mineros o astilleros\)</t>
     <t id="3170">Logística</t>
     <t id="3171">Muelles: libres / total. Naranja: no hay puestos libres.</t>
     <t id="3172">L incluye puestos compartidos L/XL; no incluye almacenamiento interno.</t>
@@ -153,5 +153,15 @@
     <t id="3184">Vista de muelles y naves no disponible. Vuelve a abrir SCV.</t>
     <t id="3185">Ajustes</t>
     <t id="3186">Mostrar muelles/subordinados</t>
+    <t id="3187">Producción: %s; demanda del personal actual: %s; reserva con plantilla completa: %s; excedente exportable: %s; módulo medio: %s. %s</t>
+    <t id="3188">Exportación significativa: salida visible.</t>
+    <t id="3189">Principalmente autosuficiente: conexión oculta.</t>
+    <t id="3190">La plantilla completa necesita suministro externo: entrada visible.</t>
+    <t id="3191">Excedente desconocido: salida conservada provisionalmente. Datos de producción, reparto del personal o módulos incompletos.</t>
+    <t id="3192">Los cambios de conexión se aplican al reconstruir la vista.</t>
+    <t id="3193">%s conexiones de consumo ocultas para ajustar el diagrama; la demanda sigue incluida.</t>
+    <t id="3194">Tras las reducciones, el diagrama aún supera los límites: %s/%s nodos, %s/%s segmentos de conexión, %s/%s columnas. Divida esta cadena.</t>
+    <t id="3195">Algunas conexiones entrantes están ocultas para evitar ciclos</t>
+    <t id="3196">Algunas conexiones entrantes están ocultas para respetar los límites del componente de diagramas de flujo de la interfaz del juego</t>
   </page>
 </language>

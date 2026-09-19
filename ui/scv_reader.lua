@@ -1,9 +1,91 @@
 -- Supply Chain View — engine station and ware reads.
--- Depends: scv_support.lua, scv_graph.lua
+-- Depends: scv_support.lua, scv_graph.lua, scv_metrics.lua
 local ffi = require("ffi")
 local C = ffi.C
 local log, warnOnce, safe = SCV_Support.log, SCV_Support.warnOnce, SCV_Support.safe
 SCV_Reader = {}
+
+-- Identical to the station overview ABI. Helper already declares WorkForceInfo.
+-- Guard typedefs because other vanilla menus may have loaded first.
+if ffi.cdef and ffi.typeof then
+	local definitions = {
+		{ "UIWorkforceInfluence", [[typedef struct { const char* type; const char* name; float value; bool active; } UIWorkforceInfluence;]] },
+		{ "WorkforceInfluenceCounts", [[typedef struct { uint32_t numcapacityinfluences; uint32_t numgrowthinfluences; } WorkforceInfluenceCounts;]] },
+		{ "WorkforceInfluenceInfo", [[typedef struct {
+			uint32_t numcapacityinfluences; UIWorkforceInfluence* capacityinfluences;
+			uint32_t numgrowthinfluences; UIWorkforceInfluence* growthinfluences;
+			float basegrowth; uint32_t capacity; uint32_t current; uint32_t sustainable;
+			uint32_t target; int32_t change;
+		} WorkforceInfluenceInfo;]] },
+	}
+	for _, definition in ipairs(definitions) do
+		if not pcall(ffi.typeof, definition[1]) then ffi.cdef(definition[2]) end
+	end
+	ffi.cdef[[
+		WorkforceInfluenceCounts GetNumContainerWorkforceInfluence(UniverseID containerid, const char* raceid, bool force);
+		void GetContainerWorkforceInfluence(WorkforceInfluenceInfo* result, UniverseID containerid, const char* raceid);
+	]]
+end
+
+-- Same recipe arithmetic as Helper.getWorkforceConsumption, but at full staffing.
+local function readWorkforceReserve(id64)
+	local result = { wares = {}, reserve = {}, known = false, membershipKnown = false }
+	local ok, err = pcall(function ()
+		local recipes = GetWorkForceRaceResources(id64)
+		assert(type(recipes) == "table", "workforce recipes unavailable")
+		local total = C.GetWorkForceInfo(id64, "")
+		local optimal, current, capacity = tonumber(total.optimal), tonumber(total.current), tonumber(total.capacity)
+		assert(SCV_Graph.validRate(optimal) and SCV_Graph.validRate(current) and SCV_Graph.validRate(capacity), "invalid workforce totals")
+		local races, seen, sumCurrent, sumCapacity = {}, {}, 0, 0
+		for _, recipe in ipairs(recipes) do
+			assert(type(recipe.race) == "string" and not seen[recipe.race], "duplicate workforce race")
+			seen[recipe.race] = true
+			local info = C.GetWorkForceInfo(id64, recipe.race)
+			local count, cap = tonumber(info.current), tonumber(info.capacity)
+			assert(SCV_Graph.validRate(count) and SCV_Graph.validRate(cap), "invalid race workforce")
+			sumCurrent, sumCapacity = sumCurrent + count, sumCapacity + cap
+			if cap > 0 or count > 0 then
+				assert(type(recipe.resources) == "table" and SCV_Graph.validRate(recipe.productamount)
+					and recipe.productamount > 0 and #recipe.resources > 0, "workforce resource recipe unavailable")
+				for _, resource in ipairs(recipe.resources) do
+					assert(type(resource.ware) == "string" and SCV_Graph.validRate(resource.cycle)
+						and SCV_Graph.validRate(resource.cycleduration) and resource.cycleduration > 0, "invalid workforce resource")
+					result.wares[resource.ware] = true
+				end
+				races[#races + 1] = recipe
+			end
+		end
+		assert(sumCurrent == current and sumCapacity == capacity, "incomplete workforce race coverage")
+		result.membershipKnown = true
+		local allocated = 0
+		for _, recipe in ipairs(races) do
+			local target
+			if #races == 1 then
+				target = optimal
+			else
+				local counts = C.GetNumContainerWorkforceInfluence(id64, recipe.race, false)
+				local buf = ffi.new("WorkforceInfluenceInfo")
+				buf.numcapacityinfluences, buf.numgrowthinfluences = counts.numcapacityinfluences, counts.numgrowthinfluences
+				local capacityBuffer = ffi.new("UIWorkforceInfluence[?]", counts.numcapacityinfluences)
+				local growthBuffer = ffi.new("UIWorkforceInfluence[?]", counts.numgrowthinfluences)
+				buf.capacityinfluences, buf.growthinfluences = capacityBuffer, growthBuffer
+				C.GetContainerWorkforceInfluence(buf, id64, recipe.race)
+				target = tonumber(buf.target)
+			end
+			assert(SCV_Graph.validRate(target), "invalid workforce target")
+			allocated = allocated + target
+			for _, resource in ipairs(recipe.resources) do
+				local amount = math.floor(resource.cycle * 3600 / resource.cycleduration * target / recipe.productamount + 0.5)
+				result.reserve[resource.ware] = (result.reserve[resource.ware] or 0) + amount
+			end
+		end
+		-- Empty habitat set establishes no local workforce demand, not a race guess.
+		assert(#races == 0 or allocated == optimal, "race targets do not match optimal workforce")
+		result.known = true
+	end)
+	if not ok then warnOnce("workforce-reserve:" .. tostring(err), "export reserve unavailable: " .. tostring(err)) end
+	return result
+end
 
 -- ---------------------------------------------------------------------------------
 -- Station enumeration
@@ -106,9 +188,9 @@ end
 -- keys at helper.lua:11756-11764. Some other call sites hand back arrays of tables with a
 -- .ware field, so accept both rather than betting on one.
 local function normalizeWareList(list)
-	local out = {}
+	local out, known = {}, true
 	if type(list) ~= "table" then
-		return out
+		return out, false
 	end
 	for _, entry in ipairs(list) do
 		local ware
@@ -117,11 +199,13 @@ local function normalizeWareList(list)
 		elseif type(entry) == "table" then
 			ware = entry.ware
 		end
-		if ware and (ware ~= "") then
+		if type(ware) == "string" and ware ~= "" then
 			out[ware] = true
+		else
+			known = false
 		end
 	end
-	return out
+	return out, known
 end
 
 -- Wares a station consumes through BUILD processes rather than production modules.
@@ -132,18 +216,20 @@ end
 -- needs nothing at all.
 local function readBuildResources(id64)
 	local out = {}
-	pcall(function ()
+	local known = pcall(function ()
 		local n = C.GetNumContainerBuildResources(id64)
 		if n <= 0 then
 			return
 		end
 		local buf = ffi.new("const char*[?]", n)
+		local expected = n
 		n = C.GetContainerBuildResources(buf, n, id64)
+		assert(n == expected, "incomplete build resource inventory")
 		for i = 0, n - 1 do
 			out[ffi.string(buf[i])] = true
 		end
 	end)
-	return out
+	return out, known
 end
 
 -- Future module inventory is classification-only. Never pass these recipes to the
@@ -151,6 +237,7 @@ end
 -- Vanilla: menu_map.getStationModules and station_overview's planned recipe nodes.
 local function readFutureWareRoles(id64)
 	local products, resources = {}, {}
+	local known = true
 	local seenComponents, seenMacros = {}, {}
 	local function readMacro(macro)
 		if not macro or macro == "" or seenMacros[macro] then return end
@@ -173,7 +260,7 @@ local function readFutureWareRoles(id64)
 				end
 			end
 		end)
-		if not ok then warnOnce("future-recipe:" .. macro, "planned module " .. macro .. ": " .. tostring(err)) end
+		if not ok then known = false; warnOnce("future-recipe:" .. macro, "planned module " .. macro .. ": " .. tostring(err)) end
 	end
 	local function readComponent(module)
 		local key = tostring(module)
@@ -188,16 +275,20 @@ local function readFutureWareRoles(id64)
 		local n = C.GetNumStationModules(id64, true, true)
 		if n <= 0 then return end
 		local buf = ffi.new("UniverseID[?]", n)
+		local expected = n
 		n = C.GetStationModules(buf, n, id64, true, true)
+		assert(n == expected, "incomplete future module inventory")
 		for i = 0, n - 1 do readComponent(ConvertStringTo64Bit(tostring(buf[i]))) end
 	end)
-	if not ok then warnOnce("future-components", "unfinished module read failed: " .. tostring(err)) end
+	if not ok then known = false; warnOnce("future-components", "unfinished module read failed: " .. tostring(err)) end
 	ok, err = pcall(function ()
 		-- size_t is 64-bit cdata in LuaJIT; numeric for loops require a Lua number.
 		local n = tonumber(C.GetNumPlannedStationModules(id64, false))
 		if n <= 0 then return end
 		local buf = ffi.new("UIConstructionPlanEntry[?]", n)
+		local expected = n
 		n = tonumber(C.GetPlannedStationModules(buf, n, id64, false))
+		assert(n == expected, "incomplete planned module inventory")
 		for i = 0, n - 1 do
 			if buf[i].componentid ~= 0 then
 				readComponent(ConvertStringTo64Bit(tostring(buf[i].componentid)))
@@ -206,8 +297,8 @@ local function readFutureWareRoles(id64)
 			end
 		end
 	end)
-	if not ok then warnOnce("future-plan", "planned module read failed: " .. tostring(err)) end
-	return products, resources
+	if not ok then known = false; warnOnce("future-plan", "planned module read failed: " .. tostring(err)) end
+	return products, resources, known
 end
 
 -- How a station classifies each ware it deals in.
@@ -231,13 +322,25 @@ end
 -- that function caches into Helper.wareTypeBuffer, but reassigns the buffer table AFTER
 -- stamping the container and timestamp on it (helper.lua:11747 then :11750), so the cache
 -- never actually hits and every call re-reads. One read per station is cheaper and clearer.
-local function readWareRoles(id64)
-	local products      = normalizeWareList(safe({}, GetComponentData, id64, "availableproducts"))
-	local pureresources = normalizeWareList(safe({}, GetComponentData, id64, "pureresources"))
-	local intermediates = normalizeWareList(safe({}, GetComponentData, id64, "intermediatewares"))
-	local tradewares    = normalizeWareList(safe({}, GetComponentData, id64, "tradewares"))
-	local buildwares    = readBuildResources(id64)
-	local futureProducts, futureResources = readFutureWareRoles(id64)
+local function readWareRoles(id64, recipes)
+	local products, productsKnown = normalizeWareList(safe(nil, GetComponentData, id64, "availableproducts"))
+	local pureresources, resourcesKnown = normalizeWareList(safe(nil, GetComponentData, id64, "pureresources"))
+	local intermediates, intermediatesKnown = normalizeWareList(safe(nil, GetComponentData, id64, "intermediatewares"))
+	local tradewares, tradeKnown = normalizeWareList(safe(nil, GetComponentData, id64, "tradewares"))
+	local buildwares, buildKnown = readBuildResources(id64)
+	local futureProducts, futureResources, futureKnown = readFutureWareRoles(id64)
+	local rolesKnown = recipes.known and buildKnown and futureKnown
+		and productsKnown and resourcesKnown and intermediatesKnown and tradeKnown
+	-- Observed completed products remain provisional if another inventory read fails.
+	-- An observed recipe consumer is still a real intermediate, even if the engine
+	-- omitted it from intermediatewares. Workforce recipes are deliberately separate.
+	for ware in pairs(recipes.outputs) do
+		if recipes.inputs[ware] then
+			intermediates[ware] = true
+		elseif not buildwares[ware] and not futureResources[ware] then
+			products[ware], intermediates[ware] = true, nil
+		end
+	end
 	for ware in pairs(futureResources) do
 		if products[ware] or futureProducts[ware] then intermediates[ware] = true end
 	end
@@ -304,7 +407,7 @@ local function readWareRoles(id64)
 		inputs[ware] = nil
 	end
 
-	return outputs, inputs, candidates, intermediates, buildwares
+	return outputs, inputs, candidates, intermediates, buildwares, futureResources, rolesKnown, futureProducts, tradewares
 end
 
 -- Reserved trades per ware: how much is on its way IN and how much is committed to go OUT.
@@ -384,6 +487,7 @@ end
 
 local function readTheoreticalRates(id64)
 	local prod, cons = {}, {}
+	local recipes = { outputs = {}, inputs = {}, counts = {} }
 	local excludedProd, excludedCons = {}, {}
 	local processing = { feedstocks = {}, inputs = {}, outputs = {},
 		production = {}, consumption = {}, excludedProd = {}, excludedCons = {} }
@@ -393,7 +497,9 @@ local function readTheoreticalRates(id64)
 			return
 		end
 		local buf = ffi.new("UniverseID[?]", n)
+		local expected = n
 		n = C.GetStationModules(buf, n, id64, true, true)
+		assert(n == expected, "incomplete production module inventory")
 		local byMacro = {}
 		for i = 0, n - 1 do
 			local module = ConvertStringTo64Bit(tostring(buf[i]))
@@ -404,12 +510,19 @@ local function readTheoreticalRates(id64)
 			local unbuiltProduction = isprod and not isproc and IsComponentConstruction(module)
 			if (isprod or isproc) and not unbuiltProduction then
 				local macro = GetComponentData(module, "macro")
+				assert(type(macro) == "string" and macro ~= "", "module identity unavailable")
 				if macro then
 					local rates = byMacro[macro]
 					if not rates then
 						local lib = GetMacroData(macro, "infolibrary")
 						local md = lib and GetLibraryEntry(lib, macro)
 						assert(md and type(md.products) == "table", "module recipe unavailable: " .. tostring(macro))
+						for _, product in ipairs(md.products) do
+							if product.ware then recipes.outputs[product.ware] = true end
+							for _, resource in ipairs(product.resources or {}) do
+								if resource.ware then recipes.inputs[resource.ware] = true end
+							end
+						end
 						local p, c = {}, {}
 						if isproc then
 							-- Vanilla omits ordinary queue arithmetic for processing
@@ -442,6 +555,7 @@ local function readTheoreticalRates(id64)
 						local data = eligible and unlocked and safe(nil, GetProcessingModuleData, module) or nil
 						for w in pairs(rates.p) do processing.outputs[w] = true end
 						if eligible then
+							for ware in pairs(rates.p) do recipes.counts[ware] = (recipes.counts[ware] or 0) + 1 end
 							accumulateProcessingRates(type(data) == "table" and data.products, rates.p,
 								processing.production, processing.excludedProd)
 							accumulateProcessingRates(type(data) == "table" and data.resources, rates.c,
@@ -463,6 +577,7 @@ local function readTheoreticalRates(id64)
 					-- Station-level rates cover ordinary production only. Processing
 					-- is summed separately above; unfinished processors cannot veto it.
 					if not isproc and operational then
+						for ware in pairs(rates.p) do recipes.counts[ware] = (recipes.counts[ware] or 0) + 1 end
 						for w, v in pairs(rates.p) do prod[w] = (prod[w] or 0) + v end
 						for w, v in pairs(rates.c) do cons[w] = (cons[w] or 0) + v end
 						-- Match vanilla's module-level rate/resource scan gates. Unknown
@@ -486,7 +601,8 @@ local function readTheoreticalRates(id64)
 		end
 	end)
 	if not ok then warnOnce(tostring(err), "module inventory failed: " .. tostring(err)) end
-	return prod, cons, ok, excludedProd, excludedCons, processing
+	recipes.known = ok
+	return prod, cons, ok, excludedProd, excludedCons, processing, recipes
 end
 
 -- Storage capacity by transport type (container / solid / liquid...), in VOLUME units.
@@ -536,9 +652,10 @@ function SCV_Reader.readStation(st, deps)
 	local unlockedAmounts  = safe(false, function () return C.IsInfoUnlockedForPlayer(id64, "storage_amounts") end)
 	local unlockedCapacity = safe(false, function () return C.IsInfoUnlockedForPlayer(id64, "storage_capacity") end)
 
-	local outputs, inputs, candidates, _, buildwares = readWareRoles(id64)
+	local ratesOut, ratesIn, inventoryKnown, excludedProd, excludedCons, processing, recipes = readTheoreticalRates(id64)
+	local outputs, inputs, candidates, _, buildwares, futureResources, rolesKnown, futureProducts, tradewares = readWareRoles(id64, recipes)
+	local workforceReserve = readWorkforceReserve(id64)
 	local reservations, reservationsKnown = readReservations(id64)
-	local ratesOut, ratesIn, inventoryKnown, excludedProd, excludedCons, processing = readTheoreticalRates(id64)
 	local capacity, capacityRead = readCapacity(id64)
 	local cargo   = safe(nil, GetComponentData, id64, "cargo")
 	-- Raw scrap lives in the processing resource buffer, not cargo. Vanilla's
@@ -565,7 +682,7 @@ function SCV_Reader.readStation(st, deps)
 			local prodKnown = inventoryKnown and not excludedProd[ware] and not processing.excludedProd[ware]
 				and (ratesOut[ware] ~= nil or processing.outputs[ware] == true) and SCV_Graph.validRate(production)
 			local consKnown = inventoryKnown and not excludedCons[ware] and not processing.excludedCons[ware] and not buildwares[ware]
-				and (ratesIn[ware] ~= nil or processing.inputs[ware] or (tonumber(workforce) or 0) > 0)
+				and (ratesIn[ware] ~= nil or processing.inputs[ware] or workforceReserve.wares[ware] or (tonumber(workforce) or 0) > 0)
 				and SCV_Graph.validRate(consumption) and SCV_Graph.validRate(workforce)
 			local prodMax = prodKnown and ((ratesOut[ware] ~= nil and tonumber(production) or 0)
 				+ (processing.production[ware] or 0)) or 0
@@ -574,6 +691,21 @@ function SCV_Reader.readStation(st, deps)
 				+ (processing.consumption[ware] or 0)
 				+ (SCV_Graph.validRate(workforce) and tonumber(workforce) or 0)
 			local feedstock = processing.feedstocks[ware]
+			local metricOutput = output
+			local metricInput = input or (output and (workforceReserve.wares[ware]
+				or not workforceReserve.membershipKnown or not SCV_Graph.validRate(workforce) or tonumber(workforce) > 0)) or false
+			local workforceOnly = rolesKnown and workforceReserve.membershipKnown and workforceReserve.wares[ware]
+				and not recipes.inputs[ware] and not buildwares[ware] and not futureResources[ware] and not tradewares[ware]
+			local export
+			if output and (recipes.outputs[ware] or futureProducts[ware] or not inventoryKnown)
+				and (workforceReserve.wares[ware] or not workforceReserve.membershipKnown or (tonumber(workforce) or 0) > 0) then
+				local reserve = workforceReserve.known and SCV_Graph.validRate(workforce)
+					and math.max(workforceReserve.reserve[ware] or 0, tonumber(workforce)) or nil
+				export = SCV_Metrics.exportDecision(prodKnown and prodMax or nil, reserve, recipes.counts[ware],
+					rolesKnown and prodKnown and workforceReserve.known and reserve ~= nil)
+				output = export.state == "export" or export.state == "unknown"
+				input = export.state == "import"
+			end
 
 			-- The GLOBAL GetWareProductionLimit, not C.GetContainerStockLimit, which often
 			-- returns 0 (KNOWLEDGEBASE, field-tested).
@@ -620,11 +752,16 @@ function SCV_Reader.readStation(st, deps)
 				consumption = consMax,
 				output      = output,
 				input       = input,
+				metricOutput = metricOutput,
+				metricInput = metricInput,
+				inputProvenance = workforceOnly and "workforce" or "other",
+				export = export,
 				-- reserved trades, for the detail panel's bars
 				incoming    = (reservations[ware] and reservations[ware].incoming) or 0,
 				outgoing    = (reservations[ware] and reservations[ware].outgoing) or 0,
 				-- All displayed rates use this same full-operation basis.
 				workforce   = tonumber(workforce) or 0,
+				workforceKnown = SCV_Graph.validRate(workforce),
 				prodMax     = prodMax,
 				consMax     = consMax,
 				prodKnown   = prodKnown,

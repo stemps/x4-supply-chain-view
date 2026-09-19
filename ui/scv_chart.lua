@@ -17,6 +17,18 @@ function SCV_Chart.new(menu, config, presentation)
 	local function log(msg) DebugError("SCV: " .. tostring(msg)) end
 
 function component.decorateNodes(graph)
+	local visible = {}
+	graph.footnoteKeys = { "partial" }
+	for _, node in ipairs(graph.nodes) do visible[node] = true; node.footnotes = {} end
+	for _, entry in ipairs({ { "cycle", graph.droppedEdges }, { "budget", graph.budgetDroppedEdges } }) do
+		local used = false
+		for _, edge in ipairs(entry[2] or {}) do
+			if visible[edge.from] and visible[edge.to] and edge.to.scvkind == "station" then
+				edge.to.footnotes[entry[1]], used = true, true
+			end
+		end
+		if used then graph.footnoteKeys[#graph.footnoteKeys + 1] = entry[1] end
+	end
 	for _, node in ipairs(graph.nodes) do
 		local widget = node[1] and node[1].node
 		if node.scvkind == "station" then
@@ -40,7 +52,10 @@ function component.decorateNodes(graph)
 			end
 			if not node.healthKnown then parts[#parts + 1] = T(3065) end
 
-			node.text = node.name or node.scvid or "?"
+			node.text = (node.name or node.scvid or "?") .. presentation.footnoteMarkers(node.footnotes)
+			for _, key in ipairs(graph.footnoteKeys) do
+				if node.footnotes[key] then parts[#parts + 1] = presentation.footnoteLine(key) end
+			end
 			node.logisticsRows = SCV_Store.getShowLogistics() and menu.logisticsRows(node.logistics) or nil
 			node.type = "container"
 			node[1] = {
@@ -73,7 +88,7 @@ function component.decorateNodes(graph)
 				lines[#lines + 1] = T(not node.supplyKnown and (not node.demandKnown and 3163 or 3161) or 3162)
 				lines[#lines + 1] = T(3160)
 				if node.supplyKnown or node.demandKnown or node.supplyCap > 0 or node.demandCap > 0 then
-					lines[#lines + 1] = T(3164)
+					lines[#lines + 1] = presentation.footnoteLine("partial", true)
 				end
 			end
 			lines[#lines + 1] = ""
@@ -141,7 +156,7 @@ function component.displayChain(frame, x, y, width, reuseGraph)
 			return
 		end
 
-		graph = SCV_Graph.build(stations, { isWarningIgnored = SCV_Store.isWarningIgnored })
+		graph = SCV_Graph.build(stations, { isWarningIgnored = SCV_Store.isWarningIgnored, deferBudget = true })
 		menu.graph = graph
 		if not graph then
 			return
@@ -149,46 +164,26 @@ function component.displayChain(frame, x, y, width, reuseGraph)
 		menu.refreshState = SCV_Data.newRefresh(members, getElapsedTime())
 
 	end
-	menu.decorateNodes(graph)
-
 	if not reuseGraph or not menu.graphLayout then
-		local rows, cols, junctions = Helper.setupDAGLayout(graph.nodes)
-		menu.graphLayout = { rows = rows, cols = cols, junctions = junctions }
+		menu.graphLayout = SCV_Graph.fitLayout(graph, Helper.setupDAGLayout)
 	end
+	menu.decorateNodes(graph)
 	local numrows, numcols, junctions = menu.graphLayout.rows, menu.graphLayout.cols, menu.graphLayout.junctions
-
-	-- Re-check the budget AFTER layout. SCV_Graph.applyBudget can only count the graph it
-	-- was given, but setupDAGLayout inserts JUNCTION nodes to route edges across tiers, and
-	-- each junction brings its own cells and edges. A graph that fit before layout can
-	-- overflow after it, which the widget system reports as "No more flowchart edges
-	-- available. Skipping following edges." while drawing a diagram missing links with no
-	-- indication of which ones. Better to refuse.
-	local postNodes = #graph.nodes + #junctions
-	local postEdges = 0
-	for _, n in ipairs(graph.nodes) do
-		for _ in pairs(n.predecessors or {}) do postEdges = postEdges + 1 end
-	end
-	for _, j in ipairs(junctions) do
-		for _ in pairs(j.predecessors or {}) do postEdges = postEdges + 1 end
-	end
-
-	if (numcols > SCV_Graph.LIMITS.maxCols)
-			or (postNodes > SCV_Graph.LIMITS.maxNodes)
-			or (postEdges > SCV_Graph.LIMITS.maxEdges) then
-		log(string.format("chain over budget after layout: %d nodes (+%d junctions), %d edges, %d cols",
-			#graph.nodes, #junctions, postEdges, numcols))
-		local ftable = frame:addTable(1, { tabOrder = 2, width = width, x = x, y = y })
-		local row = ftable:addRow(false, { fixed = true })
-		row[1]:createText(T(4000), Helper.headerRowCenteredProperties)
-		row = ftable:addRow(false, { fixed = true })
-		row[1]:createText(T(4003), { wordwrap = true })
+	local layout = menu.graphLayout
+	if not layout.fits then
+		log(string.format("chain over budget after layout fallback: %d nodes, %d edges, %d cols",
+			layout.postNodes, layout.postEdges, numcols))
+		menu.drawChainPlaceholder(frame, x, y, width, T(4000), T(3194,
+			tostring(layout.postNodes), tostring(SCV_Graph.LIMITS.maxNodes),
+			tostring(layout.postEdges), tostring(SCV_Graph.LIMITS.maxEdges),
+			tostring(numcols), tostring(SCV_Graph.LIMITS.maxCols)))
 		return
 	end
 
 	-- No ware nodes at all means every station's offers are disjoint. That is a real and
 	-- common answer ("these do not actually trade with each other"), and it must not look
 	-- like a rendering failure.
-	if next(graph.wareNodes) == nil then
+	if next(graph.wareNodes) == nil and #graph.collapsedWares == 0 and #graph.droppedStations == 0 then
 		local ftable = frame:addTable(1, { tabOrder = 2, width = width, x = x, y = y })
 		local row = ftable:addRow(false, { fixed = true })
 		row[1]:createText(T(4004), Helper.headerRowCenteredProperties)
@@ -207,24 +202,9 @@ function component.displayChain(frame, x, y, width, reuseGraph)
 		for _, s in ipairs(graph.droppedStations) do
 			names[#names + 1] = s.name
 		end
-		notes[#notes + 1] = T(4001, tostring(graph.counts.nodes), tostring(graph.counts.edges),
+		notes[#notes + 1] = T(4001, tostring(layout.initial.nodes), tostring(layout.initial.edges),
 			tostring(SCV_Graph.LIMITS.maxNodes), tostring(SCV_Graph.LIMITS.maxEdges),
 			table.concat(names, ", "))
-	end
-	if #graph.droppedEdges > 0 then
-		-- Mutual trade between two stations is ORDINARY under the offer-based rule (A sells
-		-- X to B while B sells Y to A), so this note is information, not a warning. Name the
-		-- wares and the count: "one edge not drawn" was both vague and often wrong.
-		local seen, wares = {}, {}
-		for _, e in ipairs(graph.droppedEdges) do
-			local w = e.ware and graph.wareNodes[e.ware]
-			local label = (w and w.name) or e.ware
-			if label and (not seen[label]) then
-				seen[label] = true
-				wares[#wares + 1] = label
-			end
-		end
-		notes[#notes + 1] = T(3012, tostring(#graph.droppedEdges), table.concat(wares, ", "))
 	end
 
 	local chartY = y
@@ -267,7 +247,9 @@ end
 -- vanilla station overview does for its tables below the flowchart.
 function component.drawChainLegend(frame, x, chartY, width)
 	local footer = frame:addTable(1, { tabOrder = 4, width = width, x = x, y = chartY })
-	footer:addRow(false, { fixed = true })[1]:createText(T(3166), { wordwrap = true })
+	for _, key in ipairs(menu.graph and menu.graph.footnoteKeys or { "partial" }) do
+		footer:addRow(false, { fixed = true })[1]:createText(presentation.footnoteLine(key), { wordwrap = true })
+	end
 	menu.flowchart.properties.maxVisibleHeight = math.max(1,
 		frame:getAvailableHeight() - chartY - footer:getFullHeight() - Helper.borderSize - Helper.frameBorder)
 	footer.properties.y = chartY + menu.flowchart:getVisibleHeight() + Helper.borderSize
@@ -291,10 +273,10 @@ function component.renderFlowchart(graph, junctions)
 			-- Function-valued mouseovers register with frame:update at creation.
 			local properties = {}
 			for key, value in pairs(moduledata.properties) do properties[key] = value end
-			if nodedata.logisticsRows then
-				-- Every row must contain its strip, including the last visible row.
-				-- Native node padding is symmetric. Reserve the full strip and gap
-				-- below the centre, with one pixel for native rounding, then unscale.
+			if nodedata.logisticsRows and menu.graphLayout and nodedata.row == menu.graphLayout.rows then
+				-- Keep interior rows compact. Only the final layout row needs its
+				-- entire strip inside the cell to clear the lower graph border.
+				-- Clipping still protects the border at intermediate scroll positions.
 				properties.y = math.max(properties.y or 0,
 					(math.ceil(nodedata.logisticsRows[1].height) + math.ceil(Helper.scaleY(3)) + 1)
 						/ (Helper.scaleY(1000) / 1000))

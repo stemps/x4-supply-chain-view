@@ -110,7 +110,9 @@ end
 -- Recalculate only metrics. Node identity, roles and predecessors belong to the layout.
 function SCV_Graph.updateStationMetrics(node)
 	node.severity, node.healthKnown, node.worstWare = "ok", true, nil
+	local rows = {}
 	for ware, w in pairs(node.wares) do
+		rows[#rows + 1] = ware .. ":" .. tostring(SCV_Graph.metricInput(w)) .. ":" .. tostring(SCV_Graph.metricOutput(w)) .. ":" .. tostring(w.export ~= nil)
 		if node.warningPolicy then w.warningIgnored = node.warningPolicy(node.code, ware) end
 		local h = SCV_Graph.wareHealth(w)
 		w.health = h
@@ -120,10 +122,23 @@ function SCV_Graph.updateStationMetrics(node)
 			node.worstWare = ware
 		end
 	end
+	table.sort(rows)
+	node.contributorSignature = table.concat(rows, "|")
 end
 
 function SCV_Graph.updateWareMetrics(wnode, stationNodes)
-	local ware, producers, consumers = wnode.scvware, wnode.producers, wnode.consumers
+	local ware = wnode.scvware
+	local producers, consumers = {}, {}
+	for sid, node in pairs(stationNodes) do
+		local w = node.wares[ware]
+		if w then
+			if SCV_Graph.metricOutput(w) then producers[#producers + 1] = sid end
+			if SCV_Graph.metricInput(w) then consumers[#consumers + 1] = sid end
+		end
+	end
+	table.sort(producers); table.sort(consumers)
+	wnode.metricProducers, wnode.metricConsumers = producers, consumers
+	wnode.contributorSignature = table.concat(producers, "|") .. ":" .. table.concat(consumers, "|")
 	-- Totals used by the inventory and maximum hourly-rate displays.
 	wnode.supplyCap, wnode.demandCap = 0, 0
 	wnode.supplyKnown, wnode.demandKnown = true, true
@@ -142,6 +157,16 @@ function SCV_Graph.updateWareMetrics(wnode, stationNodes)
 	wnode.storage = SCV_Graph.storageTotals(stationNodes, ware, producers, consumers)
 end
 
+function SCV_Graph.metricOutput(w)
+	if w.metricOutput ~= nil then return w.metricOutput end
+	return not not w.output
+end
+
+function SCV_Graph.metricInput(w)
+	if w.metricInput ~= nil then return w.metricInput end
+	return not not w.input
+end
+
 -- Capture all source roles, including boundary wares and nodes hidden by the budget.
 -- This baseline is immutable until the user rebuilds the view.
 function SCV_Graph.captureStructure(stations)
@@ -149,7 +174,9 @@ function SCV_Graph.captureStructure(stations)
 	for _, st in ipairs(stations) do
 		local roles = {}
 		for ware, w in pairs(st.wares or {}) do
-			roles[ware] = { input = not not w.input, output = not not w.output }
+			roles[ware] = { input = not not w.input, output = not not w.output,
+				metricOutput = SCV_Graph.metricOutput(w), inputProvenance = w.inputProvenance,
+				exportState = w.export and w.export.state }
 		end
 		structure[st.id] = roles
 	end
@@ -158,15 +185,18 @@ end
 
 local function sameRole(w, role)
 	return w and (not not w.input == role.input) and (not not w.output == role.output)
+		and w.inputProvenance == role.inputProvenance and (w.export and w.export.state) == role.exportState
 end
 
 local function unknownWare(w)
 	return { name = w.name, transport = w.transport, input = w.input, output = w.output,
+		metricOutput = SCV_Graph.metricOutput(w), metricInput = SCV_Graph.metricInput(w),
+		inputProvenance = w.inputProvenance, export = w.export and { state = "unknown" } or nil,
 		rateBasis = w.rateBasis,
 		stock = 0, limit = 0, capacityUnits = 0, prodMax = 0, consMax = 0,
 		production = 0, consumption = 0, workforce = 0, incoming = 0, outgoing = 0,
 		stockKnown = false, limitKnown = false, capacityUnitsKnown = false, prodKnown = false,
-		consKnown = false, reservationsKnown = false }
+		consKnown = false, workforceKnown = false, reservationsKnown = false }
 end
 
 -- Publish a whole sweep without touching topology or any widget/layout references.
@@ -194,14 +224,19 @@ function SCV_Graph.refreshMetrics(graph, stations)
 			node.logistics = available and st.logistics or nil
 			for ware, w in pairs(node.wares) do
 				local fresh = available and st.wares[ware]
-				if not sameRole(fresh, roles[ware]) then fresh = unknownWare(w) end
+				-- Export visibility may change while accounting remains readable.
+				if not fresh or SCV_Graph.metricOutput(fresh) ~= roles[ware].metricOutput then fresh = unknownWare(w) end
 				-- Preserve the displayed names, transport and role; only values change.
 				local name, transport, input, output = w.name, w.transport, w.input, w.output
+				local provenance = w.inputProvenance
+				local keepDemand = SCV_Graph.metricInput(w) and not fresh.consKnown
 				if fresh ~= w then
 					for key in pairs(w) do w[key] = nil end
 					for key, value in pairs(fresh) do w[key] = value end
 				end
 				w.name, w.transport, w.input, w.output = name, transport, input, output
+				w.inputProvenance = provenance
+				if keepDemand then w.metricInput = true end
 			end
 			SCV_Graph.updateStationMetrics(node)
 		end
@@ -247,9 +282,17 @@ function SCV_Graph.build(stations, options)
 		stationNodes[st.id] = node
 	end
 
-	local producersOf, consumersOf = {}, {}
+	local producersOf, consumersOf, metricProducersOf, metricConsumersOf = {}, {}, {}, {}
 	for _, st in ipairs(stations) do
 		for ware, w in pairs(st.wares or {}) do
+			if SCV_Graph.metricOutput(w) then
+				metricProducersOf[ware] = metricProducersOf[ware] or {}
+				metricProducersOf[ware][#metricProducersOf[ware] + 1] = st.id
+			end
+			if SCV_Graph.metricInput(w) then
+				metricConsumersOf[ware] = metricConsumersOf[ware] or {}
+				metricConsumersOf[ware][#metricConsumersOf[ware] + 1] = st.id
+			end
 			if w.output then
 				producersOf[ware] = producersOf[ware] or {}
 				producersOf[ware][#producersOf[ware] + 1] = st.id
@@ -266,10 +309,10 @@ function SCV_Graph.build(stations, options)
 	for _, st in ipairs(stations) do
 		local node = stationNodes[st.id]
 		for ware, w in pairs(st.wares or {}) do
-			if w.input and (not producersOf[ware]) then
+			if w.input and (not metricProducersOf[ware]) then
 				node.unmet[#node.unmet + 1] = ware
 			end
-			if w.output and (not consumersOf[ware]) then
+			if w.output and (not metricConsumersOf[ware]) then
 				node.unsold[#node.unsold + 1] = ware
 			end
 		end
@@ -278,11 +321,17 @@ function SCV_Graph.build(stations, options)
 	end
 
 	local edges = {}
-	for ware, producers in pairs(producersOf) do
+	local visibleWares = {}
+	for ware in pairs(metricProducersOf) do
+		if producersOf[ware] or consumersOf[ware] then visibleWares[#visibleWares + 1] = ware end
+	end
+	table.sort(visibleWares)
+	for _, ware in ipairs(visibleWares) do
+		local producers = producersOf[ware] or {}
 		local consumers = consumersOf[ware] or {}
 		do
 			local sample
-			for _, sid in ipairs(producers) do
+			for _, sid in ipairs(metricProducersOf[ware]) do
 				sample = stationNodes[sid].wares[ware]
 				if sample then break end
 			end
@@ -307,7 +356,8 @@ function SCV_Graph.build(stations, options)
 				edges[#edges + 1] = { from = stationNodes[sid], to = wnode, rank = rank, ware = ware }
 			end
 			for _, sid in ipairs(consumers) do
-				edges[#edges + 1] = { from = wnode, to = stationNodes[sid], rank = rank, ware = ware }
+				edges[#edges + 1] = { from = wnode, to = stationNodes[sid], rank = rank, ware = ware,
+					inputProvenance = stationNodes[sid].wares[ware].inputProvenance }
 			end
 		end
 	end
@@ -332,7 +382,7 @@ function SCV_Graph.build(stations, options)
 		if st.locked then graph.lockedCount = graph.lockedCount + 1 end
 	end
 	SCV_Graph.breakCycles(graph)
-	SCV_Graph.applyBudget(graph, options)
+	if not options.deferBudget then SCV_Graph.applyBudget(graph, options) end
 	SCV_Graph.materializePredecessors(graph)
 
 	graph.counts = { nodes = #graph.nodes, edges = #graph.edges }
@@ -353,65 +403,102 @@ end
 -- different edge depending on hash order. Breaking cycles here means we choose the edge,
 -- we can render the fact, and the log stays clean enough that a real error stands out.
 function SCV_Graph.breakCycles(graph)
-	local succ = {}
-	for _, e in ipairs(graph.edges) do
-		succ[e.from] = succ[e.from] or {}
-		local s = succ[e.from]
-		s[#s + 1] = e
+	local outgoing, incoming = {}, {}
+	for _, node in ipairs(graph.nodes) do outgoing[node], incoming[node] = {}, {} end
+	for _, edge in ipairs(graph.edges) do
+		table.insert(outgoing[edge.from], edge)
+		table.insert(incoming[edge.to], edge)
 	end
-
-	local WHITE, GREY, BLACK = 0, 1, 2
-	local colour = {}
-	for _, n in ipairs(graph.nodes) do
-		colour[n] = WHITE
-	end
-
-	local dropped = {}
-
-	-- Iterative DFS. Recursion would be fine at these sizes, but a stack overflow inside a
-	-- UI callback takes the whole menu down, and the iterative form costs little.
-	local function visit(root)
-		local stack = { { node = root, idx = 1 } }
-		colour[root] = GREY
-		while #stack > 0 do
-			local top  = stack[#stack]
-			local outs = succ[top.node]
-			if outs and (top.idx <= #outs) then
-				local e = outs[top.idx]
-				top.idx = top.idx + 1
-				if not e.dropped then
-					local c = colour[e.to]
-					if c == GREY then
-						e.dropped = true          -- back edge: closes a cycle
-						dropped[#dropped + 1] = e
-					elseif c == WHITE then
-						colour[e.to] = GREY
-						stack[#stack + 1] = { node = e.to, idx = 1 }
+	-- Iterative Kosaraju: recompute components after each individual cut.
+	local function components()
+		local visited, order, component, sizes = {}, {}, {}, {}
+		for _, root in ipairs(graph.nodes) do
+			if not visited[root] then
+				visited[root] = true
+				local stack = { { node = root, index = 1 } }
+				while #stack > 0 do
+					local top = stack[#stack]
+					local edge = outgoing[top.node][top.index]
+					if edge then
+						top.index = top.index + 1
+						if not edge.dropped and not visited[edge.to] then
+							visited[edge.to] = true
+							stack[#stack + 1] = { node = edge.to, index = 1 }
+						end
+					else
+						order[#order + 1], stack[#stack] = top.node, nil
 					end
 				end
-			else
-				colour[top.node] = BLACK
-				stack[#stack] = nil
 			end
 		end
-	end
-
-	for _, n in ipairs(graph.nodes) do
-		if colour[n] == WHITE then
-			visit(n)
-		end
-	end
-
-	if #dropped > 0 then
-		local kept = {}
-		for _, e in ipairs(graph.edges) do
-			if not e.dropped then
-				kept[#kept + 1] = e
+		for i = #order, 1, -1 do
+			local root = order[i]
+			if not component[root] then
+				local id, stack = #sizes + 1, { root }
+				component[root], sizes[id] = id, 0
+				while #stack > 0 do
+					local node = table.remove(stack)
+					sizes[id] = sizes[id] + 1
+					for _, edge in ipairs(incoming[node]) do
+						if not edge.dropped and not component[edge.from] then
+							component[edge.from] = id
+							stack[#stack + 1] = edge.from
+						end
+					end
+				end
 			end
 		end
-		graph.edges = kept
-		graph.droppedEdges = dropped
+		return component, sizes
 	end
+	local function less(a, b)
+		local ar, br = a.inputProvenance == "workforce" and 0 or 1, b.inputProvenance == "workforce" and 0 or 1
+		if ar ~= br then return ar < br end
+		if a.ware ~= b.ware then return a.ware < b.ware end
+		local ac = a.to.code and a.to.code ~= "" and a.to.code or tostring(a.to.scvid)
+		local bc = b.to.code and b.to.code ~= "" and b.to.code or tostring(b.to.scvid)
+		if ac ~= bc then return ac < bc end
+		return tostring(a.to.scvid) < tostring(b.to.scvid)
+	end
+	local removed = {}
+	while true do
+		local component, sizes = components()
+		local candidate
+		for _, edge in ipairs(graph.edges) do
+			if not edge.dropped and edge.from.scvkind == "ware" and edge.to.scvkind == "station"
+				and component[edge.from] == component[edge.to]
+				and (sizes[component[edge.from]] > 1 or edge.from == edge.to)
+				and (not candidate or less(edge, candidate)) then candidate = edge end
+		end
+		if not candidate then break end
+		candidate.dropped = true
+		removed[#removed + 1] = candidate
+	end
+	local function reaches(start, target)
+		local seen, stack = { [start] = true }, { start }
+		while #stack > 0 do
+			local node = table.remove(stack)
+			if node == target then return true end
+			for _, edge in ipairs(outgoing[node]) do
+				if not edge.dropped and not seen[edge.to] then
+					seen[edge.to] = true
+					stack[#stack + 1] = edge.to
+				end
+			end
+		end
+		return false
+	end
+	for i = #removed, 1, -1 do
+		local edge = removed[i]
+		if not reaches(edge.to, edge.from) then edge.dropped = nil end
+	end
+	local kept, dropped = {}, {}
+	for _, edge in ipairs(graph.edges) do
+		if not edge.dropped then kept[#kept + 1] = edge end
+	end
+	for _, edge in ipairs(removed) do
+		if edge.dropped then dropped[#dropped + 1] = edge end
+	end
+	graph.edges, graph.droppedEdges = kept, dropped
 end
 
 -- ---------------------------------------------------------------------------------
@@ -486,6 +573,119 @@ function SCV_Graph.applyBudget(graph, options)
 	end
 end
 
+-- The injected native layout mutates predecessor maps. Rebuild them from logical
+-- edges for EVERY trial; never feed its old junctions into another layout pass.
+function SCV_Graph.fitLayout(graph, layout, limits)
+	limits = limits or SCV_Graph.LIMITS
+	local sourceEdges, hidden, removed = graph.edges, {}, {}
+	local function endpoints()
+		local present = {}
+		for _, node in ipairs(graph.nodes) do present[node] = true end
+		return present
+	end
+	local function measure()
+		local present, edges = endpoints(), {}
+		for _, edge in ipairs(sourceEdges) do
+			if present[edge.from] and present[edge.to] and not hidden[edge] then edges[#edges + 1] = edge end
+		end
+		graph.edges = edges
+		SCV_Graph.materializePredecessors(graph)
+		local rows, cols, junctions = layout(graph.nodes)
+		local result = { rows = rows, cols = cols, junctions = junctions,
+			postNodes = #graph.nodes + #junctions, postEdges = 0, positions = {} }
+		for _, node in ipairs(graph.nodes) do
+			result.positions[node] = { row = node.row, col = node.col, predecessors = node.predecessors }
+			for _ in pairs(node.predecessors or {}) do result.postEdges = result.postEdges + 1 end
+		end
+		for _, node in ipairs(junctions) do
+			for _ in pairs(node.predecessors or {}) do result.postEdges = result.postEdges + 1 end
+		end
+		result.fits = cols <= limits.maxCols and result.postNodes <= limits.maxNodes and result.postEdges <= limits.maxEdges
+		return result
+	end
+	local result = measure()
+	local initial = { nodes = result.postNodes, edges = result.postEdges, cols = result.cols }
+	while not result.fits do
+		local present, candidates = endpoints(), {}
+		-- Follow only routing junctions backwards; stop at other real nodes.
+		local function segments(edge)
+			local stack = { { node = edge.to, distance = 0 } }
+			local seen = {}
+			while #stack > 0 do
+				local item = table.remove(stack)
+				if item.node == edge.from then return item.distance end
+				if not seen[item.node] and (item.node == edge.to or not present[item.node]) then
+					seen[item.node] = true
+					for pred in pairs(item.node.predecessors or {}) do
+						stack[#stack + 1] = { node = pred, distance = item.distance + 1 }
+					end
+				end
+			end
+			return 1
+		end
+		for _, edge in ipairs(graph.edges) do
+			if edge.from.scvkind == "ware" and edge.to.scvkind == "station" then
+				candidates[#candidates + 1] = { edge = edge, segments = segments(edge) }
+			end
+		end
+		table.sort(candidates, function (a, b)
+			local x, y = a.edge, b.edge
+			local xp, yp = x.inputProvenance == "workforce" and 0 or 1, y.inputProvenance == "workforce" and 0 or 1
+			if xp ~= yp then return xp < yp end
+			if a.segments ~= b.segments then return a.segments > b.segments end
+			if x.ware ~= y.ware then return x.ware < y.ware end
+			local xc = x.to.code and x.to.code ~= "" and x.to.code or tostring(x.to.scvid)
+			local yc = y.to.code and y.to.code ~= "" and y.to.code or tostring(y.to.scvid)
+			if xc ~= yc then return xc < yc end
+			return tostring(x.to.scvid) < tostring(y.to.scvid)
+		end)
+		if candidates[1] then
+			local edge = candidates[1].edge
+			hidden[edge] = true
+			removed[#removed + 1] = edge
+		else
+			-- Inputs alone could not fit. Reuse the existing common-ware/station
+			-- fallback, reducing at least one real node before measuring again.
+			local count = #graph.nodes
+			SCV_Graph.applyBudget(graph, { limits = { maxNodes = count - 1, maxEdges = #graph.edges } })
+			if #graph.nodes >= count then break end
+		end
+		result = measure()
+	end
+	local present = endpoints()
+	if result.fits then
+		for i = #removed, 1, -1 do
+			local edge = removed[i]
+			if present[edge.from] and present[edge.to] then
+				hidden[edge] = nil
+				local trial = measure()
+				if trial.fits then
+					result = trial
+				else
+					hidden[edge] = true
+				end
+			end
+		end
+	end
+	-- Restore the last accepted native result after rejected restoration trials.
+	-- Keeping its maps avoids an unnecessary (potentially different) final layout.
+	for node, position in pairs(result.positions) do
+		node.row, node.col, node.predecessors = position.row, position.col, position.predecessors
+	end
+	graph.edges, graph.budgetDroppedEdges = {}, {}
+	for _, edge in ipairs(sourceEdges) do
+		if present[edge.from] and present[edge.to] and not hidden[edge] then graph.edges[#graph.edges + 1] = edge end
+	end
+	for _, edge in ipairs(removed) do
+		if hidden[edge] and present[edge.from] and present[edge.to] then
+			graph.budgetDroppedEdges[#graph.budgetDroppedEdges + 1] = edge
+		end
+	end
+	graph.counts = { nodes = #graph.nodes, edges = #graph.edges }
+	result.initial, result.positions = initial, nil
+	return result
+end
+
 function SCV_Graph.removeNode(graph, node)
 	for i = #graph.nodes, 1, -1 do
 		if graph.nodes[i] == node then
@@ -511,8 +711,16 @@ function SCV_Graph.pruneOrphanWares(graph)
 				for _, e in ipairs(graph.edges) do
 					if e.to == n then hasIn = true end
 				end
+				-- Hidden local suppliers can back an input-only shared ware node.
+				local hiddenSupply, hasOut = false, false
+				for _, sid in ipairs(n.metricProducers or {}) do
+					local st = (graph.metricStations or graph.stationNodes)[sid]
+					local w = st and st.wares[n.scvware]
+					if w and not w.output then hiddenSupply = true end
+				end
+				for _, e in ipairs(graph.edges) do if e.from == n then hasOut = true end end
 				-- A producer-backed terminal output is valid without outgoing edges.
-				if not hasIn then
+				if not hasIn and not (hiddenSupply and hasOut) then
 					SCV_Graph.removeNode(graph, n)
 					graph.wareNodes[n.scvware] = nil
 					changed = true

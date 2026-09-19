@@ -316,8 +316,8 @@ menu.onCloseElement('back',5); assert(closed==1)
 
 -- The real graph renderer reuses cached layout and scan state, even with no links.
 SCV_Store.select(1)
-local cache={nodes={},wareNodes={}}
-menu.graph=cache; menu.graphLayout={rows=0,cols=0,junctions={}}
+local cache={nodes={},wareNodes={},collapsedWares={},droppedStations={}}
+menu.graph=cache; menu.graphLayout={rows=0,cols=0,junctions={},fits=true}
 local cursor={}; menu.refreshState=cursor
 local oldScan=SCV_Data.scanGroup
 SCV_Data.scanGroup=function() error('status resize must not scan') end
@@ -331,7 +331,7 @@ menu.renderFlowchart=function() end
 menu.drawChainLegend=function() end
 cache.wareNodes={ore={}}
 cache.collapsedWares={}; cache.droppedStations={}; cache.droppedEdges={}
-menu.graphLayout={rows=6,cols=5,junctions={}}
+menu.graphLayout={rows=6,cols=5,junctions={},fits=true}
 local chartFrame=Helper.createFrameHandle(menu,{layer=5})
 function chartFrame:addFlowchart(rows,cols,props)
     for _,key in ipairs({'firstVisibleRow','firstVisibleCol','selectedRow','selectedCol'}) do
