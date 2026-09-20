@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0 - 2026-09-20
+
+- Show docks (free / total), cargo drones, subordinates and idle count for each station (toggle for more compact display)
+- Better handling of workforce consumption (food, meds, ...)
+- Smarter resolution of cycles in the graph (e.g. food -> meds factory -> meds -> food factory -> food)
+- Improved tooltips, footnotes and layout
+- Fix not being able to rename a supply chain
+
 ## 0.3.0 - 2026-09-15
 
 - Ware nodes can be end nodes
