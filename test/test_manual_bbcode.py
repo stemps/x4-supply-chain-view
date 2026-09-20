@@ -43,7 +43,7 @@ class ConversionTests(unittest.TestCase):
     def test_current_manual(self):
         source = (Path(__file__).resolve().parents[1] / manual.MANUAL).read_text(encoding='utf-8')
         output = manual.convert(source)
-        for expected in ('[b][size=4]Usage[/size][/b]', 'Declaration of AI usage',
+        for expected in ('[b][size=5]Usage[/size][/b]', 'Declaration of AI usage',
                          '[url=https://www.nexusmods.com/x4foundations/mods/2181]',
                          '[url=https://github.com/stemps/x4-supply-chain-view]',
                          'back up your save file', '"Lasts"', '"Full in"',
