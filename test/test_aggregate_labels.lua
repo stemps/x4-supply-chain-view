@@ -63,13 +63,13 @@ for index, case in ipairs(cases) do
 		end
 		assert(not string.find(display.statusText, "%", 1, true))
 		local tooltip = display.properties.mouseOverText
-		assert(string.find(tooltip, "Balance unavailable: supply or demand is incomplete.", 1, true))
+		assert(string.find(tooltip, "Balance unavailable: incomplete rates.", 1, true))
 		assert(not string.find(tooltip, "Balance: ?", 1, true))
 		local side = case[2] and "Demand is incomplete." or (case[4] and "Supply is incomplete." or "Supply and demand are incomplete.")
-		assert(string.find(tooltip, side, 1, true))
+		assert(not string.find(tooltip, side, 1, true))
 		local legend = "* Known contributions only; net balance unavailable. Rates are per hour."
 		if case[5] ~= "? /h" then
-			assert(string.find(tooltip, legend, 1, true))
+			assert(not string.find(tooltip, legend, 1, true))
 			assert(plainStatus(display.statusText):sub(-1) == "*")
 		else
 			assert(not string.find(tooltip, legend, 1, true))
@@ -95,7 +95,7 @@ ReadText = function(_, id) return germanTexts[id] end
 local ware = graph.wareNodes.ore
 menu.decorateNodes(graph)
 assert(plainStatus(ware[1].statusText) == "+8.0k / -5.0k*")
-assert(string.find(ware[1].properties.mouseOverText, "* Nur bekannte Beiträge; Nettobilanz nicht verfügbar. Raten pro Stunde.", 1, true))
+assert(string.find(ware[1].properties.mouseOverText, "Bilanz nicht verfügbar: unvollständige Raten.", 1, true))
 ware.supplyKnown = true
 menu.decorateNodes(graph)
 assert(ware[1].statusText == "+8.0k/h*")

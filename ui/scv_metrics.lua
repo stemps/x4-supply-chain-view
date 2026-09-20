@@ -112,7 +112,9 @@ end
 -- establish positive capacity without a flag, but cannot establish known zero.
 function SCV_Metrics.effectiveCapacity(w)
 	local limit = tonumber(w.limit)
-	if SCV_Metrics.validRate(limit) and limit > 0 then return limit, true, false end
+	if SCV_Metrics.validRate(limit) and (limit > 0 or w.limitKnown == true) then
+		return limit, true, false
+	end
 	local capacity = tonumber(w.capacityUnits)
 	local known = SCV_Metrics.validRate(capacity) and w.capacityUnitsKnown ~= false
 		and (capacity > 0 or w.capacityUnitsKnown == true)
@@ -204,7 +206,7 @@ end
 -- actually contain. In the common case this reduces to "inputs gain, outputs lose".
 --
 -- The denominator is the station's storage allocation for the ware when the engine reports
--- one; otherwise the station's whole capacity for that transport type, which is an upper
+-- one (including a confirmed zero); otherwise the station's whole capacity for that transport type, which is an upper
 -- bound (it is shared between every ware of that type) and is flagged as an estimate.
 function SCV_Metrics.reservationBar(w)
 	local stock    = tonumber(w.stock) or 0

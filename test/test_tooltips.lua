@@ -31,7 +31,7 @@ local w = { name = "Energy Cells", input = true, stock = 948000, limit = 3000000
 local tips = entry(w)
 assert(tips.stock == "Energy Cells\n\nStock: 948.0k / 3.0M\nReserved incoming: 2.0M\nAfter reserved trades: 2.9M", tips.stock)
 assert(tips.amount == tips.stock)
-assert(tips.rate == "Energy Cells\n\nMaximum consumption: 3.2M/h\n  Scrap processing: 1.5M/h\n  Other production: 1.7M/h\n\nAt full operation:\nEnough inputs and output space.\nContinuous scrap supply.\nIncludes current workforce.", tips.rate)
+assert(tips.rate == "Energy Cells\n\nMaximum consumption: 3.2M/h\n  Scrap processing: 1.5M/h\n  Other production: 1.7M/h\n\nAt full operation:\nContinuous scrap supply.\nIncludes current workforce.", tips.rate)
 has(tips.coverage, "Lasts: 17m\nWhen full: 56m")
 has(tips.coverage, "Excludes deliveries, reservations and local production.")
 for _, text in ipairs({ tips.stock, tips.coverage }) do
@@ -105,15 +105,15 @@ menu.decorateNodes(graph)
 local node = graph.wareNodes.ore
 local overview = node[1].properties.mouseOverText
 has(overview, "Ore\n\nStock: 100 + ? / ~500\nIncomplete stock or capacity;")
-has(overview, "Maximum production: 50/h\nMaximum consumption: 80/h + ?\nIncomplete total:")
-has(overview, "Demand is incomplete.\nBalance unavailable: supply or demand is incomplete.")
+has(overview, "Maximum production: 50/h\nMaximum consumption: 80/h + ?\nBalance unavailable: incomplete rates.")
+has(overview, "Balance unavailable: incomplete rates.")
 lacks(overview, "Balance: ? /h")
 local totals = tableMock()
 menu.expandWare(nil, { properties = { height = 600 } }, totals, node)
 local stock = totals.rows[2][1].props.mouseOverText
 local production = totals.rows[3][2].props.mouseOverText
 local consumption = totals.rows[4][2].props.mouseOverText
-has(stock, "Each supplier/consumer station counted once.")
+lacks(stock, "Each supplier/consumer station counted once.")
 has(stock, "Reservations are not added to stock.")
 has(stock, "Incomplete stock or capacity;")
 lacks(stock, "Maximum production:")
@@ -140,4 +140,14 @@ for _, continuous in ipairs({true, false}) do
     lacks(totals.rows[2][1].props.mouseOverText, "Continuous scrap supply.")
     assert(totals.rows[4][2].text == "-80/h + ?")
 end
+-- A combined tooltip uses one balance explanation even when both sides are unknown.
+supplier.wares.ore.prodKnown = false
+consumer.wares.ore.stockKnown = true
+local partialGraph = SCV_Graph.build({ supplier, consumer })
+menu.decorateNodes(partialGraph)
+local partialTip = partialGraph.wareNodes.ore[1].properties.mouseOverText
+local _, partialNotes = string.gsub(partialTip, "Incomplete total:", "")
+assert(partialNotes == 0, partialTip)
+has(partialTip, "Balance unavailable: incomplete rates.")
+lacks(partialTip, "Known contributions only")
 print("PASS focused tooltip contracts")

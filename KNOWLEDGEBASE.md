@@ -234,10 +234,12 @@ counts warn at 50% and become critical at 75%; zero/unknown totals remain neutra
 
 Output fill time is `max(capacity-stock, 0)/prodMax`; time from empty uses
 `capacity/prodMax`. Coverage excludes reservations/deliveries/collections.
-Positive ware allocation takes precedence over approximate shared transport
-capacity. A zero allocation alone proves neither known zero nor unknown capacity:
-a complete unlocked cargo-capacity read can establish zero, while failed/locked
-reads cannot. Known-zero capacity contributes zero to totals; bars use a safe
+Known ware allocation, including zero, takes precedence over approximate shared
+transport capacity. A successful unlocked `GetWareProductionLimit` zero contributes
+zero assigned capacity; failed/locked reads cannot establish that zero. The user
+observed this for unfinished stations without production modules and mining hubs
+with leftover stock of formerly traded wares. Leftover stock remains in totals.
+Known-zero capacity contributes zero to totals; bars use a safe
 internal denominator of one without reporting that as capacity.
 
 Ware fill aggregates deduplicated producer/consumer stock and allocation, excluding
@@ -264,6 +266,12 @@ predecessors, node identity, ware-table identity and each displayed ware record.
 The structural baseline includes hidden/budgeted wares and is replaced only by
 an explicit rebuild. Planned modules affect classification, not operating
 capacity. Known zero and unknown values remain different states.
+
+Future-only consumers retain graph connections but report known zero current demand
+when role/module inventories are complete, no built recipe consumes the ware, the
+ware is not explicitly traded, and native consumption/workforce reads confirm zero.
+Failed reads, excluded rates and current build-queue demand remain unknown. Planned
+production completeness is unchanged.
 
 The cache and published graph share the same logistics record. A dock response
 before publication updates a pending record; a response after publication

@@ -28,7 +28,7 @@
     <t id="3011">Žádná plánovaná dodávka</t>
     <t id="3012">Skryté spotřební vazby kvůli cyklům: %s. Poptávka zůstává započítána.</t>
     <t id="3013">Nejhorší: %s</t>
-    <t id="3014">Bez varování před nedostatkem zásob nebo kapacity při plném provozu.</t>
+    <t id="3014">Aktuálně žádná varování</t>
     <t id="3015">Dodavatelé: %s, odběratelé: %s</t>
     <t id="3020">Tyto stanice již byly součástí řetězce.</t>
     <t id="3021">Počet přidaných stanic: %s.</t>
@@ -64,7 +64,6 @@
     <t id="3080">Celkem</t>
     <t id="3081">Při plném provozu: výroba %s, spotřeba %s, bilance %s. Zahrnuje spotřebu současné pracovní síly; nezahrnuje dodávky z těžby ani obchod.</t>
     <t id="3082">Neúplné zásoby nebo kapacita; ukazatel není dostupný.</t>
-    <t id="3083">Každá dodávající/odebírající stanice se počítá jednou.</t>
     <t id="3084">Výroba</t>
     <t id="3085">Spotřeba</t>
     <t id="3086">Součet dodávajících stanic.</t>
@@ -114,7 +113,6 @@
     <t id="3130">Pracovní síla: %s</t>
     <t id="3131">Celkem: %s</t>
     <t id="3140">Při plném provozu:</t>
-    <t id="3141">Dostatek vstupů a místa pro výstupy.</t>
     <t id="3142">Zahrnuje současnou pracovní sílu.</t>
     <t id="3143">Zahrnuje současné modifikátory výroby.</t>
     <t id="3144">Bez těžebních dodávek a obchodů.</t>
@@ -132,7 +130,7 @@
     <t id="3156">-%s</t>
     <t id="3157">%s%s</t>
     <t id="3159">%s / %s</t>
-    <t id="3160">Bilance není k dispozici: údaje o nabídce nebo poptávce jsou neúplné.</t>
+    <t id="3160">Bilance není k dispozici: neúplné údaje o rychlostech.</t>
     <t id="3161">Údaje o nabídce jsou neúplné.</t>
     <t id="3162">Údaje o poptávce jsou neúplné.</t>
     <t id="3163">Údaje o nabídce a poptávce jsou neúplné.</t>

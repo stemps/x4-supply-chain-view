@@ -28,7 +28,7 @@
     <t id="3011">Planlanmış teslimat yok</t>
     <t id="3012">Döngüleri önlemek için %s tüketim bağlantısı gizlendi; talep hesaba katılmaya devam eder.</t>
     <t id="3013">En kötü: %s</t>
-    <t id="3014">Tam kapasitede stok süresi veya depo kapasitesi uyarısı yok.</t>
+    <t id="3014">Şu anda uyarı yok</t>
     <t id="3015">%s tedarikçi, %s alıcı</t>
     <t id="3020">Bu istasyonlar zaten bu tedarik zincirindeydi.</t>
     <t id="3021">%s istasyon eklendi.</t>
@@ -64,7 +64,6 @@
     <t id="3080">Toplamlar</t>
     <t id="3081">Tam kapasitede: üretim %s, tüketim %s, denge %s. Mevcut iş gücü tüketimini içerir; madencilik teslimatlarını ve ticareti içermez.</t>
     <t id="3082">Stok veya kapasite verisi eksik; doluluk çubuğu kullanılamıyor.</t>
-    <t id="3083">Her tedarikçi/tüketici istasyon bir kez sayılır.</t>
     <t id="3084">Üretim</t>
     <t id="3085">Tüketim</t>
     <t id="3086">Tedarikçi istasyonların toplamı.</t>
@@ -114,7 +113,6 @@
     <t id="3130">İş gücü: %s</t>
     <t id="3131">Toplam: %s</t>
     <t id="3140">Tam kapasitede:</t>
-    <t id="3141">Yeterli girdi ve ürün depolama alanı.</t>
     <t id="3142">Mevcut iş gücü dahil.</t>
     <t id="3143">Mevcut üretim değiştiricileri dahil.</t>
     <t id="3144">Madencilik teslimatları ve ticaret hariç.</t>
@@ -132,7 +130,7 @@
     <t id="3156">-%s</t>
     <t id="3157">%s%s</t>
     <t id="3159">%s / %s</t>
-    <t id="3160">Denge hesaplanamıyor: arz veya talep verileri eksik.</t>
+    <t id="3160">Denge hesaplanamıyor: hız verileri eksik.</t>
     <t id="3161">Arz verileri eksik.</t>
     <t id="3162">Talep verileri eksik.</t>
     <t id="3163">Arz ve talep verileri eksik.</t>

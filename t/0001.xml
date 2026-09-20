@@ -36,7 +36,7 @@
     <t id="3011">No delivery scheduled</t>
     <t id="3012">%s consumption links hidden to avoid cycles; demand remains included.</t>
     <t id="3013">Worst: %s</t>
-    <t id="3014">No stock coverage or capacity warning at full operation.</t>
+    <t id="3014">No current warnings</t>
     <t id="3015">%s supplying, %s taking</t>
     <t id="3020">Those stations were already in this supply chain.</t>
     <t id="3021">Added %s %s.</t>
@@ -80,7 +80,6 @@
     <t id="3080">Totals</t>
     <t id="3081">At full operation: production %s, consumption %s, balance %s. Includes current workforce consumption; excludes mining deliveries and trades.</t>
     <t id="3082">Incomplete stock or capacity; fill bar unavailable.</t>
-    <t id="3083">Each supplier/consumer station counted once.</t>
     <t id="3084">Production</t>
     <t id="3085">Consumption</t>
     <t id="3086">Supplier stations combined.</t>
@@ -136,7 +135,6 @@
     <t id="5003">%s/h</t>
     <t id="2020">Delete supply chain "%s"? The stations themselves will not be affected.</t>
     <t id="3140">At full operation:</t>
-    <t id="3141">Enough inputs and output space.</t>
     <t id="3142">Includes current workforce.</t>
     <t id="3143">Includes current production modifiers.</t>
     <t id="3144">Excludes mining deliveries and trades.</t>
@@ -154,7 +152,7 @@
     <t id="3156">-%s</t>
     <t id="3157">%s%s</t>
     <t id="3159">%s / %s</t>
-    <t id="3160">Balance unavailable: supply or demand is incomplete.</t>
+    <t id="3160">Balance unavailable: incomplete rates.</t>
     <t id="3161">Supply is incomplete.</t>
     <t id="3162">Demand is incomplete.</t>
     <t id="3163">Supply and demand are incomplete.</t>

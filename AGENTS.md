@@ -25,6 +25,8 @@ instructions.
 - Make sure to keep all language translation files in sync with the English
   version, in which the mod is developed. Auto-translate all new and changed
   keys into all languages.
+- after each turn, inform the user whether a full restart is required, or if a
+  `/reload` command suffices.
 
 ## Validation
 

@@ -681,8 +681,12 @@ function SCV_Reader.readStation(st, deps)
 			local workforce = safe(nil, Helper.getWorkforceConsumption, id64, ware)
 			local prodKnown = inventoryKnown and not excludedProd[ware] and not processing.excludedProd[ware]
 				and (ratesOut[ware] ~= nil or processing.outputs[ware] == true) and SCV_Graph.validRate(production)
+			-- Planned connections have no current demand when the complete inventory
+			-- contains no built consumer and the native reads confirm zero consumption.
+			local futureZeroDemand = rolesKnown and futureResources[ware] and not recipes.inputs[ware]
+				and not tradewares[ware] and tonumber(consumption) == 0 and tonumber(workforce) == 0
 			local consKnown = inventoryKnown and not excludedCons[ware] and not processing.excludedCons[ware] and not buildwares[ware]
-				and (ratesIn[ware] ~= nil or processing.inputs[ware] or workforceReserve.wares[ware] or (tonumber(workforce) or 0) > 0)
+				and (futureZeroDemand or ratesIn[ware] ~= nil or processing.inputs[ware] or workforceReserve.wares[ware] or (tonumber(workforce) or 0) > 0)
 				and SCV_Graph.validRate(consumption) and SCV_Graph.validRate(workforce)
 			local prodMax = prodKnown and ((ratesOut[ware] ~= nil and tonumber(production) or 0)
 				+ (processing.production[ware] or 0)) or 0
@@ -710,13 +714,12 @@ function SCV_Reader.readStation(st, deps)
 			-- The GLOBAL GetWareProductionLimit, not C.GetContainerStockLimit, which often
 			-- returns 0 (KNOWLEDGEBASE, field-tested).
 			--
-			-- 0 here means UNKNOWN, not "no capacity", and it is common: a pure trade ware
-			-- such as a mining hub's ore has no production limit at all. The previous version
-			-- papered over that with limit = max(limit, stock), which had two bad effects -
-			-- the fill bar read 100% forever, and hoursToFull saw headroom == 0 and declared
-			-- the ware CRITICALLY BACKED UP the moment anything produced it. Keep the raw
-			-- value and let consumers of this record decide what an unknown limit means.
-			local limit = tonumber(safe(0, GetWareProductionLimit, id64, ware)) or 0
+			-- A successful zero is no assigned storage, including unfinished stations and
+			-- former trade wares with leftover stock. Do not replace it with shared capacity.
+			-- Failed or locked reads remain unknown rather than becoming confirmed zero.
+			local assignedLimit = tonumber(safe(nil, GetWareProductionLimit, id64, ware))
+			local limitKnown = unlockedCapacity and SCV_Graph.validRate(assignedLimit)
+			local limit = limitKnown and assignedLimit or 0
 			local stock = tonumber((type(cargo) == "table") and cargo[ware] or 0) or 0
 			local stockKnown = unlockedAmounts
 			if feedstock then
@@ -746,8 +749,8 @@ function SCV_Reader.readStation(st, deps)
 				name        = tostring(wname),
 				transport   = tostring(transport),
 				stock       = stock,
-				limit       = limit,                       -- 0 == unknown
-				limitKnown  = (limit > 0),
+				limit       = limit,
+				limitKnown  = limitKnown,
 				production  = prodMax,
 				consumption = consMax,
 				output      = output,

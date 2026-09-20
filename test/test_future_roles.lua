@@ -91,11 +91,20 @@ return function()
 	assert(queued.wares.ore and queued.wares.ore.input and queued.wares.gas.input)
 	assert(not queued.wares.metals and queued.wares.widgets.output)
 	assert(not queued.wares.widgets.prodKnown and queued.wares.widgets.prodMax == 0)
-	assert(not queued.wares.gas.consKnown and queued.wares.gas.consMax == 0)
+	assert(queued.wares.gas.consKnown and queued.wares.gas.consMax == 0)
+	local readConsumption = C.GetContainerWareConsumption
+	C.GetContainerWareConsumption = function() return nil end
+	assert(not read().wares.gas.consKnown, "failed rate read must not become known zero")
+	C.GetContainerWareConsumption = readConsumption
+	local readModules = C.GetStationModules
+	C.GetStationModules = function() return 0 end
+	assert(not read().wares.gas.consKnown, "incomplete module inventory must remain unknown")
+	C.GetStationModules = readModules
 	assert(queued.wares.gas.stock == 7 and queued.wares.gas.capacityUnits == 250)
 	local supplied = SCV_Graph.build({queued,
 		{id="supplier",name="supplier",wares={gas={output=true,prodMax=100,prodKnown=true,stock=20}}}})
 	assert(#supplied.wareNodes.gas.consumers == 1 and supplied.wareNodes.gas.demandCap == 0)
+	assert(supplied.wareNodes.gas.demandKnown and supplied.wareNodes.gas.netKnown)
 	assert(#supplied.wareNodes.widgets.producers == 1 and #supplied.wareNodes.widgets.consumers == 0,
 		"future products create terminal output nodes")
 	assert(supplied.wareNodes.widgets.supplyCap == 0 and not supplied.wareNodes.widgets.supplyKnown)
@@ -112,7 +121,7 @@ return function()
 	local st = read()
 	assert(st.wares.metals == nil, "planned consumers suppress terminal intermediates")
 	assert(st.wares.widgets.output, "planned producers create terminal outputs")
-	assert(st.wares.gas.input and not st.wares.gas.consKnown and st.wares.gas.consMax == 0)
+	assert(st.wares.gas.input and st.wares.gas.consKnown and st.wares.gas.consMax == 0)
 	assert(st.wares.gas.stock == 7, "future inputs use actual cargo")
 	for _, key in ipairs({"stock", "limit", "capacityUnits", "consMax", "consKnown"}) do
 		assert(st.wares.ore[key] == baseline.wares.ore[key], "existing metric changed: " .. key)
@@ -159,12 +168,12 @@ return function()
 	st = read()
 	assert(st.wares.rawscrap.input and st.wares.energycells.input and st.wares.scrapmetal.output)
 	assert(st.wares.scrapmetal.prodMax == 0 and not st.wares.scrapmetal.prodKnown)
-	assert(not st.wares.rawscrap.consKnown and st.wares.rawscrap.consMax == 0)
+	assert(st.wares.rawscrap.consKnown and st.wares.rawscrap.consMax == 0)
 	assert(st.wares.metals.stock == 40 and st.wares.metals.prodMax == 60)
 	assert(st.wares.metals.capacityUnits == 250 and st.wares.metals.capacityUnitsKnown)
 	plans = {plan("yard")}
 	st = read()
-	assert(not st.wares.metals and st.wares.shipbits.input and not st.wares.shipbits.consKnown)
+	assert(not st.wares.metals and st.wares.shipbits.input and st.wares.shipbits.consKnown)
 	assert(not st.wares.energycells, "station construction materials are not operating inputs")
 
 	-- A future producer supplying an existing input makes that input internal too.
@@ -179,6 +188,7 @@ return function()
 	plans = {plan("consumer", "completed")}
 	st = read()
 	assert(st.wares.widgets.output and st.wares.gas.input)
+	assert(st.wares.gas.consKnown, "completed consumers retain native rate accounting")
 	modules[2] = nil
 	products, inputs = {"metals"}, {"ore"}
 

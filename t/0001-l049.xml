@@ -28,7 +28,7 @@
     <t id="3011">Keine Lieferung geplant</t>
     <t id="3012">%s Verbrauchsverbindungen zur Vermeidung von Kreisläufen ausgeblendet; der Bedarf bleibt eingerechnet.</t>
     <t id="3013">Schlechtester Wert: %s</t>
-    <t id="3014">Keine Warnung zu Vorratsreichweite oder Lagerkapazität bei Vollbetrieb.</t>
+    <t id="3014">Aktuell keine Warnungen</t>
     <t id="3015">%s Lieferanten, %s Abnehmer</t>
     <t id="3020">Diese Stationen waren bereits in dieser Lieferkette.</t>
     <t id="3021">%s Stationen hinzugefügt.</t>
@@ -64,7 +64,6 @@
     <t id="3080">Gesamt</t>
     <t id="3081">Bei Vollbetrieb: Produktion %s, Verbrauch %s, Bilanz %s. Enthält den Verbrauch der aktuellen Belegschaft; ohne Bergbaulieferungen und Handel.</t>
     <t id="3082">Vorrat oder Kapazität unvollständig; kein Füllbalken verfügbar.</t>
-    <t id="3083">Jede Liefer- und Verbrauchsstation zählt einmal.</t>
     <t id="3084">Produktion</t>
     <t id="3085">Verbrauch</t>
     <t id="3086">Summe der Lieferstationen.</t>
@@ -114,7 +113,6 @@
     <t id="3130">Belegschaft: %s</t>
     <t id="3131">Gesamt: %s</t>
     <t id="3140">Bei Vollbetrieb:</t>
-    <t id="3141">Genügend Eingangswaren und Ausgangslagerplatz.</t>
     <t id="3142">Enthält die aktuelle Belegschaft.</t>
     <t id="3143">Enthält aktuelle Produktionsmodifikatoren.</t>
     <t id="3144">Ohne Bergbaulieferungen und Handel.</t>
@@ -132,7 +130,7 @@
     <t id="3156">-%s</t>
     <t id="3157">%s%s</t>
     <t id="3159">%s / %s</t>
-    <t id="3160">Bilanz nicht verfügbar: Angebot oder Bedarf ist unvollständig erfasst.</t>
+    <t id="3160">Bilanz nicht verfügbar: unvollständige Raten.</t>
     <t id="3161">Angebot unvollständig erfasst.</t>
     <t id="3162">Bedarf unvollständig erfasst.</t>
     <t id="3163">Angebot und Bedarf unvollständig erfasst.</t>

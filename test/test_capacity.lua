@@ -31,7 +31,7 @@ local function unknown()
     assert(not SCV_Graph.reservationBar(w).capacityKnown)
 end
 local w = readWare()
-assert(w.capacityUnitsKnown and w.capacityUnits == 0 and not w.limitKnown)
+assert(w.capacityUnitsKnown and w.capacityUnits == 0 and w.limitKnown)
 entries = {{transport='container', capacity=100}}
 assert(readWare().capacityUnitsKnown and readWare().capacityUnits == 0)
 entries = {{transport='liquid', capacity=0}}
@@ -39,10 +39,18 @@ assert(readWare().capacityUnitsKnown and readWare().capacityUnits == 0)
 entries = {{transport='container solid liquid liquid', capacity=400}, {transport='liquid', capacity=200}}
 w = readWare()
 assert(w.capacityUnitsKnown and w.capacityUnits == 300, 'universal and dedicated capacity counted once')
-assert(SCV_Graph.reservationBar(w).estimated)
+local assigned = SCV_Graph.reservationBar(w)
+assert(assigned.capacityKnown and assigned.capacity == 0 and not assigned.estimated)
+-- Leftover stock remains counted without inventing assigned storage for it.
+w.stock, w.stockKnown = 75, true
+local totals = SCV_Graph.storageTotals({hub={wares={energycells=w}}}, 'energycells', {'hub'}, {})
+assert(totals.stock == 75 and totals.capacity == 0 and totals.capacityKnown and not totals.estimated)
+-- An unfinished station with no stock also contributes zero assigned storage.
+w.stock = 0
+assert(SCV_Graph.reservationBar(w).capacity == 0)
 GetWareProductionLimit = function() return 50 end
 assert(SCV_Graph.reservationBar(readWare()).capacity == 50, 'allocation takes precedence')
-GetWareProductionLimit = function() return 0 end
+GetWareProductionLimit = function() return nil end
 failCount = true; unknown(); failCount = false
 failRead = true; unknown(); failRead = false
 shortRead = true; unknown(); shortRead = false

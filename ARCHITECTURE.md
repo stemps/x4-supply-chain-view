@@ -29,6 +29,13 @@ menu, its configuration and presentation instance. The menu remains the
 canonical owner of screen state and engine-visible callbacks; component methods
 use that facade for cross-component calls so overrides remain live.
 
+The reader preserves whether a ware allocation read succeeded in `limitKnown`.
+Metrics treat a confirmed zero allocation as zero assigned capacity, retaining
+stock independently and using shared-capacity estimates only for unknown allocations.
+The reader also distinguishes future-only input roles from unavailable demand:
+complete inventories and zero native consumption establish known zero demand while
+the graph retains the planned connection.
+
 ## Component integration
 
 UI components are constructed before the menu is registered. Thin menu wrappers

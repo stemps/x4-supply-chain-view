@@ -28,7 +28,7 @@
     <t id="3011">Brak zaplanowanej dostawy</t>
     <t id="3012">Ukryte połączenia zużycia w celu uniknięcia cykli: %s. Popyt pozostaje uwzględniony.</t>
     <t id="3013">Najgorszy wynik: %s</t>
-    <t id="3014">Brak ostrzeżeń o zapasach lub pojemności przy pełnej pracy.</t>
+    <t id="3014">Obecnie brak ostrzeżeń</t>
     <t id="3015">Dostawcy: %s, odbiorcy: %s</t>
     <t id="3020">Te stacje już należały do tego łańcucha dostaw.</t>
     <t id="3021">Dodano stacje: %s.</t>
@@ -64,7 +64,6 @@
     <t id="3080">Łącznie</t>
     <t id="3081">Przy pełnej pracy: produkcja %s, zużycie %s, bilans %s. Uwzględnia zużycie obecnej siły roboczej; pomija dostawy z wydobycia i handel.</t>
     <t id="3082">Niepełne dane zapasu lub pojemności; pasek niedostępny.</t>
-    <t id="3083">Każda stacja dostawcy/odbiorcy liczona raz.</t>
     <t id="3084">Produkcja</t>
     <t id="3085">Zużycie</t>
     <t id="3086">Suma stacji dostawców.</t>
@@ -114,7 +113,6 @@
     <t id="3130">Siła robocza: %s</t>
     <t id="3131">Łącznie: %s</t>
     <t id="3140">Przy pełnej pracy:</t>
-    <t id="3141">Wystarczające surowce i miejsce na produkty.</t>
     <t id="3142">Uwzględnia obecną siłę roboczą.</t>
     <t id="3143">Uwzględnia obecne modyfikatory produkcji.</t>
     <t id="3144">Bez dostaw górniczych i handlu.</t>
@@ -132,7 +130,7 @@
     <t id="3156">-%s</t>
     <t id="3157">%s%s</t>
     <t id="3159">%s / %s</t>
-    <t id="3160">Bilans niedostępny: dane podaży lub popytu są niepełne.</t>
+    <t id="3160">Bilans niedostępny: niepełne dane o tempie produkcji lub zużycia.</t>
     <t id="3161">Dane podaży są niepełne.</t>
     <t id="3162">Dane popytu są niepełne.</t>
     <t id="3163">Dane podaży i popytu są niepełne.</t>

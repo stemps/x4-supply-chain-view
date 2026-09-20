@@ -79,17 +79,13 @@ function component.decorateNodes(graph)
 			local storage = node.storage
 			local known = storage.stockKnown and storage.capacityKnown and storage.capacity > 0
 			local lines = { aggregateStockTooltip(node.name, storage), "",
-				aggregateRateLine(node.supplyCap, node.supplyKnown, false),
-				aggregateRateLine(node.demandCap, node.demandKnown, true),
+				aggregateRateLine(node.supplyCap, node.supplyKnown, false, true),
+				aggregateRateLine(node.demandCap, node.demandKnown, true, true),
 			}
 			if node.netKnown then
 				lines[#lines + 1] = T(3151, formatSigned(node.netRate))
 			else
-				lines[#lines + 1] = T(not node.supplyKnown and (not node.demandKnown and 3163 or 3161) or 3162)
 				lines[#lines + 1] = T(3160)
-				if node.supplyKnown or node.demandKnown or node.supplyCap > 0 or node.demandCap > 0 then
-					lines[#lines + 1] = presentation.footnoteLine("partial", true)
-				end
 			end
 			lines[#lines + 1] = ""
 			lines[#lines + 1] = rateAssumptions(true, hasContinuousDemand(graph, node))

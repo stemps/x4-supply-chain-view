@@ -105,10 +105,10 @@ for _, case in ipairs({ { 40, "warning", "icon_warning" }, { 10, "critical", "ic
 	assert(nativeStation.status and nodeCreates == createdBefore)
 end
 for _, case in ipairs({
-	{ 8000, true, 5000, false, "+8.0k/h*", "Demand is incomplete." },
-	{ 8000, false, 5000, false, "+8.0k / -5.0k*", "Supply and demand are incomplete." },
-	{ 0, false, 0, false, "? /h", "Supply and demand are incomplete." },
-	{ 0, false, 12000, true, "-12.0k/h*", "Supply is incomplete." },
+	{ 8000, true, 5000, false, "+8.0k/h*", "Balance unavailable: incomplete rates." },
+	{ 8000, false, 5000, false, "+8.0k / -5.0k*", "Balance unavailable: incomplete rates." },
+	{ 0, false, 0, false, "? /h", "Balance unavailable: incomplete rates." },
+	{ 0, false, 12000, true, "-12.0k/h*", "Balance unavailable: incomplete rates." },
 	{ 14400, true, 12000, true, "+2.4k/h (+20%)", "Balance: +2.4k/h" },
 }) do
 	local nextSupplier, nextConsumer = copy(supplier), copy(consumer)
@@ -130,11 +130,7 @@ for _, case in ipairs({
 		assert(not nativeWare.status:find("\27", 1, true), "stale inline colours")
 	end
 	assert(string.find(nativeWare.tooltip, case[6], 1, true))
-	if case[5]:sub(-1) == "*" then
-		assert(string.find(nativeWare.tooltip, "* Known contributions only; net balance unavailable. Rates are per hour.", 1, true))
-	else
-		assert(not string.find(nativeWare.tooltip, "* Known contributions", 1, true))
-	end
+	assert(not string.find(nativeWare.tooltip, "* Known contributions", 1, true))
 	assert(nativeWare.value == 110 and nativeWare.max == 2000)
 	assert(nodeCreates == createdBefore and ware[1].node == nativeWare)
 	assert(menu.expandedNode == nativeWare and panel.scroll == 73 and #popup.rows == rows)

@@ -28,7 +28,7 @@
     <t id="3011">Sin entrega programada</t>
     <t id="3012">%s conexiones de consumo ocultas para evitar ciclos; la demanda sigue incluida.</t>
     <t id="3013">Peor: %s</t>
-    <t id="3014">Sin alertas de autonomía o capacidad a pleno rendimiento.</t>
+    <t id="3014">No hay alertas actualmente</t>
     <t id="3015">%s proveedores, %s receptores</t>
     <t id="3020">Estas estaciones ya estaban en esta cadena de suministro.</t>
     <t id="3021">Se han añadido %s estaciones.</t>
@@ -64,7 +64,6 @@
     <t id="3080">Totales</t>
     <t id="3081">A pleno rendimiento: producción %s, consumo %s, balance %s. Incluye el consumo de la plantilla actual; excluye entregas mineras e intercambios.</t>
     <t id="3082">Existencias o capacidad incompletas; barra no disponible.</t>
-    <t id="3083">Cada estación proveedora/consumidora se cuenta una vez.</t>
     <t id="3084">Producción</t>
     <t id="3085">Consumo</t>
     <t id="3086">Total de estaciones proveedoras.</t>
@@ -114,7 +113,6 @@
     <t id="3130">Mano de obra: %s</t>
     <t id="3131">Total: %s</t>
     <t id="3140">A pleno funcionamiento:</t>
-    <t id="3141">Insumos y espacio de salida suficientes.</t>
     <t id="3142">Incluye la mano de obra actual.</t>
     <t id="3143">Incluye los modificadores de producción actuales.</t>
     <t id="3144">Excluye entregas mineras y comercio.</t>
@@ -132,7 +130,7 @@
     <t id="3156">-%s</t>
     <t id="3157">%s%s</t>
     <t id="3159">%s / %s</t>
-    <t id="3160">Balance no disponible: la oferta o la demanda están incompletas.</t>
+    <t id="3160">Balance no disponible: tasas incompletas.</t>
     <t id="3161">Oferta incompleta.</t>
     <t id="3162">Demanda incompleta.</t>
     <t id="3163">Oferta y demanda incompletas.</t>

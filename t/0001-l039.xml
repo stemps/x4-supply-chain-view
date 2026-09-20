@@ -28,7 +28,7 @@
     <t id="3011">Nessuna consegna pianificata</t>
     <t id="3012">%s collegamenti di consumo nascosti per evitare cicli; la domanda resta inclusa.</t>
     <t id="3013">Peggiore: %s</t>
-    <t id="3014">Nessun avviso su autonomia delle scorte o capacità a pieno regime.</t>
+    <t id="3014">Nessun avviso al momento</t>
     <t id="3015">%s fornitori, %s destinatari</t>
     <t id="3020">Queste stazioni erano già nella catena.</t>
     <t id="3021">Aggiunte %s stazioni.</t>
@@ -64,7 +64,6 @@
     <t id="3080">Totali</t>
     <t id="3081">A pieno regime: produzione %s, consumo %s, bilancio %s. Include il consumo della forza lavoro attuale; esclude consegne minerarie e scambi.</t>
     <t id="3082">Scorte o capacità incomplete; barra non disponibile.</t>
-    <t id="3083">Ogni stazione fornitrice/consumatrice conta una volta.</t>
     <t id="3084">Produzione</t>
     <t id="3085">Consumi</t>
     <t id="3086">Totale delle stazioni fornitrici.</t>
@@ -114,7 +113,6 @@
     <t id="3130">Forza lavoro: %s</t>
     <t id="3131">Totale: %s</t>
     <t id="3140">A pieno regime:</t>
-    <t id="3141">Risorse e spazio per i prodotti sufficienti.</t>
     <t id="3142">Include la forza lavoro attuale.</t>
     <t id="3143">Include i modificatori di produzione attuali.</t>
     <t id="3144">Esclude consegne minerarie e scambi.</t>
@@ -132,7 +130,7 @@
     <t id="3156">-%s</t>
     <t id="3157">%s%s</t>
     <t id="3159">%s / %s</t>
-    <t id="3160">Saldo non disponibile: i dati di offerta o domanda sono incompleti.</t>
+    <t id="3160">Bilancio non disponibile: dati sui tassi incompleti.</t>
     <t id="3161">Dati di offerta incompleti.</t>
     <t id="3162">Dati di domanda incompleti.</t>
     <t id="3163">Dati di offerta e domanda incompleti.</t>

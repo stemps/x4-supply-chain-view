@@ -28,7 +28,7 @@
     <t id="3011">Aucune livraison prévue</t>
     <t id="3012">%s liaisons de consommation masquées pour éviter les cycles ; la demande reste incluse.</t>
     <t id="3013">Pire : %s</t>
-    <t id="3014">Aucune alerte d'autonomie des stocks ou de capacité à plein régime.</t>
+    <t id="3014">Aucune alerte actuellement</t>
     <t id="3015">%s fournisseurs, %s preneurs</t>
     <t id="3020">Ces stations étaient déjà dans cette chaîne logistique.</t>
     <t id="3021">%s station\(s\) ajoutée\(s\).</t>
@@ -64,7 +64,6 @@
     <t id="3080">Totaux</t>
     <t id="3081">À plein régime : production %s, consommation %s, bilan %s. Comprend la consommation de la main-d'œuvre actuelle ; exclut les livraisons minières et les échanges.</t>
     <t id="3082">Stock ou capacité incomplets ; jauge indisponible.</t>
-    <t id="3083">Chaque station fournisseur/consommateur compte une fois.</t>
     <t id="3084">Production</t>
     <t id="3085">Consommation</t>
     <t id="3086">Total des stations fournisseurs.</t>
@@ -114,7 +113,6 @@
     <t id="3130">Main-d'œuvre : %s</t>
     <t id="3131">Total : %s</t>
     <t id="3140">À plein régime :</t>
-    <t id="3141">Intrants et espace de sortie suffisants.</t>
     <t id="3142">Inclut la main-d'œuvre actuelle.</t>
     <t id="3143">Inclut les modificateurs de production actuels.</t>
     <t id="3144">Hors livraisons minières et échanges.</t>
@@ -132,7 +130,7 @@
     <t id="3156">-%s</t>
     <t id="3157">%s%s</t>
     <t id="3159">%s / %s</t>
-    <t id="3160">Bilan indisponible : les données d’offre ou de demande sont incomplètes.</t>
+    <t id="3160">Bilan indisponible : débits incomplets.</t>
     <t id="3161">Données d’offre incomplètes.</t>
     <t id="3162">Données de demande incomplètes.</t>
     <t id="3163">Données d’offre et de demande incomplètes.</t>

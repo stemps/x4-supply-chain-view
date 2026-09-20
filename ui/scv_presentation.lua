@@ -216,7 +216,7 @@ function SCV_Presentation.new(config, dispatch)
 	-- Native mouseovers use explicit newlines. Keep qualifications beside the metric
 	-- they qualify, with operating assumptions in a separate final block.
 	local function rateAssumptions(isInput, continuous)
-		local lines = { T(3140), T(3141) }
+		local lines = { T(3140) }
 		if continuous then lines[#lines + 1] = T(3127) end
 		lines[#lines + 1] = T(isInput and 3142 or 3143)
 		return table.concat(lines, "\n")
@@ -254,14 +254,13 @@ function SCV_Presentation.new(config, dispatch)
 			lines[#lines + 1] = T(3146)
 		end
 		lines[#lines + 1] = ""
-		lines[#lines + 1] = T(3083)
 		lines[#lines + 1] = T(3147)
 		return table.concat(lines, "\n")
 	end
 
-	local function aggregateRateLine(value, known, isInput)
+	local function aggregateRateLine(value, known, isInput, omitIncompleteNote)
 		local line = T(isInput and 3035 or 3036, formatPartial(value, known, true))
-		if not known then line = line .. "\n" .. T(3088) end
+		if not known and not omitIncompleteNote then line = line .. "\n" .. T(3088) end
 		return line
 	end
 
