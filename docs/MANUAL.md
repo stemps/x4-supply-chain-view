@@ -61,7 +61,7 @@ because it is unused in the game's default presets.
 The shortcut opens the view from the map, while piloting, or while walking,
 retaining the selected chain.
 
-## Troubleshooting
+## Q&A
 
 **Q: Why are some stations or ware connections not displayed?** A: The game
 engine's graph component has a hard limit at 100 nodes and 150 connections. If
