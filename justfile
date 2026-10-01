@@ -35,9 +35,9 @@ build-zip:
 publish-nexus tag *args:
     uv run --with markdown-it-py==4.0.0 python scripts/release.py publish-nexus "{{tag}}" {{args}}
 
-# Regenerate and open a released manual without publishing anything.
-nexus-description tag:
-    uv run --with markdown-it-py==4.0.0 python scripts/manual_bbcode.py "{{tag}}"
+# Render and open the manual at a release tag, branch or commit without publishing anything.
+nexus-description ref:
+    uv run --with markdown-it-py==4.0.0 python scripts/manual_bbcode.py "{{ref}}"
 
 # Exercise releases using temporary repositories and local remotes only.
 test-release:

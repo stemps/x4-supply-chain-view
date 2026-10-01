@@ -60,6 +60,11 @@ class ConversionTests(unittest.TestCase):
             self.assertEqual(path.read_text(encoding='utf-8'), '[b]Released[/b]\n')
             launch.assert_called_once_with(['notepad.exe', str(path)])
 
+    def test_handoff_rejects_unsafe_folder_names(self):
+        for label in ('../escape', 'a/b', '', '.hidden'):
+            with self.subTest(label=label), self.assertRaises(ReleaseError):
+                manual.handoff('.', label, 'abc123')
+
     def test_editor_failure_keeps_output(self):
         with tempfile.TemporaryDirectory() as directory:
             with patch.object(manual, 'from_commit', return_value='Ready\n'):
@@ -68,6 +73,45 @@ class ConversionTests(unittest.TestCase):
                         manual.handoff(directory, 'v1.2.3', 'abc123')
             self.assertEqual((Path(directory) / 'dist/nexus/v1.2.3/description.bbcode.txt')
                              .read_text(encoding='utf-8'), 'Ready\n')
+
+
+class ResolveTests(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.root = Path(self.directory.name)
+        self.addCleanup(self.directory.cleanup)
+        git = lambda *args: release_archive.git_bytes(self.root, *args).decode().strip()
+        git('init', '-q', '-b', 'main')
+        git('config', 'user.email', 'test@example.com')
+        git('config', 'user.name', 'Test')
+        (self.root / 'docs').mkdir()
+        self.commits = []
+        for text in ('# First\n', '# Second\n'):
+            (self.root / manual.MANUAL).write_text(text, encoding='utf-8')
+            git('add', manual.MANUAL)
+            git('commit', '-q', '-m', text)
+            self.commits.append(git('rev-parse', 'HEAD'))
+        git('tag', 'v1.0.0', self.commits[0])
+        git('branch', 'feature/new-docs', self.commits[1])
+
+    def test_tag_keeps_release_folder(self):
+        self.assertEqual(manual.resolve(self.root, 'v1.0.0'), (self.commits[0], 'v1.0.0'))
+
+    def test_branch_and_commit_folders_pin_rendered_commit(self):
+        commit = self.commits[1]
+        self.assertEqual(manual.resolve(self.root, 'feature/new-docs'),
+                         (commit, f'feature_new-docs-{commit[:10]}'))
+        self.assertEqual(manual.resolve(self.root, 'HEAD~1'),
+                         (self.commits[0], f'HEAD_1-{self.commits[0][:10]}'))
+
+    def test_renders_manual_from_resolved_commit(self):
+        commit, _ = manual.resolve(self.root, 'v1.0.0')
+        self.assertEqual(manual.from_commit(self.root, commit), '[b][size=5]First[/size][/b]\n')
+
+    def test_invalid_refs_fail(self):
+        for ref in ('', '--all', 'missing-branch'):
+            with self.subTest(ref=ref), self.assertRaises(ReleaseError):
+                manual.resolve(self.root, ref)
 
 
 class PublicationTests(unittest.TestCase):

@@ -1,4 +1,4 @@
-"""Render the release manual as Nexus BBCode and open the copy/paste handoff."""
+"""Render the manual at a tag, branch or commit as Nexus BBCode and open the handoff."""
 from pathlib import Path
 import re
 import subprocess
@@ -70,11 +70,25 @@ def from_commit(root, commit):
     return convert(git_bytes(root, 'show', f'{commit}:{MANUAL}').decode('utf-8'))
 
 
-def handoff(root, tag, commit):
-    if not re.fullmatch(r'v[0-9]+\.[0-9]+\.[0-9]+', tag):
-        raise ReleaseError('Manual handoff requires a stable vMAJOR.MINOR.PATCH tag.')
+def resolve(root, ref):
+    """Return (commit, output label) for a tag, branch or other commit-ish."""
+    if not ref or ref.startswith('-'):
+        raise ReleaseError(f'Invalid Git reference: {ref!r}')
+    commit = git_bytes(root, 'rev-parse', '--verify', '--quiet',
+                       f'{ref}^{{commit}}').decode().strip()
+    if re.fullmatch(r'v[0-9]+\.[0-9]+\.[0-9]+', ref):
+        # Released manuals keep the tag folder that holds the Nexus receipts.
+        return commit, ref
+    # Branches move, so pin the folder name to the commit actually rendered.
+    name = re.sub(r'[^A-Za-z0-9._-]+', '_', ref).strip('._') or 'ref'
+    return commit, f'{name}-{commit[:10]}'
+
+
+def handoff(root, label, commit):
+    if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]*', label):
+        raise ReleaseError(f'Unsafe manual output folder name: {label!r}')
     output = from_commit(root, commit)
-    path = Path(root).resolve() / 'dist' / 'nexus' / tag / 'description.bbcode.txt'
+    path = Path(root).resolve() / 'dist' / 'nexus' / label / 'description.bbcode.txt'
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(output, encoding='utf-8', newline='\n')
     print(f'Nexus description ready to paste: {path}')
@@ -86,15 +100,12 @@ def handoff(root, tag, commit):
 if __name__ == '__main__':
     import argparse
     cli = argparse.ArgumentParser(description=__doc__)
-    cli.add_argument('tag', help='Existing release tag (vMAJOR.MINOR.PATCH)')
+    cli.add_argument('ref', help='Release tag (vMAJOR.MINOR.PATCH), branch or other commit-ish')
     args = cli.parse_args()
     root = Path(__file__).resolve().parents[1]
     try:
-        if not re.fullmatch(r'v[0-9]+\.[0-9]+\.[0-9]+', args.tag):
-            raise ReleaseError('Expected a stable vMAJOR.MINOR.PATCH tag.')
-        commit = git_bytes(root, 'rev-parse', '--verify',
-                           f'refs/tags/{args.tag}^{{commit}}').decode().strip()
-        handoff(root, args.tag, commit)
+        commit, label = resolve(root, args.ref)
+        handoff(root, label, commit)
     except (ReleaseError, OSError, ValueError) as error:
         print(f'Description handoff failed: {error}', file=sys.stderr)
         sys.exit(1)
