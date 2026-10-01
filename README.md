@@ -12,9 +12,11 @@ Download from [Nexusmods](https://www.nexusmods.com/x4foundations/mods/2371)
 - [User Manual](/docs/MANUAL.md)
 - [Developer Documentation](/docs/DEVELOPMENT.md)
 
-## Contributing
+## Community
 
-Contributions in the form of pull requests are welcome.
+Join the [discord](https://discord.gg/TjyxU4TKGn) for help, feedback, feature
+requests, bug reports and for coordinating contributions.
+
 
 ## Internationalization
 
@@ -28,10 +30,14 @@ Open a GitHub issue or leave a post on the [Nexus mod page](https://www.nexusmod
 
 ## Declaration of AI usage
 
-Development of this mod makes heavy use of AI, based on the excellent [X4
-Claude Modding Tool](https://www.nexusmods.com/x4foundations/mods/2186) by
-ttyyygggg. I simply wouldn't have had the time to build this otherwise. Only
-use if you are ok with this. Expect "claude-isms" in code and comments!
+AI coding tools were used to build the mod as well as some game assets and
+illustrations. The excellent [X4 Claude Modding
+Tool](https://www.nexusmods.com/x4foundations/mods/2186) by ttyyygggg was used
+for mod development. Only use if you are ok with this. Expect "claude-isms" in
+code and comments!
+
+This Readme, the user manual and nexus mod descriptions are hand-written by me.
+
 
 ## License
 
