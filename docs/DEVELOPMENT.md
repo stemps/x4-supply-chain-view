@@ -95,29 +95,39 @@ If a platform fails, the Git release stays. Resume it with
 in `dist/` so a resumed upload never runs twice. `just build-workshop` stages the
 Workshop folder from the working copy for inspection.
 
-## Nexus description after release
+## Store page descriptions after release
 
-Maintain the main Nexus page description in `docs/MANUAL.md`. `just release`
-validates its conversion before changing release metadata. After a successful
-Nexus publication, both `just release` and `just publish-nexus <tag>` generate
-`dist/nexus/<tag>/description.bbcode.txt` from the released commit's manual and
-open it in Windows Notepad. Copy the text into Nexus's description editor and
-preview it before saving; the main page description is not published by the API.
+Maintain the main Nexus and Steam Workshop page description in `docs/MANUAL.md`.
+`just release` validates its conversion for both sites before changing release
+metadata. After a successful publication, each platform step generates its own
+BBCode from the released commit's manual and opens it in Windows Notepad:
+`dist/nexus/<tag>/description.bbcode.txt` and
+`dist/steam/<tag>/description.bbcode.txt`. Copy the text into the site's
+description editor and preview it before saving; neither page description is
+published by an API.
 
 The converter uses `markdown-it-py==4.0.0`, supplied automatically by `uv` in the
-relevant Just recipes. It supports paragraphs, headings (H1 size 5, H2 size 4,
-H3 size 3, H4-H6 size 2), bold, italic, absolute HTTP/HTTPS/mailto links, and
-nested bullet or numbered lists. Markdown source line wraps become spaces;
-explicit line breaks are preserved. Explicit BBCode colour tags pass through
-unchanged. Tables, images, code, HTML, blockquotes, horizontal rules,
-strikethrough and task lists are rejected with an actionable error.
+relevant Just recipes. It supports paragraphs, headings, bold, italic, absolute
+HTTP/HTTPS/mailto links, and nested bullet or numbered lists. Markdown source line
+wraps become spaces; explicit line breaks are preserved. Tables, images, code,
+HTML, blockquotes, horizontal rules, strikethrough and task lists are rejected
+with an actionable error, so one manual stays valid for both sites.
 
-Generated descriptions are ignored by Git and excluded from mod ZIPs. A failed
-Notepad launch does not undo publication or trigger another upload. Reopen or
-regenerate the file without publishing anything using:
+| Markdown | Nexus | Steam |
+|---|---|---|
+| Headings H1/H2/H3, H4-H6 | `[size=5]`/`[size=4]`/`[size=3]`, `[size=2]`, all bold | `[h1]`/`[h2]`/`[h3]`, `[h3]` |
+| Numbered list | `[list=1]`, items closed with `[/*]` | `[olist]`, items without a closing tag |
+| Raw BBCode colour tags in the source | passed through | not supported by Steam; avoid |
+
+Steam descriptions are assumed to be limited to 8000 characters (Steamworks
+constant, not yet confirmed on an item page); a longer manual fails the release
+preflight. Generated descriptions are ignored by Git and excluded from
+mod ZIPs. A failed Notepad launch does not undo publication or trigger another
+upload. Reopen or regenerate a file without publishing anything using:
 
 ```text
 just nexus-description v0.1.0
+just steam-description v0.1.0
 ```
 
 This requires the requested tag to contain `docs/MANUAL.md` in supported syntax.

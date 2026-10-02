@@ -108,11 +108,15 @@ publish-nexus tag *args:
 
 # Publish or resume a tagged release on the Steam Workshop (WorkshopTool; Steam must be running).
 publish-steam tag *args:
-    uv run python scripts/release.py publish-steam "{{tag}}" {{args}}
+    uv run --with markdown-it-py==4.0.0 python scripts/release.py publish-steam "{{tag}}" {{args}}
 
 # Render and open the manual at a release tag, branch or commit without publishing anything.
 nexus-description ref:
     uv run --with markdown-it-py==4.0.0 python scripts/manual_bbcode.py "{{ref}}"
+
+# Render and open the manual as Steam BBCode at a release tag, branch or commit without publishing anything.
+steam-description ref:
+    uv run --with markdown-it-py==4.0.0 python scripts/manual_bbcode.py "{{ref}}" --target steam
 
 # Junction src/ into the game's extensions folder for in-game testing.
 link:

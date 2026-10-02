@@ -1,4 +1,4 @@
-"""Nexus manual conversion and publication handoff tests; no network or real editor."""
+"""Nexus/Steam manual conversion and publication handoff tests; no network or real editor."""
 import contextlib
 import io
 from pathlib import Path
@@ -62,9 +62,17 @@ class ConversionTests(unittest.TestCase):
             with patch.object(manual, 'from_commit', return_value='[b]Released[/b]\n') as convert:
                 with patch.object(manual.subprocess, 'Popen') as launch:
                     path = manual.handoff(directory, 'v1.2.3', 'abc123')
-            convert.assert_called_once_with(directory, 'abc123')
+            convert.assert_called_once_with(directory, 'abc123', 'nexus')
             self.assertEqual(path.read_text(encoding='utf-8'), '[b]Released[/b]\n')
             launch.assert_called_once_with(['notepad.exe', str(path)])
+
+    def test_steam_handoff_writes_its_own_folder(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.object(manual, 'from_commit', return_value='[h1]Released[/h1]\n') as convert:
+                with patch.object(manual.subprocess, 'Popen'):
+                    path = manual.handoff(directory, 'v1.2.3', 'abc123', 'steam')
+            convert.assert_called_once_with(directory, 'abc123', 'steam')
+            self.assertEqual(path, Path(directory).resolve() / 'dist/steam/v1.2.3/description.bbcode.txt')
 
     def test_handoff_rejects_unsafe_folder_names(self):
         for label in ('../escape', 'a/b', '', '.hidden'):
@@ -79,6 +87,47 @@ class ConversionTests(unittest.TestCase):
                         manual.handoff(directory, 'v1.2.3', 'abc123')
             self.assertEqual((Path(directory) / 'dist/nexus/v1.2.3/description.bbcode.txt')
                              .read_text(encoding='utf-8'), 'Ready\n')
+
+
+class SteamConversionTests(unittest.TestCase):
+    def test_headings_lists_links_and_nested_emphasis(self):
+        self.assertEqual(manual.convert(
+            '# Title\n\n## Usage\n\n#### Detail\n\n- **Bold and *italic***\n- [Link](https://example.com)\n',
+            'steam'),
+            '[h1]Title[/h1]\n\n[h2]Usage[/h2]\n\n[h3]Detail[/h3]\n\n[list]\n'
+            '[*][b]Bold and [i]italic[/i][/b]\n'
+            '[*][url=https://example.com]Link[/url]\n[/list]\n')
+
+    def test_numbered_and_nested_lists(self):
+        output = manual.convert('- Parent\n\n  1. Child\n  2. 日本語\n', 'steam')
+        self.assertEqual(output, '[list]\n[*]Parent\n\n[olist]\n[*]Child\n[*]日本語\n[/olist]\n[/list]\n')
+
+    def test_continued_numbered_list_matches_nexus(self):
+        source = '3. **Third**\n4. Fourth\n'
+        self.assertEqual(manual.convert(source, 'steam'), manual.convert(source))
+
+    def test_same_constructs_rejected_as_for_nexus(self):
+        for source in ('> quote', '`code`', '---', '| A | B |\n|---|---|\n| a | b |', ''):
+            with self.subTest(source=source), self.assertRaises(ReleaseError):
+                manual.convert(source, 'steam')
+        with self.assertRaises(ReleaseError):
+            manual.convert('text', 'reddit')
+
+    def test_length_limit(self):
+        manual.convert('x' * (manual.STEAM_LIMIT - 1), 'steam')
+        with self.assertRaisesRegex(ReleaseError, 'Workshop descriptions allow'):
+            manual.convert('x' * manual.STEAM_LIMIT, 'steam')
+        manual.convert('x' * manual.STEAM_LIMIT)  # Nexus has no such limit here.
+
+    def test_current_manual(self):
+        source = (Path(__file__).resolve().parents[2] / manual.MANUAL).read_text(encoding='utf-8')
+        output = manual.convert(source, 'steam')
+        for pattern in (r'\A\[h1\].+?\[/h1\]\n', r'\[h2\].+?\[/h2\]', r'\[list\]\n\[\*\]',
+                        r'\[url=https://[^\]]+\].+?\[/url\]'):
+            with self.subTest(pattern=pattern):
+                self.assertRegex(output, pattern)
+        for nexus_only in ('[size=', '[/*]', '[list=1]'):
+            self.assertNotIn(nexus_only, output)
 
 
 class ResolveTests(unittest.TestCase):
@@ -125,7 +174,7 @@ class PublicationTests(unittest.TestCase):
                steam_enabled=False, steam_error=None):
         publisher = Mock()
         events = []
-        steam = Mock(enabled=steam_enabled)
+        steam = Mock(enabled=steam_enabled, config={'published_file_id': '1'} if steam_enabled else None)
         self.steam = steam
         publisher.publish.side_effect = lambda *a, **kw: events.append('publish')
         if publication_error:
@@ -196,6 +245,28 @@ class PublicationTests(unittest.TestCase):
         self.assertEqual(self.publish_steam.call_args.args[1:], ('v1.2.3', self.steam, False, True, False))
         self.publisher.publish.assert_not_called()
         self.convert.assert_not_called()
+
+    def test_steam_publication_opens_steam_description_and_survives_its_failure(self):
+        import workshop_build
+        steam = Mock(config={'published_file_id': '1'})
+        for error in (None, OSError('Notepad missing')):
+            with self.subTest(error=error), contextlib.ExitStack() as stack:
+                stack.enter_context(patch.object(workshop_build, 'tagged_stage',
+                                                 return_value=('folder', 'digest', 'released-commit', 'Notes')))
+                handoff = stack.enter_context(patch.object(manual, 'handoff', side_effect=error))
+                stderr = stack.enter_context(contextlib.redirect_stderr(io.StringIO()))
+                release.publish_steam(Path('.'), 'v1.2.3', steam)
+                handoff.assert_called_once_with(Path('.'), 'v1.2.3', 'released-commit', 'steam')
+                if error:
+                    self.assertIn('just steam-description v1.2.3', stderr.getvalue())
+
+    def test_steam_publication_failure_never_opens_description(self):
+        import workshop_build
+        steam = Mock(config={'published_file_id': '1'})
+        steam.publish.side_effect = ReleaseError('upload failed')
+        with patch.object(workshop_build, 'tagged_stage', return_value=('folder', 'digest', 'commit', 'Notes')),              patch.object(manual, 'handoff') as handoff,              self.assertRaisesRegex(ReleaseError, 'Resume: just publish-steam v1.2.3'):
+            release.publish_steam(Path('.'), 'v1.2.3', steam)
+        handoff.assert_not_called()
 
     def test_build_zip_does_not_convert_or_open(self):
         self.assertEqual(self.invoke(['build-zip']), [])

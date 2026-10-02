@@ -255,6 +255,13 @@ def publish_steam(root, tag, steam, confirm_uploaded=False, retry=False, minor=F
     except (ReleaseError, OSError, ValueError, KeyError) as error:
         raise ReleaseError(f'Steam Workshop publication incomplete: {error}\n'
                            f'Git release retained. Resume: just publish-steam {tag}') from None
+    from manual_bbcode import handoff
+    try:
+        handoff(root, tag, commit, 'steam')
+    except (ReleaseError, OSError, ValueError) as error:
+        print(f'Steam publication succeeded, but the description handoff failed: {error}\n'
+              'No publication retry is needed. Open the generated file if present, or run:\n'
+              f'just steam-description {tag}', file=sys.stderr)
 
 
 def main():

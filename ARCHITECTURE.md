@@ -100,10 +100,11 @@ suggestion comes from the manifest version; later releases use the latest tag.
   `dist/steam/`. Uncertain outcomes are resolved with `--confirm-uploaded` or
   `--retry-upload`; `--minor` is for an unchanged version. Releases skip Steam
   while `steam.json` is absent or has no `published_file_id`.
-- `scripts/manual_bbcode.py`: converts the released `docs/MANUAL.md` to
-  `dist/nexus/<tag>/description.bbcode.txt` and opens Notepad for copy/paste.
-  Unsupported Markdown fails before releasing or publishing. Continued numbered
-  lists use explicit numbers because Nexus BBCode has no list-start attribute.
+- `scripts/manual_bbcode.py`: converts the released `docs/MANUAL.md` to Nexus or
+  Steam BBCode (`dist/<nexus|steam>/<tag>/description.bbcode.txt`) and opens
+  Notepad for copy/paste. Unsupported Markdown fails before releasing, and so does
+  Steam output over 8000 characters (Steam preflight). Continued numbered lists
+  use explicit numbers because neither site has a list-start attribute.
 - `scripts/game_link.ps1` (`just link` / `unlink` / `link-status`): manages the
   `extensions/<repo folder>` junction to `src/`. The extensions dir comes from
   `X4_EXTENSIONS`, then the toolkit's `.claude/x4-paths.env`, then
@@ -118,6 +119,7 @@ suggestion comes from the manifest version; later releases use the latest tag.
 `just build-zip` packages dirty and untracked `src/` files without changing Git
 or versions. `just publish-nexus vX.Y.Z` and `just publish-steam vX.Y.Z` resume
 one platform; `just nexus-description <ref>` regenerates only the manual handoff
+(`just steam-description <ref>` for Steam)
 for a release tag or any branch/commit. Release tasks use `uv` with pinned
 `markdown-it-py==4.0.0`. Retain `dist/` receipts to resume uncertain uploads safely.
 

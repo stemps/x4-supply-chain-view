@@ -67,6 +67,10 @@ class SteamPublisher:
     def preflight(self, version=None, notes=None):
         if not self.config.get('published_file_id'):
             raise ReleaseError('steam.json has no published_file_id. Create the Workshop item first.')
+        if version is not None:
+            # Release preflight: the manual must also fit Steam's BBCode and length.
+            from manual_bbcode import from_commit
+            from_commit(self.root, 'HEAD', 'steam')
         self.workshoptool()
         workshop_build.xrcattool(self.root)
         if not self.running():

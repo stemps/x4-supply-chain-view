@@ -249,6 +249,16 @@ class PublisherTests(unittest.TestCase):
         self.assertIsNotNone(publisher.config)
         self.assertFalse(publisher.enabled)
 
+    def test_release_preflight_checks_the_steam_manual(self):
+        import manual_bbcode
+        publisher = self.publisher(FakeWorkshopTool())
+        with patch.object(manual_bbcode, 'from_commit', side_effect=ReleaseError('too long')) as convert:
+            publisher.preflight()  # Resumed uploads do not re-check the manual.
+            convert.assert_not_called()
+            with self.assertRaisesRegex(ReleaseError, 'too long'):
+                publisher.preflight('1.2.3', 'Notes')
+            convert.assert_called_once_with(self.root, 'HEAD', 'steam')
+
     def test_preflight_refuses_other_game_and_closed_steam(self):
         publisher = SteamPublisher(self.root, running=lambda: True,
                                    details=lambda item: {'result': 1, 'consumer_app_id': 1})
