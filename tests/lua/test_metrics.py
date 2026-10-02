@@ -10,7 +10,7 @@ from xml.etree import ElementTree as ET
 from lupa import LuaRuntime
 from lupa.luajit21 import LuaRuntime as LuaJITRuntime
 
-root = Path(__file__).resolve().parents[1]
+root = Path(__file__).resolve().parents[2]
 lua = LuaRuntime(unpack_returned_tuples=True)
 g = lua.globals()
 def read_text(text):
@@ -20,7 +20,7 @@ def read_text(text):
     return text.replace('\x01', '(').replace('\x02', ')')
 
 
-texts = {int(t.attrib['id']): read_text(''.join(t.itertext())) for t in ET.parse(root/'t/0001.xml').iter('t')}
+texts = {int(t.attrib['id']): read_text(''.join(t.itertext())) for t in ET.parse(root/'src/t/0001.xml').iter('t')}
 g.texts = lua.table_from(texts)
 lua.execute('''
 logs = {}
@@ -536,20 +536,20 @@ graph=SCV_Graph.build({station}); menu.decorateNodes(graph)
 assert(string.find(graph.stationNodes.warn[1].properties.mouseOverText,'Orange threshold: below 30m',1,true))
 ''')
 assert all(texts[key].isascii() for key in [3065,3066,*range(3090,3101)])
-for source in (root/'ui').glob('*.lua'):
+for source in (root/'src/ui').glob('*.lua'):
     lua.execute('assert(load(...))', source.read_text(encoding='utf-8'))
-lua.execute((root/'test/test_tooltips.lua').read_text(encoding='utf-8'))
-lua.execute((root/'test/test_capacity.lua').read_text(encoding='utf-8'))
-lua.execute((root/'test/test_processing.lua').read_text(encoding='utf-8'))
-lua.execute((root/'ui/scv_store.lua').read_text(encoding='utf-8'))
-lua.execute((root/'test/test_warnings.lua').read_text(encoding='utf-8'))
-lua.execute((root/'test/test_menu_lifecycle.lua').read_text(encoding='utf-8'))
+lua.execute((root/'tests/lua/test_tooltips.lua').read_text(encoding='utf-8'))
+lua.execute((root/'tests/lua/test_capacity.lua').read_text(encoding='utf-8'))
+lua.execute((root/'tests/lua/test_processing.lua').read_text(encoding='utf-8'))
+lua.execute((root/'src/ui/scv_store.lua').read_text(encoding='utf-8'))
+lua.execute((root/'tests/lua/test_warnings.lua').read_text(encoding='utf-8'))
+lua.execute((root/'tests/lua/test_menu_lifecycle.lua').read_text(encoding='utf-8'))
 g.germanTexts = lua.table_from({int(t.attrib['id']): read_text(''.join(t.itertext()))
-    for t in ET.parse(root/'t/0001-l049.xml').iter('t')})
-lua.execute((root/'test/test_aggregate_labels.lua').read_text(encoding='utf-8'))
-lua.execute((root/'test/test_refresh.lua').read_text(encoding='utf-8'))
-lua.execute((root/'test/test_export_details.lua').read_text(encoding='utf-8'))
-lua.execute((root/'test/test_footnotes.lua').read_text(encoding='utf-8'))
+    for t in ET.parse(root/'src/t/0001-l049.xml').iter('t')})
+lua.execute((root/'tests/lua/test_aggregate_labels.lua').read_text(encoding='utf-8'))
+lua.execute((root/'tests/lua/test_refresh.lua').read_text(encoding='utf-8'))
+lua.execute((root/'tests/lua/test_export_details.lua').read_text(encoding='utf-8'))
+lua.execute((root/'tests/lua/test_footnotes.lua').read_text(encoding='utf-8'))
 lua.execute('''
 -- Exercise the real chunked scanner and menu lifecycle. No graph may be built from
 -- a partial scan, including a refresh arriving while the scan is in progress.
@@ -608,7 +608,7 @@ for runtime in [LuaRuntime, LuaJITRuntime]:
             assert(type(nativeCount(1)) == 'cdata')
             package.loaded.ffi = nil
         ''')
-    future_tests = future_lua.execute((root/'test/test_future_roles.lua').read_text(encoding='utf-8'))
+    future_tests = future_lua.execute((root/'tests/lua/test_future_roles.lua').read_text(encoding='utf-8'))
     for name in ['scv_graph.lua', 'scv_data.lua', 'scv_store.lua']:
         load_modules(future_lua, name)
     future_tests()

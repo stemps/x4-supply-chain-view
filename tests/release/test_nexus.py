@@ -11,7 +11,7 @@ import unittest
 from unittest.mock import patch
 import urllib.error
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'scripts'))
 from nexus_publish import Publisher, Client, ApiError, ReleaseError, publication_lock
 
 
@@ -48,6 +48,9 @@ class FakeNexus:
                 return {'versions': copy.deepcopy(self.files[path.split('/')[2]])}
             if path.startswith('/uploads/'):
                 return {'state': self.uploads[path.split('/')[2]]}
+            if path.startswith('/mod-file-versions/'):
+                return copy.deepcopy(next(v for versions in self.files.values() for v in versions
+                                          if v['id'] == path.split('/')[2]))
         if path in ('/uploads', '/uploads/multipart'):
             uid = 'upload-' + str(len(self.uploads) + 1)
             self.uploads[uid] = 'created'
@@ -67,7 +70,9 @@ class FakeNexus:
                                                       'version': body['version'], 'category': 'main', 'position': '2'})
             if self.creation_failure:
                 raise ApiError('lost creation response', uncertain=True)
-            return {'id': file_id} if path == '/mod-files' else {'version': {'id': 'new-version'}}
+            # Live Nexus returns the first version's id from POST /mod-files, not the file's.
+            return ({'id': 'new-version', 'game_scoped_id': '9'} if path == '/mod-files'
+                    else {'file': {'id': file_id}, 'version': {'id': 'new-version'}})
         if path.endswith('/changelogs'):
             if self.reject_changelog:
                 raise ApiError('HTTP 422')
@@ -89,9 +94,10 @@ class PublishTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
-        self.config = json.loads((Path(__file__).resolve().parents[1] / 'nexus.json').read_text())
+        self.config = json.loads((Path(__file__).resolve().parents[2] / 'nexus.json').read_text())
+        self.config.update(mod_id=2371, file_id=None, create_new_file=False)
         self.write_config()
-        self.archive = self.root / 'Supply-Chain-View-0.2.0.zip'
+        self.archive = self.root / 'Example-Mod-0.2.0.zip'
         self.archive.write_bytes(b'archive bytes for transport tests')
         self.fake = FakeNexus()
 
@@ -153,6 +159,7 @@ class PublishTests(unittest.TestCase):
         self.publish()
         self.assertEqual(len(self.posts('/mod-files')), 1)
         self.assertEqual(self.receipt()['file_id'], 'new-file')
+        self.assertEqual(self.receipt()['version_id'], 'new-version')
         self.publish()
         pub = self.publisher()
         pub.preflight('0.3.0', 'next')
@@ -165,7 +172,7 @@ class PublishTests(unittest.TestCase):
         self.fake.files = {}
         original_api = self.fake.api
         def fail_read(method, path, body=None):
-            if path == '/mod-files/new-file/versions':
+            if path == '/mod-file-versions/new-version':
                 raise ApiError('HTTP 403')
             return original_api(method, path, body)
         with patch.object(self.fake, 'api', side_effect=fail_read):

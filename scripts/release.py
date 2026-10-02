@@ -10,7 +10,8 @@ import sys
 import tempfile
 import zipfile
 
-from release_archive import ReleaseError, working_files, write_zip, git_bytes
+from release_archive import (ReleaseError, MOD, repo_path, identity, archive_path, working_files,
+                             write_zip, git_bytes)
 
 
 def version_tuple(value):
@@ -23,7 +24,8 @@ def version_tuple(value):
 
 
 class Release:
-    metadata = ("VERSION", "CHANGELOG.md", "content.xml")
+    manifest = f"{MOD}/content.xml"
+    metadata = ("VERSION", "CHANGELOG.md", manifest)
 
     def __init__(self, root):
         self.root = Path(root).resolve()
@@ -70,7 +72,11 @@ class Release:
         if not releases:
             if path.exists():
                 raise ReleaseError("VERSION exists without a release tag; resolve release history first.")
-            return None, "0.1.0"
+            from xml.etree import ElementTree
+            current = int(ElementTree.parse(self.root / self.manifest).getroot().attrib['version'])
+            major, minor = current // 10000, (current // 100) % 100
+            suggested = f"{major}.{minor + 1}.0" if minor < 99 else f"{major + 1}.0.0"
+            return None, suggested
         parts, tag = max(releases)
         self.git("merge-base", "--is-ancestor", tag, "HEAD")
         if not path.exists() or path.read_text(encoding="utf-8").strip() != tag[1:]:
@@ -83,15 +89,15 @@ class Release:
         history = f"{previous}..HEAD" if previous else "HEAD"
         subjects = self.git("log", "--reverse", "--format=%s", history).splitlines()
         editor = self.git("var", "GIT_EDITOR")
-        with tempfile.TemporaryDirectory(prefix="scv-notes-") as directory:
+        with tempfile.TemporaryDirectory(prefix="release-notes-") as directory:
             path = Path(directory) / "release-notes.md"
             path.write_text("\n".join(f"- {s}" for s in subjects) + "\n", encoding="utf-8")
             # Git editors are shell command strings. Let Git's shell interpret the
             # configured editor, but pass the filename as a separate positional arg.
             result = subprocess.run(
-                ["git", "-c", 'alias.scv-release-editor=!' + editor + ' "$SCV_NOTES"',
-                 "scv-release-editor"], cwd=self.root,
-                env={**os.environ, "GIT_EDITOR": editor, "SCV_NOTES": str(path)})
+                ["git", "-c", 'alias.mod-release-editor=!' + editor + ' "$RELEASE_NOTES"',
+                 "mod-release-editor"], cwd=self.root,
+                env={**os.environ, "GIT_EDITOR": editor, "RELEASE_NOTES": str(path)})
             if result.returncode:
                 raise ReleaseError("Release notes editor failed.")
             notes = path.read_text(encoding="utf-8").strip()
@@ -102,7 +108,7 @@ class Release:
     def updated_metadata(self, version, notes):
         major, minor, patch = version_tuple(version)
         date = datetime.date.today().isoformat()
-        manifest = (self.root / "content.xml").read_bytes()
+        manifest = (self.root / self.manifest).read_bytes()
         match = re.search(rb"<content\b[^>]*>", manifest)
         if not match:
             raise ReleaseError("Missing content manifest root.")
@@ -118,13 +124,13 @@ class Release:
         if not old.startswith("# Changelog\n"):
             raise ReleaseError("CHANGELOG.md must start with '# Changelog'.")
         new = f"# Changelog\n\n## {version} - {date}\n\n{notes}\n\n" + old[len("# Changelog\n"):].lstrip()
-        return {"VERSION": (version + "\n").encode(), "CHANGELOG.md": new.encode(), "content.xml": manifest}
+        return {"VERSION": (version + "\n").encode(), "CHANGELOG.md": new.encode(), self.manifest: manifest}
 
     def runtime_files(self):
         return working_files(self.root)
 
     def build_zip(self, path, files):
-        write_zip(path, files, lambda name: (self.root / name).read_bytes())
+        write_zip(path, files, lambda name: (self.root / MOD / name).read_bytes())
 
     def check_unchanged(self, head, written):
         if self.git("branch", "--show-current") != "main" or self.git("rev-parse", "HEAD") != head:
@@ -152,7 +158,7 @@ class Release:
         tag = "v" + version
         if tag in self.git("tag", "--list").splitlines():
             raise ReleaseError(f"Tag {tag} already exists.")
-        final = self.root / "dist" / f"Supply-Chain-View-{version}.zip"
+        final = archive_path(self.root, version)
         if final.exists():
             raise ReleaseError(f"Archive already exists: {final}")
         notes = self.notes(previous)
@@ -169,10 +175,10 @@ class Release:
             if check:
                 check()
             else:
-                subprocess.run(["just", "check"], cwd=self.root, check=True)
+                subprocess.run(["just", "check-release"], cwd=self.root, check=True)
             self.check_unchanged(head, written)
             files = self.runtime_files()
-            with tempfile.TemporaryDirectory(prefix="scv-release-") as directory:
+            with tempfile.TemporaryDirectory(prefix="release-build-") as directory:
                 archive = Path(directory) / final.name
                 self.build_zip(archive, files)
                 self.check_unchanged(head, written)
@@ -189,17 +195,18 @@ class Release:
                 # Hooks must not silently change the release contents.
                 if self.status():
                     raise ReleaseError("Working tree changed during release commit.")
+                folder, _ = identity((self.root / self.manifest).read_bytes())
                 with zipfile.ZipFile(archive) as built:
                     for name in files:
-                        digest = subprocess.run(["git", "hash-object", "--stdin", "--path", name],
-                                                input=built.read("supply_chain_view/" + name), cwd=self.root,
+                        digest = subprocess.run(["git", "hash-object", "--stdin", "--path", repo_path(name)],
+                                                input=built.read(f"{folder}/{name}"), cwd=self.root,
                                                 capture_output=True, check=True).stdout.decode().strip()
-                        if digest != self.git("rev-parse", f"HEAD:{name}"):
+                        if digest != self.git("rev-parse", f"HEAD:{repo_path(name)}"):
                             raise ReleaseError(f"Committed file differs from archive: {name}")
                 # Public archives use canonical committed bytes so a missing ZIP
                 # can be reconstructed identically, including on Windows.
                 canonical = Path(directory) / ('canonical-' + final.name)
-                write_zip(canonical, files, lambda name: git_bytes(self.root, 'show', f'{commit}:{name}'))
+                write_zip(canonical, files, lambda name: git_bytes(self.root, 'show', f'{commit}:{repo_path(name)}'))
                 archive = canonical
                 note_file = Path(directory) / "tag-notes.md"
                 note_file.write_text(notes + "\n", encoding="utf-8")
@@ -229,33 +236,79 @@ class Release:
             raise
 
 
+class Preflights:
+    """Check every publication target before anything is written or tagged."""
+    def __init__(self, *publishers):
+        self.publishers = publishers
+
+    def preflight(self, version, notes):
+        for publisher in self.publishers:
+            publisher.preflight(version, notes)
+
+
+def publish_steam(root, tag, steam, confirm_uploaded=False, retry=False, minor=False):
+    import workshop_build
+    try:
+        folder, digest, commit, notes = workshop_build.tagged_stage(root, tag, steam.config)
+        steam.publish(tag, commit, folder, digest, notes, confirm_uploaded=confirm_uploaded, retry=retry,
+                      minor=minor)
+    except (ReleaseError, OSError, ValueError, KeyError) as error:
+        raise ReleaseError(f'Steam Workshop publication incomplete: {error}\n'
+                           f'Git release retained. Resume: just publish-steam {tag}') from None
+
+
 def main():
     import argparse
     from release_archive import local_zip, tagged_zip
     from nexus_publish import Publisher
+    from steam_publish import SteamPublisher
+    import workshop_build
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=['release', 'build-zip', 'publish-nexus'], nargs='?', default='release')
+    parser.add_argument('command', nargs='?', default='release',
+                        choices=['release', 'build-zip', 'publish-nexus', 'publish-steam', 'build-workshop',
+                                 'workshop-placeholder'])
     parser.add_argument('tag', nargs='?')
     parser.add_argument('--adopt-version', help='Verified Nexus version ID after an uncertain creation')
     parser.add_argument('--retry-version', action='store_true', help='Confirm uncertain creation failed, then retry')
     parser.add_argument('--changelog-status', choices=['posted', 'not-posted'], help='Resolve an uncertain changelog submission')
+    parser.add_argument('--confirm-uploaded', action='store_true',
+                        help='Record an uncertain Steam upload as complete after checking the Workshop item')
+    parser.add_argument('--retry-upload', action='store_true', help='Confirm an uncertain Steam upload failed, then retry')
+    parser.add_argument('--minor', action='store_true',
+                        help='Steam update without a version change (WorkshopTool -minor)')
     args = parser.parse_args()
     if args.command != 'publish-nexus' and (args.adopt_version or args.retry_version or args.changelog_status):
         parser.error('Recovery flags are only valid with publish-nexus')
+    if args.command != 'publish-steam' and (args.confirm_uploaded or args.retry_upload or args.minor):
+        parser.error('Steam recovery flags are only valid with publish-steam')
     if args.adopt_version and args.retry_version:
         parser.error('--adopt-version and --retry-version are mutually exclusive')
+    if args.confirm_uploaded and args.retry_upload:
+        parser.error('--confirm-uploaded and --retry-upload are mutually exclusive')
     root = Path(__file__).resolve().parents[1]
-    if args.command == 'build-zip':
+    if args.command in ('build-zip', 'build-workshop', 'workshop-placeholder'):
         if args.tag:
-            parser.error('build-zip takes no tag')
-        local_zip(root)
+            parser.error(f'{args.command} takes no tag')
+        {'build-zip': local_zip, 'build-workshop': workshop_build.local_stage,
+         'workshop-placeholder': workshop_build.placeholder}[args.command](root)
+        return
+    steam = SteamPublisher(root)
+    if args.command == 'publish-steam':
+        if not args.tag:
+            parser.error('publish-steam requires a tag')
+        if steam.config is None:
+            raise ReleaseError('steam.json is missing.')
+        publish_steam(root, args.tag, steam, args.confirm_uploaded, args.retry_upload, args.minor)
         return
     publisher = Publisher(root)
     if args.command == 'release':
         if args.tag:
             parser.error('release takes no tag')
-        archive = Release(root).run(publisher=publisher)
-        tag = 'v' + archive.stem.removeprefix('Supply-Chain-View-')
+        targets = (publisher, steam) if steam.enabled else (publisher,)
+        if steam.config and not steam.enabled:
+            print('Steam Workshop skipped: steam.json has no published_file_id yet.')
+        archive = Release(root).run(publisher=Preflights(*targets))
+        tag = 'v' + archive.stem.rsplit('-', 1)[1]
     else:
         if not args.tag:
             parser.error('publish-nexus requires a tag')
@@ -268,13 +321,17 @@ def main():
                           retry_version=args.retry_version, changelog_status=args.changelog_status)
     except (ReleaseError, OSError, ValueError, KeyError, zipfile.BadZipFile) as error:
         raise ReleaseError(f'Nexus publication incomplete: {error}\n'
-                           f'Git release retained. Resume: just publish-nexus {tag}') from None
+                           f'Git release retained. Resume: just publish-nexus {tag}'
+                           + (f', then just publish-steam {tag}' if args.command == 'release' and steam.enabled
+                              else '')) from None
     try:
         handoff(root, tag, commit)
     except (ReleaseError, OSError, ValueError) as error:
         print(f'Nexus publication succeeded, but the description handoff failed: {error}\n'
               'No publication retry is needed. Open the generated file if present, or run:\n'
               f'just nexus-description {tag}', file=sys.stderr)
+    if args.command == 'release' and steam.enabled:
+        publish_steam(root, tag, steam)
 
 
 if __name__ == "__main__":

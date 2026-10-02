@@ -5,7 +5,7 @@ import re
 from xml.etree import ElementTree as ET
 from lupa import LuaRuntime
 
-root = Path(__file__).resolve().parents[1]
+root = Path(__file__).resolve().parents[2]
 
 
 def read_text(text):
@@ -15,7 +15,7 @@ def read_text(text):
     return text.replace('\x01', '(').replace('\x02', ')')
 
 
-for path in sorted((root/'t').glob('*.xml')):
+for path in sorted((root/'src/t').glob('*.xml')):
     entries = list(ET.parse(path).iter('t'))
     texts = {int(t.attrib['id']): read_text(t.text or '') for t in entries}
     for tid, count in [(2001, 1), (2002, 1), (2003, 2)]:
@@ -42,7 +42,7 @@ interact={componentSlot={component='1'},selectedotherobjects={},
 Helper={getMenu=function() return interact end,
     closeMenuAndOpenNewMenu=function() opened=opened+1 end}
 ''')
-    lua.execute((root/'ui/scv_store.lua').read_text(encoding='utf-8'))
+    lua.execute((root/'src/ui/scv_store.lua').read_text(encoding='utf-8'))
     load_modules(lua, 'scv_interact.lua')
     lua.execute('''
 -- Include percent signs and parentheses: names are data, never format strings.

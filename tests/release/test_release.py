@@ -1,87 +1,51 @@
 """Release integration tests. All pushes target disposable local bare repositories."""
-import importlib.util
 import os
-from pathlib import Path
 import subprocess
-import tempfile
 import unittest
 from unittest.mock import patch
 import zipfile
-import sys
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
-
-spec = importlib.util.spec_from_file_location("scv_release", Path(__file__).resolve().parents[1] / "scripts/release.py")
-release = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(release)
+from release_support import ReleaseFixture, release
 
 
-class ReleaseTests(unittest.TestCase):
-    def setUp(self):
-        self.temp = tempfile.TemporaryDirectory()
-        self.addCleanup(self.temp.cleanup)
-        base = Path(self.temp.name)
-        self.root = base / "mod"
-        self.remote = base / "origin.git"
-        self.root.mkdir()
-        self.env = patch.dict(os.environ, {"GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull,
-                                           "GIT_TERMINAL_PROMPT": "0"})
-        self.env.start()
-        self.addCleanup(self.env.stop)
-        self.cmd("init", "--bare", str(self.remote))
-        self.cmd("init", "-b", "main")
-        self.cmd("config", "user.name", "Release Test")
-        self.cmd("config", "user.email", "release@example.invalid")
-        self.cmd("config", "core.autocrlf", "false")
-        self.cmd("config", "core.editor", "true")
-        self.write(".gitignore", "/dist/\n")
-        self.write("content.xml", '<content id="supply_chain_view" version="200" date="2026-09-06">\n<text name="日本語"/>\n</content>\n')
-        self.write("ui.xml", "<addon/>\n")
-        self.write("ui/example.lua", "return 1\n")
-        self.write("t/0001.xml", "<language/>\n")
-        self.write("test/excluded.lua", "return 0\n")
-        self.write("assets/banner.png", "promotional image placeholder\n")
-        self.write("assets/nested/example.lua", "return 'not runtime content'\n")
-        self.write("assets/nested/example.xml", "<promotional/>\n")
-        self.write("README.md", "Not shipped\n")
-        self.write("docs/MANUAL.md", "## Usage\n\nRelease manual.\n")
-        self.cmd("add", ".")
-        self.cmd("commit", "-m", "Initial mod")
-        self.cmd("remote", "add", "origin", str(self.remote))
-        self.cmd("push", "-u", "origin", "main")
-        self.runner = release.Release(self.root)
+class ReleaseTests(ReleaseFixture):
+    def test_default_gate_keeps_release_integration_and_rolls_back_on_failure(self):
+        original_run = subprocess.run
+        original_manifest = (self.root / 'src/content.xml').read_bytes()
+        gates = []
 
-    def cmd(self, *args):
-        result = subprocess.run(["git", *args], cwd=self.root, capture_output=True, check=True)
-        return result.stdout.decode().strip()
+        def run(command, **kwargs):
+            if command[0] == 'just':
+                gates.append(command)
+                raise subprocess.CalledProcessError(1, command)
+            return original_run(command, **kwargs)
 
-    def write(self, name, text):
-        path = self.root / name
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(text, encoding="utf-8", newline="\n")
-
-    def run_release(self, version="", check=lambda: None):
-        return self.runner.run(ask=lambda _: version, check=check)
+        with patch.object(release.subprocess, 'run', side_effect=run):
+            with self.assertRaises(subprocess.CalledProcessError):
+                self.runner.run(ask=lambda _: '0.1.0')
+        self.assertEqual(gates, [['just', 'check-release']])
+        self.assertEqual((self.root / 'src/content.xml').read_bytes(), original_manifest)
+        self.assertEqual(self.cmd('status', '--porcelain'), '')
+        self.assertEqual(self.cmd('tag', '--list'), '')
 
     def test_first_and_subsequent_release(self):
         archive = self.run_release()
-        self.assertEqual(archive.name, "Supply-Chain-View-0.1.0.zip")
+        self.assertEqual(archive.name, "Example-Mod-0.1.0.zip")
         self.assertEqual(self.cmd("status", "--porcelain"), "")
         self.assertEqual((self.root / "VERSION").read_text().strip(), "0.1.0")
-        manifest = (self.root / "content.xml").read_text(encoding="utf-8")
+        manifest = (self.root / "src/content.xml").read_text(encoding="utf-8")
         self.assertIn('version="100"', manifest)
         self.assertIn('name="日本語"', manifest)
         self.assertEqual(self.cmd("rev-parse", "HEAD"), self.cmd("rev-parse", "origin/main"))
         self.assertEqual(self.cmd("cat-file", "-t", "v0.1.0"), "tag")
         with zipfile.ZipFile(archive) as zipped:
-            self.assertFalse(any(name.startswith("supply_chain_view/assets/") for name in zipped.namelist()))
-            self.assertEqual(set(zipped.namelist()), {"supply_chain_view/" + p for p in
+            self.assertFalse(any(name.startswith("example_mod/assets/") for name in zipped.namelist()))
+            self.assertEqual(set(zipped.namelist()), {"example_mod/" + p for p in
                              ("content.xml", "ui.xml", "ui/example.lua", "t/0001.xml")})
             for name in zipped.namelist():
-                blob = subprocess.run(["git", "show", "v0.1.0:" + name.split("/", 1)[1]],
+                blob = subprocess.run(["git", "show", "v0.1.0:src/" + name.split("/", 1)[1]],
                                       cwd=self.root, capture_output=True, check=True).stdout
                 self.assertEqual(zipped.read(name), blob)
-        self.write("ui/example.lua", "return 2\n")
+        self.write("src/ui/example.lua", "return 2\n")
         self.cmd("commit", "-am", "Improve graph")
         self.cmd("push")
         self.assertEqual(self.runner.notes("v0.1.0"), "- Improve graph")
@@ -89,6 +53,12 @@ class ReleaseTests(unittest.TestCase):
         changelog = (self.root / "CHANGELOG.md").read_text()
         self.assertLess(changelog.index("## 0.2.0"), changelog.index("## 0.1.0"))
         self.assertEqual(changelog.count("Initial mod"), 1)
+
+    def test_first_release_advances_existing_manifest(self):
+        self.write('src/content.xml', '<content version="300" date="2026-09-20"/>')
+        self.assertEqual(self.runner.previous(), (None, '0.4.0'))
+        self.write('src/content.xml', '<content version="19999" date="2026-09-20"/>')
+        self.assertEqual(self.runner.previous(), (None, '2.0.0'))
 
     def test_preflight_rejections(self):
         self.cmd("checkout", "-b", "feature")
@@ -147,10 +117,12 @@ class ReleaseTests(unittest.TestCase):
         with self.assertRaises(release.ReleaseError): self.run_release("0.2.0")
 
     def test_existing_zip(self):
-        self.write("dist/Supply-Chain-View-0.1.0.zip", "keep")
+        self.write("dist/Example-Mod-0.1.0.zip", "keep")
         with self.assertRaises(release.ReleaseError): self.run_release()
-        self.assertEqual((self.root / "dist/Supply-Chain-View-0.1.0.zip").read_text(), "keep")
+        self.assertEqual((self.root / "dist/Example-Mod-0.1.0.zip").read_text(), "keep")
 
+    # GIT_EDITOR/VISUAL/EDITOR outrank core.editor; clear them so the configured one runs.
+    @patch.dict(os.environ, {"GIT_EDITOR": "", "VISUAL": "", "EDITOR": ""})
     def test_editor_arguments_empty_and_failure(self):
         self.cmd("config", "core.editor", "sh -c 'printf -- " + '"- Edited notes\\n"' + " > \"$1\"' editor")
         self.assertEqual(self.runner.notes(None), "- Edited notes")
@@ -161,10 +133,10 @@ class ReleaseTests(unittest.TestCase):
         self.assertFalse((self.root / "VERSION").exists())
 
     def test_check_failure_rolls_back(self):
-        original = (self.root / "content.xml").read_bytes()
+        original = (self.root / "src/content.xml").read_bytes()
         def fail(): raise release.ReleaseError("checks failed")
         with self.assertRaises(release.ReleaseError): self.run_release(check=fail)
-        self.assertEqual((self.root / "content.xml").read_bytes(), original)
+        self.assertEqual((self.root / "src/content.xml").read_bytes(), original)
         self.assertEqual(self.cmd("status", "--porcelain"), "")
 
     def test_archive_failure_rolls_back(self):
@@ -177,11 +149,11 @@ class ReleaseTests(unittest.TestCase):
         from unittest.mock import Mock
         publisher = Mock()
         publisher.preflight.side_effect = release.ReleaseError('Nexus rejected credentials')
-        original = (self.root / 'content.xml').read_bytes()
+        original = (self.root / 'src/content.xml').read_bytes()
         with self.assertRaisesRegex(release.ReleaseError, 'credentials'):
             self.runner.run(ask=lambda _: '0.1.0', check=lambda: None, publisher=publisher)
         publisher.preflight.assert_called_once_with('0.1.0', '- Initial mod')
-        self.assertEqual((self.root / 'content.xml').read_bytes(), original)
+        self.assertEqual((self.root / 'src/content.xml').read_bytes(), original)
         self.assertFalse((self.root / 'VERSION').exists())
         self.assertEqual(self.cmd('status', '--porcelain'), '')
 
@@ -195,7 +167,7 @@ class ReleaseTests(unittest.TestCase):
     def test_windows_line_endings(self):
         self.cmd("config", "core.autocrlf", "true")
         for name in ("content.xml", "ui.xml", "ui/example.lua", "t/0001.xml"):
-            path = self.root / name
+            path = self.root / "src" / name
             path.write_bytes(path.read_bytes().replace(b"\n", b"\r\n"))
         self.cmd("add", "--renormalize", ".")
         self.assertEqual(self.cmd("status", "--porcelain"), "")

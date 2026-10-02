@@ -2,7 +2,7 @@
 from pathlib import Path
 from lupa import LuaRuntime
 
-root = Path(__file__).resolve().parents[1]
+root = Path(__file__).resolve().parents[2]
 lua = LuaRuntime(unpack_returned_tuples=True)
 lua.execute('''
 clock = 10
@@ -41,7 +41,7 @@ Helper = {closeMenuAndOpenNewMenu=function(menu, name, params)
     table.insert(opens, 'map')
 end}
 ''')
-source = (root / 'ui/scv_hotkey.lua').read_text(encoding='utf-8')
+source = (root / 'src/ui/scv_hotkey.lua').read_text(encoding='utf-8')
 lua.execute(source)
 lua.execute('''
 ready() -- absent API is inert, including an unexpected readiness event

@@ -5,7 +5,7 @@ from lupa import LuaRuntime
 from lupa.luajit21 import LuaRuntime as LuaJITRuntime
 from addon_loader import load_modules
 
-reference = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().parents[3] / 'reference'
+reference = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().parents[4] / 'reference'
 helper = reference / 'ui/addons/ego_detailmonitorhelper/helper.lua'
 for runtime in (LuaRuntime, LuaJITRuntime):
     lua = runtime(unpack_returned_tuples=True)

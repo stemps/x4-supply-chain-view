@@ -7,7 +7,7 @@ from pathlib import Path
 import re
 from xml.etree import ElementTree as ET
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2] / 'src'
 
 
 def module_order(root=ROOT):

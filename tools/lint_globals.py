@@ -20,7 +20,7 @@ import pathlib
 import re
 import sys
 
-UI = pathlib.Path(__file__).resolve().parent.parent / "ui"
+UI = pathlib.Path(__file__).resolve().parent.parent / "src" / "ui"
 
 LUA_KEYWORDS = {
     "and", "break", "do", "else", "elseif", "end", "false", "for", "function", "goto", "if",

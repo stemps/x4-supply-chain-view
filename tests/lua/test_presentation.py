@@ -4,7 +4,7 @@ from addon_loader import load_modules
 from lupa import LuaRuntime
 from lupa.luajit21 import LuaRuntime as LuaJITRuntime
 
-root = Path(__file__).resolve().parents[1]
+root = Path(__file__).resolve().parents[2]
 
 for runtime in (LuaRuntime, LuaJITRuntime):
     lua = runtime(unpack_returned_tuples=True)

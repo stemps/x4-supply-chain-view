@@ -458,7 +458,9 @@ Release archives use canonical committed bytes and fixed metadata for reproducib
 checksums; older archives are verified through Git clean filters to tolerate CRLF
 checkout conversion. Publication receipts bind exact archive bytes. Nexus v3 new
 file IDs and version IDs differ, changelog writes append, and uncertain writes
-must be reconciled before retrying. Receipts must not retain keys or signed URLs.
+must be reconciled before retrying. SUPERSEDED 2026-10-02 (measured in Civilian Economy's
+first upload): `POST /v3/mod-files` returns the new file's first version id, not
+the file id; the shared publisher resolves the file through that version. Receipts must not retain keys or signed URLs.
 
 `docs/MANUAL.md` is converted to BBCode from the released commit. Unsupported
 Markdown, including inline backticks, is rejected; conversion and expected manual
@@ -476,3 +478,23 @@ a call. Native ABI cases need LuaJIT tests, and mocks must model engine semantic
 script-schema checks. Neither verifies MD expression grammar or native pixels.
 SCV informational `DebugError` lines are not all failures; scope logs to the actual
 save/UI load. An empty XML-operation crosscheck is not runtime validation.
+
+### Steam Workshop publishing (October 2, 2026)
+
+Measured while publishing Civilian Economy; the shared release tooling encodes it.
+
+- A Workshop item needs `content.xml` id `ws_<publishedfileid>`. The repo keeps
+  `supply_chain_view`; only the staged Workshop copy is rewritten. Saves record
+  the extension id, so Nexus and Workshop saves are not interchangeable.
+- Only Egosoft's WorkshopTool (X Tools) can upload X4 items: Steam has no upload
+  Web API, and SteamCMD fails with "no workshop depot found". A SteamCMD login
+  with the same account logs the Steam client off.
+- WorkshopTool 1.15 needs the Steam client online and a catalog in the folder
+  (`-buildcat` packs one), uploads only `.cat .dat .cur .mkv .txt .pdf` plus the
+  manifest (`.mkv` only from the root), takes `-batchmode` to skip its prompt and
+  `-minor` for an unchanged version.
+- `kuerteeUIExtensionsAndHUD` is a required dependency here. A manifest cannot
+  require one of two ids, so the Workshop build requires the Workshop copy of UI
+  Extensions (`ws_3477279743`) instead. Unverified in game for SCV.
+- The repo moved to `src/` the same day; the development junction now targets
+  `src/`, so in-game tests see exactly the release contents.

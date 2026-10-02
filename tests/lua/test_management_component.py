@@ -3,10 +3,10 @@ from pathlib import Path
 from lupa import LuaRuntime
 from lupa.luajit21 import LuaRuntime as LuaJITRuntime
 
-root = Path(__file__).resolve().parents[1]
+root = Path(__file__).resolve().parents[2]
 for runtime in (LuaRuntime, LuaJITRuntime):
     lua = runtime(unpack_returned_tuples=True)
-    lua.execute((root / 'ui/scv_management.lua').read_text(encoding='utf-8'))
+    lua.execute((root / 'src/ui/scv_management.lua').read_text(encoding='utf-8'))
     lua.execute('''
         local chain = { name='Before', members={} }
         local selected = chain

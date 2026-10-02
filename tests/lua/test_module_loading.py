@@ -1,10 +1,12 @@
 """Guard cross-file scope and addon order before exercising UI behavior."""
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-from addon_loader import validate_manifest
-from lint_globals import analyze
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'tools'))
+from addon_loader import validate_manifest  # noqa: E402
+from lint_globals import analyze  # noqa: E402
 
 
 class ModuleChecks(unittest.TestCase):

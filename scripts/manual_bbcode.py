@@ -34,6 +34,13 @@ def convert(source):
         if kind not in supported:
             raise ReleaseError(f'{MANUAL}: unsupported Markdown construct {kind!r}. '
                                'Use headings, paragraphs, emphasis, links or lists instead.')
+        if kind == 'ordered_list' and node.attrs.get('start', 1) != 1:
+            # Nexus has no ordered-list start attribute. Preserve explicit
+            # numbering for continued lists.
+            return '\n\n'.join(
+                f'{number}. ' + ''.join(render(child) for child in item.children).strip()
+                for number, item in enumerate(node.children, node.attrs['start'])
+            ) + '\n\n'
         content = ''.join(render(child) for child in node.children)
         if kind in ('root', 'inline'):
             return content
@@ -55,8 +62,6 @@ def convert(source):
             if re.match(r'^\[[ xX]\] ', content):
                 raise ReleaseError(f'{MANUAL}: task lists are unsupported; use ordinary list items.')
             return f'[*]{content.strip()}[/*]\n'
-        if kind == 'ordered_list' and node.attrs.get('start', 1) != 1:
-            raise ReleaseError(f'{MANUAL}: ordered lists must start at 1 for Nexus BBCode.')
         tag = 'list=1' if kind == 'ordered_list' else 'list'
         return f'[{tag}]\n{content}[/list]\n\n'
 

@@ -7,11 +7,12 @@ import tempfile
 import unittest
 from unittest.mock import Mock, patch
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'scripts'))
 import manual_bbcode as manual
 import nexus_publish
 import release
 import release_archive
+import steam_publish
 from release_archive import ReleaseError
 
 
@@ -36,19 +37,24 @@ class ConversionTests(unittest.TestCase):
         for source in ('> quote', '```python\nx = 1\n```', '`code`',
                        '![image](https://example.com/image.png)', '<b>HTML</b>',
                        '---', '~~strike~~', '| A | B |\n|---|---|\n| a | b |',
-                       '- [x] done', '[relative](other.md)', '3. Third', ''):
+                       '- [x] done', '[relative](other.md)', ''):
             with self.subTest(source=source), self.assertRaises(ReleaseError):
                 manual.convert(source)
 
+    def test_continued_numbered_list_preserves_numbers_and_formatting(self):
+        self.assertEqual(manual.convert('3. **Third**\n4. Fourth\n'),
+                         '3. [b]Third[/b]\n\n4. Fourth\n')
+
     def test_current_manual(self):
-        source = (Path(__file__).resolve().parents[1] / manual.MANUAL).read_text(encoding='utf-8')
+        source = (Path(__file__).resolve().parents[2] / manual.MANUAL).read_text(encoding='utf-8')
         output = manual.convert(source)
-        for expected in ('[b][size=5]Usage[/size][/b]', 'Declaration of AI usage',
-                         '[url=https://www.nexusmods.com/x4foundations/mods/2181]',
-                         '[url=https://github.com/stemps/x4-supply-chain-view]',
-                         'back up your save file', '"Lasts"', '"Full in"',
-                         '[b]?[/b] means unknown data', 'Hotkey Bindings'):
-            self.assertIn(expected, output)
+        # Structure only, so rewording the manual does not break the test.
+        for pattern in (r'\A\[b\]\[size=5\].+?\[/size\]\[/b\]\n',
+                        r'\[b\]\[size=4\].+?\[/size\]\[/b\]',
+                        r'\[list\]\n\[\*\].+?\[/\*\]',
+                        r'\[url=https://[^\]]+\].+?\[/url\]'):
+            with self.subTest(pattern=pattern):
+                self.assertRegex(output, pattern)
         self.assertNotIn('Work in progress', output)
 
     def test_handoff_writes_persistent_file_and_opens_notepad(self):
@@ -115,9 +121,12 @@ class ResolveTests(unittest.TestCase):
 
 
 class PublicationTests(unittest.TestCase):
-    def invoke(self, command, *, publication_error=None, handoff_error=None, conversion_error=None):
+    def invoke(self, command, *, publication_error=None, handoff_error=None, conversion_error=None,
+               steam_enabled=False, steam_error=None):
         publisher = Mock()
         events = []
+        steam = Mock(enabled=steam_enabled)
+        self.steam = steam
         publisher.publish.side_effect = lambda *a, **kw: events.append('publish')
         if publication_error:
             publisher.publish.side_effect = publication_error
@@ -126,8 +135,11 @@ class PublicationTests(unittest.TestCase):
         with contextlib.ExitStack() as stack:
             stack.enter_context(patch.object(sys, 'argv', ['release.py', *command]))
             stack.enter_context(patch.object(nexus_publish, 'Publisher', return_value=publisher))
+            stack.enter_context(patch.object(steam_publish, 'SteamPublisher', return_value=steam))
+            self.publish_steam = stack.enter_context(patch.object(release, 'publish_steam',
+                side_effect=steam_error or (lambda *a, **kw: events.append('steam'))))
             self.run_release = stack.enter_context(patch.object(release.Release, 'run',
-                return_value=Path('dist/Supply-Chain-View-1.2.3.zip')))
+                return_value=Path('dist/Example-Mod-1.2.3.zip')))
             stack.enter_context(patch.object(release_archive, 'tagged_zip',
                 return_value=(Path('archive.zip'), 'released-commit', 'Notes')))
             self.local_zip = stack.enter_context(patch.object(release_archive, 'local_zip'))
@@ -164,6 +176,26 @@ class PublicationTests(unittest.TestCase):
                 self.publisher.publish.assert_called_once()
                 self.assertIn('publication succeeded', self.stderr.getvalue())
                 self.assertIn('just nexus-description v1.2.3', self.stderr.getvalue())
+
+    def test_release_publishes_steam_after_nexus(self):
+        self.assertEqual(self.invoke(['release'], steam_enabled=True), ['convert', 'publish', 'handoff', 'steam'])
+        targets = self.run_release.call_args.kwargs['publisher'].publishers
+        self.assertEqual(targets, (self.publisher, self.steam))
+
+    def test_release_without_steam_config_skips_steam(self):
+        self.assertEqual(self.invoke(['release']), ['convert', 'publish', 'handoff'])
+        self.assertEqual(self.run_release.call_args.kwargs['publisher'].publishers, (self.publisher,))
+
+    def test_nexus_failure_skips_steam_and_names_both_resumes(self):
+        with self.assertRaisesRegex(ReleaseError, 'publish-nexus v1.2.3, then just publish-steam v1.2.3'):
+            self.invoke(['release'], steam_enabled=True, publication_error=ReleaseError('Upload failed'))
+        self.publish_steam.assert_not_called()
+
+    def test_publish_steam_command_never_touches_nexus(self):
+        self.assertEqual(self.invoke(['publish-steam', 'v1.2.3', '--retry-upload'], steam_enabled=True), ['steam'])
+        self.assertEqual(self.publish_steam.call_args.args[1:], ('v1.2.3', self.steam, False, True, False))
+        self.publisher.publish.assert_not_called()
+        self.convert.assert_not_called()
 
     def test_build_zip_does_not_convert_or_open(self):
         self.assertEqual(self.invoke(['build-zip']), [])

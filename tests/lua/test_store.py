@@ -17,7 +17,7 @@ import sys
 
 from lupa import LuaRuntime
 
-STORE = pathlib.Path(__file__).resolve().parent.parent / "ui" / "scv_store.lua"
+STORE = pathlib.Path(__file__).resolve().parents[2] / "src" / "ui" / "scv_store.lua"
 SRC = STORE.read_text(encoding="utf-8")
 
 lua = LuaRuntime(unpack_returned_tuples=True)

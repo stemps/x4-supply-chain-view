@@ -3,7 +3,9 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from check_sources import translation_coverage_errors
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'tools'))
+from check_sources import translation_coverage_errors  # noqa: E402
 
 
 class TranslationCoverageTests(unittest.TestCase):

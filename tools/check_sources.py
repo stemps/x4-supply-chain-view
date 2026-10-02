@@ -94,7 +94,7 @@ def check_tooltip_translations(etree):
             assert '\n' not in text and r'\n' not in text, f"{path.name}/{key}: spacing belongs in Lua"
         print(f"PASS tooltip translations: {path.name}")
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[1] / "src"
 
 
 def main():

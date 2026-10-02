@@ -9,12 +9,12 @@ from xml.etree import ElementTree as ET
 from lupa import LuaRuntime
 from lupa.luajit21 import LuaRuntime as LuaJITRuntime
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def run(runtime):
     lua = runtime(unpack_returned_tuples=True)
-    texts = {int(t.get('id')): t.text for t in ET.parse(ROOT/'t/0001.xml').iter('t')}
+    texts = {int(t.get('id')): t.text for t in ET.parse(ROOT/'src/t/0001.xml').iter('t')}
     lua.globals().texts = lua.table_from(texts)
     lua.execute('''
 logs={}; now=100; changes=0; events={}; requests={}; mailbox=nil
@@ -267,8 +267,8 @@ for _,entry in ipairs(menu.logisticsEntries(nil)) do
 end
 SCV_Data.stopLogistics()
 ''')
-    lua.execute((ROOT/'test/test_refresh_coverage.lua').read_text(encoding='utf-8'))
-    lua.execute((ROOT/'test/test_logistics_overlay.lua').read_text(encoding='utf-8'))
+    lua.execute((ROOT/'tests/lua/test_refresh_coverage.lua').read_text(encoding='utf-8'))
+    lua.execute((ROOT/'tests/lua/test_logistics_overlay.lua').read_text(encoding='utf-8'))
     colors = ET.parse(ROOT.parents[1]/'reference/libraries/colors.xml')
     palette = {}
     for name in ('text_normal', 'text_warning', 'text_error'):
@@ -277,16 +277,16 @@ SCV_Data.stopLogistics()
         palette[name] = {k: int(color.get(k)) for k in ('r','g','b')}
         palette[name].update(a=int(color.get('a'))*100/255, glow=float(color.get('glow','0')))
     lua.globals().nativePalette = lua.table_from(palette, recursive=True)
-    lua.execute((ROOT/'ui/scv_overlay.lua').read_text(encoding='utf-8'))
-    lua.execute((ROOT/'ui/scv_overlay_view.lua').read_text(encoding='utf-8'))
-    lua.execute((ROOT/'test/test_native_overlay.lua').read_text(encoding='utf-8'))
+    lua.execute((ROOT/'src/ui/scv_overlay.lua').read_text(encoding='utf-8'))
+    lua.execute((ROOT/'src/ui/scv_overlay_view.lua').read_text(encoding='utf-8'))
+    lua.execute((ROOT/'tests/lua/test_native_overlay.lua').read_text(encoding='utf-8'))
 
 
 for runtime in [LuaRuntime, LuaJITRuntime]:
     run(runtime)
 
 # Assert the XML calls the proven native query, not a docked-ship subtraction.
-md = ET.parse(ROOT/'md/scv_logistics.xml')
+md = ET.parse(ROOT/'src/md/scv_logistics.xml')
 finds = md.findall('.//find_dockingbay')
 assert len(finds) == 2
 for find in finds:
