@@ -101,8 +101,8 @@ Maintain the main Nexus and Steam Workshop page description in `docs/MANUAL.md`.
 `just release` validates its conversion for both sites before changing release
 metadata. After a successful publication, each platform step generates its own
 BBCode from the released commit's manual and opens it in Windows Notepad:
-`dist/nexus/<tag>/description.bbcode.txt` and
-`dist/steam/<tag>/description.bbcode.txt`. Copy the text into the site's
+`dist/nexus/<tag>/description-nexus.bbcode.txt` and
+`dist/steam/<tag>/description-steam.bbcode.txt`. Copy the text into the site's
 description editor and preview it before saving; neither page description is
 published by an API.
 

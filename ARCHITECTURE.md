@@ -101,7 +101,7 @@ suggestion comes from the manifest version; later releases use the latest tag.
   `--retry-upload`; `--minor` is for an unchanged version. Releases skip Steam
   while `steam.json` is absent or has no `published_file_id`.
 - `scripts/manual_bbcode.py`: converts the released `docs/MANUAL.md` to Nexus or
-  Steam BBCode (`dist/<nexus|steam>/<tag>/description.bbcode.txt`) and opens
+  Steam BBCode (`dist/<nexus|steam>/<tag>/description-<nexus|steam>.bbcode.txt`) and opens
   Notepad for copy/paste. Unsupported Markdown fails before releasing, and so does
   Steam output over 8000 characters (Steam preflight). Continued numbered lists
   use explicit numbers because neither site has a list-start attribute.

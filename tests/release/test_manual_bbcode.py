@@ -72,7 +72,7 @@ class ConversionTests(unittest.TestCase):
                 with patch.object(manual.subprocess, 'Popen'):
                     path = manual.handoff(directory, 'v1.2.3', 'abc123', 'steam')
             convert.assert_called_once_with(directory, 'abc123', 'steam')
-            self.assertEqual(path, Path(directory).resolve() / 'dist/steam/v1.2.3/description.bbcode.txt')
+            self.assertEqual(path, Path(directory).resolve() / 'dist/steam/v1.2.3/description-steam.bbcode.txt')
 
     def test_handoff_rejects_unsafe_folder_names(self):
         for label in ('../escape', 'a/b', '', '.hidden'):
@@ -85,7 +85,7 @@ class ConversionTests(unittest.TestCase):
                 with patch.object(manual.subprocess, 'Popen', side_effect=OSError('No Notepad')):
                     with self.assertRaises(OSError):
                         manual.handoff(directory, 'v1.2.3', 'abc123')
-            self.assertEqual((Path(directory) / 'dist/nexus/v1.2.3/description.bbcode.txt')
+            self.assertEqual((Path(directory) / 'dist/nexus/v1.2.3/description-nexus.bbcode.txt')
                              .read_text(encoding='utf-8'), 'Ready\n')
 
 

@@ -113,7 +113,7 @@ def handoff(root, label, commit, target='nexus'):
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]*', label):
         raise ReleaseError(f'Unsafe manual output folder name: {label!r}')
     output = from_commit(root, commit, target)
-    path = Path(root).resolve() / 'dist' / target / label / 'description.bbcode.txt'
+    path = Path(root).resolve() / 'dist' / target / label / f'description-{target}.bbcode.txt'
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(output, encoding='utf-8', newline='\n')
     print(f'{target.capitalize()} description ready to paste: {path}')
