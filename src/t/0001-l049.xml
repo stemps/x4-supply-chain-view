@@ -44,7 +44,7 @@
     <t id="3034">Abgenommen von</t>
     <t id="3035">Maximaler Verbrauch: %s</t>
     <t id="3036">Maximale Produktion: %s</t>
-    <t id="3037">Rate unbekannt: Bergbau/Handel, Schiffbau oder Moduldaten nicht erfasst.</t>
+    <t id="3037">Rate unbekannt: Bergbau/Bergung, Schiffbau oder Moduldaten nicht erfasst.</t>
     <t id="3040">Diese Station hat nach den Regeln der Kette keine Eingangs- oder Ausgangswaren.</t>
     <t id="3041">Vorrat: %s / %s</t>
     <t id="3042">Reservierter Eingang: %s</t>
@@ -169,5 +169,6 @@
     <t id="3202">Derzeit gemischt: einige werden als Erzeuger, andere als Verbraucher dargestellt.</t>
     <t id="3203">Diese Ware wird gekauft und verkauft. Wähle, sie im Diagramm als Erzeuger darzustellen.</t>
     <t id="3204">Diese Ware wird gekauft und verkauft. Wähle, sie im Diagramm als Verbraucher darzustellen.</t>
+    <t id="3205">Zivile Nachfrage: %s</t>
   </page>
 </language>

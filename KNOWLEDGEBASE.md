@@ -132,8 +132,17 @@ SCV uses native `GetContainerWareProduction/Consumption(..., true)` for effectiv
 maximum ordinary rates, with modifiers retained. Current (`false`) rates can drop
 to zero when starved, hiding the demand that needs attention. Workforce demand is
 added once through `Helper.getWorkforceConsumption`; station consumption excludes
-it. Rates are per hour. Mining/trading throughput and build-queue demand remain
+it. Rates are per hour. Mining/salvage throughput and build-queue demand remain
 unknown rather than zero. Production balance is not an observed stock trend.
+
+A plain trade good is a known zero in both directions. A plain trade good is a
+`tradewares` entry with no product, resource, intermediate, build, planned or
+processing role, and no completed recipe. A warehouse has no module that makes
+or uses the good; what traders move is logistics, not station capacity. The zero
+requires successful reads of `GetWareData(ware, "isminable") == false` and
+`"isprocessed" == false` (vanilla reads `isminable` in `helper.lua:13768`).
+Mined ore and salvaged scrap stay unknown because the station's own miners and
+collectors supply them, and a failed read stays unknown.
 
 Ordinary recipe rates use `amount * 3600 / sum(all product cycle durations)`;
 dividing each product by its own cycle overstates multi-product modules. Base
@@ -211,6 +220,34 @@ count query before `GetContainerWorkforceInfluence`. On 64-bit LuaJIT the native
 `WorkforceInfluenceInfo` size is 56 bytes with `target` at offset 48; ABI/reload
 tests cover this. Per-race `.optimal` was not established as a valid allocation.
 Live mixed-race allocation remains an in-game verification item.
+
+### Civilian Economy demand (optional mod)
+
+Civilian Economy (CE, `civilian_economy`) hubs are `faction.civilian` stations
+with no consuming modules. CE buys through **virtual** buy offers into an
+MD-tracked reserve, so hub cargo never holds the goods and the engine role lists
+do not name the demanded wares (READ: CE `ce_trade.xml` `create_trade_offer
+virtual="true"`, `ce_reserves.xml` `SyncWare`). The reserve target is
+`ceil(2 × rate)`, i.e. two hours of demand.
+
+SCV reads CE only through its Lua global `CEHubStatus.get(id)`, which is
+duck-typed at read time, so there is no manifest dependency and load order does
+not matter. `get` returns nil for non-hubs and for hubs unknown to the player.
+Decoded ware rows map `key` → ware id, `rate` → units/h, `reserve` → stock,
+`capacity` → 2 h target, `incoming` → CE-counted reservations. A `rate` of 0 is a
+ware not unlocked at the hub's level and is skipped. `available == false` keeps
+the input role but makes rate, stock and limit unknown. A CE error leaves the
+station read intact. Scan gating (`storage_amounts`/`storage_capacity`) marks a
+hub `locked` only while it still shows a ware read from the engine; a hub showing
+only CE wares raises no storage warning. Other stations are unchanged.
+
+Every demanded ware is forced to an input after output-wins, and the rate is
+added to `consMax` beside native, processing and workforce demand
+(`consumptionParts.civilian`).
+
+UNVERIFIED in game: whether `GetContainerWareReservations2` reports
+reservations against virtual offers. The reader uses the engine value and falls
+back to CE's `incoming` only when the engine reports zero.
 
 ## Core mechanisms of this Mod
 

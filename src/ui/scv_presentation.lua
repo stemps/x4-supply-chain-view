@@ -281,11 +281,13 @@ function SCV_Presentation.new(config, dispatch)
 			lines[#lines + 1] = T(continuous and 3126 or 3037)
 			return table.concat(lines, "\n")
 		end
-		local parts = continuous and w.consumptionParts
-		if parts then
-			lines[#lines + 1] = "  " .. T(3128, formatRate(parts.processing))
-			lines[#lines + 1] = "  " .. T(3129, formatRate(parts.production))
+		local parts = isInput and w.consumptionParts
+		local civilian = parts and (parts.civilian or 0) > 0
+		if parts and (continuous or civilian) then
+			if continuous then lines[#lines + 1] = "  " .. T(3128, formatRate(parts.processing)) end
+			if continuous or parts.production > 0 then lines[#lines + 1] = "  " .. T(3129, formatRate(parts.production)) end
 			if parts.workforce > 0 then lines[#lines + 1] = "  " .. T(3130, formatRate(parts.workforce)) end
+			if civilian then lines[#lines + 1] = "  " .. T(3205, formatRate(parts.civilian)) end
 		end
 		lines[#lines + 1] = ""
 		lines[#lines + 1] = rateAssumptions(isInput, continuous)

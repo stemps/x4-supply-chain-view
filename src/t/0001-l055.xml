@@ -44,7 +44,7 @@
     <t id="3034">Recolhido por</t>
     <t id="3035">Consumo máximo: %s</t>
     <t id="3036">Produção máxima: %s</t>
-    <t id="3037">Taxa desconhecida: mineração/comércio, construção naval ou módulos não medidos.</t>
+    <t id="3037">Taxa desconhecida: mineração/recuperação, construção naval ou módulos não medidos.</t>
     <t id="3040">Esta estação não tem mercadorias de entrada ou saída segundo as regras da cadeia.</t>
     <t id="3041">Estoque: %s / %s</t>
     <t id="3042">Entradas reservadas: %s</t>
@@ -169,5 +169,6 @@
     <t id="3202">Atualmente misto: algumas são mostradas como produzidas, outras como consumidas.</t>
     <t id="3203">Esta mercadoria é comprada e vendida. Escolha mostrá-la no gráfico como produtora.</t>
     <t id="3204">Esta mercadoria é comprada e vendida. Escolha mostrá-la no gráfico como consumidora.</t>
+    <t id="3205">Demanda civil: %s</t>
   </page>
 </language>

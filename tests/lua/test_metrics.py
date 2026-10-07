@@ -162,7 +162,7 @@ state.prod=0
 assert(read().wares.energycells.prodKnown) -- real zero is known when a module exists
 state.prod=4800000
 state.modules=false
-assert(not read().wares.energycells.prodKnown) -- mining/trade throughput isn't production
+assert(not read().wares.energycells.prodKnown) -- a listed product without its module is unmeasured
 state.modules=true
 state.unfinished=true
 assert(read().wares.energycells.prodKnown and read().wares.energycells.prodMax == 4800000,
@@ -542,6 +542,8 @@ for source in (root/'src/ui').glob('*.lua'):
 lua.execute((root/'tests/lua/test_tooltips.lua').read_text(encoding='utf-8'))
 lua.execute((root/'tests/lua/test_capacity.lua').read_text(encoding='utf-8'))
 lua.execute((root/'tests/lua/test_processing.lua').read_text(encoding='utf-8'))
+lua.execute((root/'tests/lua/test_civilian.lua').read_text(encoding='utf-8'))
+lua.execute((root/'tests/lua/test_warehouse.lua').read_text(encoding='utf-8'))
 lua.execute((root/'src/ui/scv_store.lua').read_text(encoding='utf-8'))
 lua.execute((root/'tests/lua/test_warnings.lua').read_text(encoding='utf-8'))
 lua.execute((root/'tests/lua/test_roles.lua').read_text(encoding='utf-8'))

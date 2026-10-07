@@ -44,7 +44,7 @@
     <t id="3034">Odbierane przez</t>
     <t id="3035">Maksymalne zużycie: %s</t>
     <t id="3036">Maksymalna produkcja: %s</t>
-    <t id="3037">Tempo nieznane: wydobycie/handel, budowa statków lub moduły niezmierzone.</t>
+    <t id="3037">Tempo nieznane: wydobycie/odzysk złomu, budowa statków lub moduły niezmierzone.</t>
     <t id="3040">Ta stacja nie ma towarów wejściowych ani wyjściowych według zasad łańcucha.</t>
     <t id="3041">Zapas: %s / %s</t>
     <t id="3042">Zarezerwowane dostawy: %s</t>
@@ -169,5 +169,6 @@
     <t id="3202">Obecnie mieszane: część jest pokazana jako produkowana, część jako konsumowana.</t>
     <t id="3203">Ten towar jest kupowany i sprzedawany. Wybierz, aby pokazać go na wykresie jako producenta.</t>
     <t id="3204">Ten towar jest kupowany i sprzedawany. Wybierz, aby pokazać go na wykresie jako konsumenta.</t>
+    <t id="3205">Popyt cywilny: %s</t>
   </page>
 </language>

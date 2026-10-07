@@ -44,7 +44,7 @@
     <t id="3034">Ritirato da</t>
     <t id="3035">Consumo massimo: %s</t>
     <t id="3036">Produzione massima: %s</t>
-    <t id="3037">Tasso sconosciuto: estrazione/commercio, costruzione navale o moduli non misurati.</t>
+    <t id="3037">Tasso sconosciuto: estrazione/recupero, costruzione navale o moduli non misurati.</t>
     <t id="3040">Questa stazione non ha merci in ingresso o in uscita secondo le regole della catena.</t>
     <t id="3041">Scorte: %s / %s</t>
     <t id="3042">Entrate prenotate: %s</t>
@@ -169,5 +169,6 @@
     <t id="3202">Attualmente misto: alcune sono mostrate come prodotte, altre come consumate.</t>
     <t id="3203">Questa merce viene comprata e venduta. Scegli di mostrarla nel grafico come produttore.</t>
     <t id="3204">Questa merce viene comprata e venduta. Scegli di mostrarla nel grafico come consumatore.</t>
+    <t id="3205">Domanda civile: %s</t>
   </page>
 </language>

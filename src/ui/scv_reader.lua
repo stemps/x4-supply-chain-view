@@ -87,6 +87,32 @@ local function readWorkforceReserve(id64)
 	return result
 end
 
+-- Optional Civilian Economy demand. CE hubs buy through virtual offers into an MD-held
+-- reserve, so the hub has no consuming modules and its cargo stays empty. CE publishes
+-- its validated snapshot through the CEHubStatus global; absent mod = no demand source.
+-- Rate 0 rows are wares not yet unlocked at the hub's level.
+local function readCivilianDemand(id64)
+	local result = { wares = {}, known = true, hub = false }
+	if type(CEHubStatus) ~= "table" or type(CEHubStatus.get) ~= "function" then return result end
+	local ok, err = pcall(function ()
+		local status = CEHubStatus.get(id64)
+		if type(status) ~= "table" then return end
+		result.hub, result.known = true, status.available == true
+		for _, row in ipairs(type(status.wares) == "table" and status.wares or {}) do
+			local rate = tonumber(row.rate)
+			if type(row.key) == "string" and SCV_Graph.validRate(rate) and rate > 0 then
+				result.wares[row.key] = { rate = rate, reserve = tonumber(row.reserve),
+					capacity = tonumber(row.capacity), incoming = tonumber(row.incoming) }
+			end
+		end
+	end)
+	if not ok then
+		warnOnce("civilian-demand:" .. tostring(err), "Civilian Economy demand unavailable: " .. tostring(err))
+		return { wares = {}, known = true, hub = false }
+	end
+	return result
+end
+
 -- ---------------------------------------------------------------------------------
 -- Station enumeration
 -- ---------------------------------------------------------------------------------
@@ -414,8 +440,16 @@ local function readWareRoles(id64, recipes)
 		end
 		inputs[ware] = nil
 	end
+	-- Plain trade goods: no completed, planned or build role at all.
+	local tradeOnly = {}
+	for ware in pairs(tradewares) do
+		if not products[ware] and not pureresources[ware] and not intermediates[ware] and not buildwares[ware]
+			and not futureProducts[ware] and not futureResources[ware] then
+			tradeOnly[ware] = true
+		end
+	end
 
-	return outputs, inputs, candidates, intermediates, buildwares, futureResources, rolesKnown, futureProducts, tradewares, dualTrade
+	return outputs, inputs, candidates, intermediates, buildwares, futureResources, rolesKnown, futureProducts, tradewares, dualTrade, tradeOnly
 end
 
 -- Reserved trades per ware: how much is on its way IN and how much is committed to go OUT.
@@ -661,8 +695,14 @@ function SCV_Reader.readStation(st, deps)
 	local unlockedCapacity = safe(false, function () return C.IsInfoUnlockedForPlayer(id64, "storage_capacity") end)
 
 	local ratesOut, ratesIn, inventoryKnown, excludedProd, excludedCons, processing, recipes = readTheoreticalRates(id64)
-	local outputs, inputs, candidates, _, buildwares, futureResources, rolesKnown, futureProducts, tradewares, dualTrade = readWareRoles(id64, recipes)
+	local outputs, inputs, candidates, _, buildwares, futureResources, rolesKnown, futureProducts, tradewares, dualTrade, tradeOnly = readWareRoles(id64, recipes)
 	local workforceReserve = readWorkforceReserve(id64)
+	-- A hub only buys what CE demands. Its demand bypasses the engine role lists, so
+	-- add it after output-wins: nothing there may turn a demanded ware into an output.
+	local civilian = readCivilianDemand(id64)
+	for ware in pairs(civilian.wares) do
+		candidates[ware], inputs[ware], outputs[ware] = true, true, nil
+	end
 	local reservations, reservationsKnown = readReservations(id64)
 	local capacity, capacityRead = readCapacity(id64)
 	local cargo   = safe(nil, GetComponentData, id64, "cargo")
@@ -673,11 +713,14 @@ function SCV_Reader.readStation(st, deps)
 	unlockedAmounts = unlockedAmounts and type(cargo) == "table"
 
 	local wares = {}
+	-- Scan gating only matters for wares whose amounts come from the engine.
+	local engineAmounts = false
 	for ware in pairs(candidates) do
 		local output = outputs[ware] or false
 		local input  = inputs[ware] or false
 
 		if output or input then
+			engineAmounts = engineAmounts or not civilian.wares[ware]
 			local wname     = safe(ware, GetWareData, ware, "name")
 			local transport = safe(nil, GetWareData, ware, "transport")
 
@@ -687,27 +730,46 @@ function SCV_Reader.readStation(st, deps)
 			local production = safe(nil, function () return C.GetContainerWareProduction(id64, ware, true) end)
 			local consumption = safe(nil, function () return C.GetContainerWareConsumption(id64, ware, true) end)
 			local workforce = safe(nil, Helper.getWorkforceConsumption, id64, ware)
+			-- A plain trade good no module makes or uses has a known zero station rate:
+			-- a warehouse only stores what traders move. Mined and salvaged goods stay
+			-- unknown, because the station's own miners and collectors supply them.
+			-- Every condition must be a successful read; a failed one keeps it unknown.
+			local tradeZero = tradeOnly[ware] and rolesKnown and inventoryKnown
+				and not recipes.outputs[ware] and not recipes.inputs[ware]
+				and not processing.outputs[ware] and not processing.inputs[ware]
+				and safe(nil, GetWareData, ware, "isminable") == false
+				and safe(nil, GetWareData, ware, "isprocessed") == false
 			local prodKnown = inventoryKnown and not excludedProd[ware] and not processing.excludedProd[ware]
-				and (ratesOut[ware] ~= nil or processing.outputs[ware] == true) and SCV_Graph.validRate(production)
+				and (tradeZero or ratesOut[ware] ~= nil or processing.outputs[ware] == true) and SCV_Graph.validRate(production)
 			-- Planned connections have no current demand when the complete inventory
 			-- contains no built consumer and the native reads confirm zero consumption.
 			local futureZeroDemand = rolesKnown and futureResources[ware] and not recipes.inputs[ware]
 				and not tradewares[ware] and tonumber(consumption) == 0 and tonumber(workforce) == 0
 			local consKnown = inventoryKnown and not excludedCons[ware] and not processing.excludedCons[ware] and not buildwares[ware]
-				and (futureZeroDemand or ratesIn[ware] ~= nil or processing.inputs[ware] or workforceReserve.wares[ware] or (tonumber(workforce) or 0) > 0)
+				and (futureZeroDemand or tradeZero or ratesIn[ware] ~= nil or processing.inputs[ware] or workforceReserve.wares[ware] or (tonumber(workforce) or 0) > 0)
 				and SCV_Graph.validRate(consumption) and SCV_Graph.validRate(workforce)
 			local prodMax = prodKnown and ((ratesOut[ware] ~= nil and tonumber(production) or 0)
 				+ (processing.production[ware] or 0)) or 0
+			local civil = civilian.wares[ware]
+			if civil then
+				-- Native reads still count when present; the CE rate stands alone otherwise.
+				local otherDemand = ratesIn[ware] ~= nil or processing.inputs[ware]
+					or workforceReserve.wares[ware] or (tonumber(workforce) or 0) > 0
+				consKnown = civilian.known and SCV_Graph.validRate(workforce) and (consKnown or not otherDemand)
+			end
+			local civilRate = civil and civil.rate or 0
 			local consMax = (inventoryKnown and not excludedCons[ware] and ratesIn[ware] ~= nil
 				and SCV_Graph.validRate(consumption) and tonumber(consumption) or 0)
 				+ (processing.consumption[ware] or 0)
 				+ (SCV_Graph.validRate(workforce) and tonumber(workforce) or 0)
+				+ civilRate
 			local feedstock = processing.feedstocks[ware]
 			local metricOutput = output
 			local metricInput = input or (output and (workforceReserve.wares[ware]
 				or not workforceReserve.membershipKnown or not SCV_Graph.validRate(workforce) or tonumber(workforce) > 0)) or false
 			local workforceOnly = rolesKnown and workforceReserve.membershipKnown and workforceReserve.wares[ware]
 				and not recipes.inputs[ware] and not buildwares[ware] and not futureResources[ware] and not tradewares[ware]
+				and not civil
 			local export
 			if output and (recipes.outputs[ware] or futureProducts[ware] or not inventoryKnown)
 				and (workforceReserve.wares[ware] or not workforceReserve.membershipKnown or (tonumber(workforce) or 0) > 0) then
@@ -737,6 +799,17 @@ function SCV_Reader.readStation(st, deps)
 
 			if not stockKnown then stock = 0 end
 			if not unlockedCapacity then limit = 0 end    -- unknown, not zero-capacity
+			-- CE deliveries land in a virtual reserve, never in cargo; its target is two
+			-- hours of demand. Cargo and the storage allocation would read as empty.
+			local incoming = (reservations[ware] and reservations[ware].incoming) or 0
+			if civil then
+				stockKnown = civilian.known and SCV_Graph.validRate(civil.reserve)
+				stock = stockKnown and civil.reserve or 0
+				limitKnown = civilian.known and SCV_Graph.validRate(civil.capacity)
+				limit = limitKnown and civil.capacity or 0
+				-- Unmeasured whether engine reservations see virtual offers; CE counts its own.
+				if incoming == 0 and SCV_Graph.validRate(civil.incoming) then incoming = civil.incoming end
+			end
 
 			local capacityUnits = 0
 			local volume = tonumber(safe(nil, GetWareData, ware, "volume"))
@@ -750,10 +823,11 @@ function SCV_Reader.readStation(st, deps)
 
 			wares[ware] = {
 				rateBasis   = processing.inputs[ware] and "continuousProcessing" or nil,
-				consumptionParts = processing.inputs[ware] and consKnown and {
+				consumptionParts = (processing.inputs[ware] or civil) and consKnown and {
 					processing = processing.consumption[ware] or 0,
 					production = ratesIn[ware] ~= nil and tonumber(consumption) or 0,
-					workforce = tonumber(workforce), total = consMax } or nil,
+					workforce = tonumber(workforce), civilian = civilRate, total = consMax } or nil,
+				civilianDemand = civil and civilRate or nil,
 				name        = tostring(wname),
 				transport   = tostring(transport),
 				stock       = stock,
@@ -770,7 +844,7 @@ function SCV_Reader.readStation(st, deps)
 				-- An export decision owns the role; only an untouched output-wins ware may flip.
 				dualTrade   = (dualTrade[ware] and output and not export) or nil,
 				-- reserved trades, for the detail panel's bars
-				incoming    = (reservations[ware] and reservations[ware].incoming) or 0,
+				incoming    = incoming,
 				outgoing    = (reservations[ware] and reservations[ware].outgoing) or 0,
 				-- All displayed rates use this same full-operation basis.
 				workforce   = tonumber(workforce) or 0,
@@ -800,8 +874,9 @@ function SCV_Reader.readStation(st, deps)
 		wares      = wares,
 		logistics  = deps.readLogistics(id64),
 		-- Not scanned far enough to read stock levels. The links are still right; the
-		-- numbers on them are not.
-		locked     = (not unlockedAmounts) or (not unlockedCapacity),
+		-- numbers on them are not. A CE hub showing only CE wares reads none of them.
+		locked     = ((not unlockedAmounts) or (not unlockedCapacity))
+			and (engineAmounts or not civilian.hub),
 	}
 end
 

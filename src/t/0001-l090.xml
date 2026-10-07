@@ -44,7 +44,7 @@
     <t id="3034">Alanlar</t>
     <t id="3035">Azami tüketim: %s</t>
     <t id="3036">Azami üretim: %s</t>
-    <t id="3037">Hız bilinmiyor: madencilik/ticaret, gemi yapımı veya modül verileri ölçülmemiş.</t>
+    <t id="3037">Hız bilinmiyor: madencilik/hurda toplama, gemi yapımı veya modül verileri ölçülmemiş.</t>
     <t id="3040">Zincirin kurallarına göre bu istasyonun girdi veya çıktı malı yok.</t>
     <t id="3041">Stok: %s / %s</t>
     <t id="3042">Rezerve giriş: %s</t>
@@ -169,5 +169,6 @@
     <t id="3202">Şu anda karışık: bazıları üretici, bazıları tüketici olarak gösteriliyor.</t>
     <t id="3203">Bu mal hem alınıyor hem satılıyor. Grafikte üretici olarak göstermek için seçin.</t>
     <t id="3204">Bu mal hem alınıyor hem satılıyor. Grafikte tüketici olarak göstermek için seçin.</t>
+    <t id="3205">Sivil talep: %s</t>
   </page>
 </language>

@@ -55,7 +55,7 @@
     <!-- 3035/3036: effective maximum rates under current station conditions. -->
     <t id="3035">Maximum consumption: %s</t>
     <t id="3036">Maximum production: %s</t>
-    <t id="3037">Rate unknown: mining/trade, shipbuilding or module data unmeasured.</t>
+    <t id="3037">Rate unknown: mining/salvage, shipbuilding or module data unmeasured.</t>
     <t id="3040">This station has no input or output wares under the chain's rules.</t>
     <t id="3041">Stock: %s / %s</t>
     <t id="3042">Reserved incoming: %s</t>
@@ -191,5 +191,6 @@
     <t id="3202">Currently mixed: some are drawn as producers, some as consumers.</t>
     <t id="3203">This ware is both bought and sold. Choose to draw it in the graph as a producer.</t>
     <t id="3204">This ware is both bought and sold. Choose to draw it in the graph as a consumer.</t>
+    <t id="3205">Civilian demand: %s</t>
   </page>
 </language>

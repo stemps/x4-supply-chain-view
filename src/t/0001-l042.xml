@@ -44,7 +44,7 @@
     <t id="3034">Odebírají</t>
     <t id="3035">Maximální spotřeba: %s</t>
     <t id="3036">Maximální výroba: %s</t>
-    <t id="3037">Tempo neznámé: těžba/obchod, stavba lodí nebo moduly nejsou změřeny.</t>
+    <t id="3037">Tempo neznámé: těžba/sběr šrotu, stavba lodí nebo moduly nejsou změřeny.</t>
     <t id="3040">Tato stanice nemá podle pravidel řetězce žádné vstupní ani výstupní zboží.</t>
     <t id="3041">Zásoba: %s / %s</t>
     <t id="3042">Rezervovaný příjem: %s</t>
@@ -169,5 +169,6 @@
     <t id="3202">Momentálně smíšené: část je zobrazena jako vyráběná, část jako spotřebovaná.</t>
     <t id="3203">Toto zboží se nakupuje i prodává. Zvolte zobrazení v grafu jako výrobce.</t>
     <t id="3204">Toto zboží se nakupuje i prodává. Zvolte zobrazení v grafu jako spotřebitele.</t>
+    <t id="3205">Civilní poptávka: %s</t>
   </page>
 </language>

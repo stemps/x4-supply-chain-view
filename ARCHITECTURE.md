@@ -72,6 +72,13 @@ and wares sorted by display name, so the ties it decides are readable and do not
 depend on chain insertion order or scan-cache state. Presentation owns the shared
 footnote registry used by Chart for caption markers, tooltips and footer lines.
 
+Optional Civilian Economy integration is a Reader-only demand source:
+`readCivilianDemand` reads CE's `CEHubStatus` global when present and turns each
+unlocked hub ware into an input whose CE rate adds to `consMax`. For those wares,
+the CE reserve and its two-hour target replace cargo stock and storage limit.
+Graph and the UI see ordinary records; only the rate tooltip names the
+`civilian` share.
+
 Runtime contracts, engine constraints and implementation findings are documented
 in [KNOWLEDGEBASE.md](KNOWLEDGEBASE.md).
 

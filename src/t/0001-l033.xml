@@ -44,7 +44,7 @@
     <t id="3034">Collecté par</t>
     <t id="3035">Consommation maximale : %s</t>
     <t id="3036">Production maximale : %s</t>
-    <t id="3037">Débit inconnu : extraction/commerce, construction navale ou modules non mesurés.</t>
+    <t id="3037">Débit inconnu : extraction/récupération, construction navale ou modules non mesurés.</t>
     <t id="3040">Cette station n'a aucune marchandise entrante ou sortante selon les règles de la chaîne.</t>
     <t id="3041">Stock : %s / %s</t>
     <t id="3042">Entrées réservées : %s</t>
@@ -169,5 +169,6 @@
     <t id="3202">Actuellement mixte : certaines sont affichées comme produites, d’autres comme consommées.</t>
     <t id="3203">Cette marchandise est achetée et vendue. Choisissez de l’afficher dans le graphe comme producteur.</t>
     <t id="3204">Cette marchandise est achetée et vendue. Choisissez de l’afficher dans le graphe comme consommateur.</t>
+    <t id="3205">Demande civile : %s</t>
   </page>
 </language>
