@@ -147,7 +147,7 @@
     <t id="3178">Lastendrohnen</t>
     <t id="3179">Belegte und reservierte Liegeplätze sind nicht verfügbar.</t>
     <t id="3180">Docks</t>
-    <t id="3181">Schiffs- und Dockzahlen sind nur für spielereigene Stationen verfügbar.</t>
+    <t id="3181">Schiffsanzahl nicht verfügbar.</t>
     <t id="3184">Dock-/Schiffsanzeige nicht verfügbar. SCV zum erneuten Versuch wieder öffnen.</t>
     <t id="3185">Einstellungen</t>
     <t id="3186">Docks/Untergebene anzeigen</t>
@@ -170,5 +170,7 @@
     <t id="3203">Diese Ware wird gekauft und verkauft. Wähle, sie im Diagramm als Erzeuger darzustellen.</t>
     <t id="3204">Diese Ware wird gekauft und verkauft. Wähle, sie im Diagramm als Verbraucher darzustellen.</t>
     <t id="3205">Zivile Nachfrage: %s</t>
+    <t id="3206">Dockanzahl nur für eigene Stationen.</t>
+    <t id="3207">Leerlaufstatus nur für eigene oder verbündete Stationen.</t>
   </page>
 </language>

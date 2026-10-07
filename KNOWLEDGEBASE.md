@@ -198,7 +198,14 @@ not set `GetMenuParameters2`. The player-owned build shortcut follows vanilla
 `StationConfigurationMenu` parameters `{0, 0, stationID}` and rechecks ownership.
 
 Subordinate reads recurse and deduplicate IDs, using real size and macro purpose.
-Idle means `C.GetNumOrders(ship) == 0`, not zero speed. Cargo drones use
+Idle means `C.GetNumOrders(ship) == 0`, not zero speed.
+Logistics visibility matches vanilla's map. Any station's subordinate counts by
+type are shown, as in vanilla (`menu_map.lua:14481`, no gate). Idle state is read
+only for own or allied stations (`menu_map.lua:9569`, `isplayerowned or isally`);
+other owners show `?`. Free berths per dock size are player-only: vanilla shows
+none for any station, and the MD dock query is never sent for a foreign station.
+Idle warnings (orange/red) apply only to player-owned stations, because only own
+ships take the player's orders. Cargo drones use
 `C.GetNumStoredUnits(station, "transport", false)` with information-unlock gates.
 Dock queries follow `find_dockingbay` / `match_dock free="true"`: operational
 external trading berths only, each assigned to its largest size, with L/XL combined.

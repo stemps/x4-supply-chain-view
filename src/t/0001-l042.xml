@@ -147,7 +147,7 @@
     <t id="3178">Nákladní drony</t>
     <t id="3179">Obsazená a rezervovaná dokovací místa nejsou dostupná.</t>
     <t id="3180">Doky</t>
-    <t id="3181">Počty lodí a doků jsou dostupné jen pro stanice hráče.</t>
+    <t id="3181">Počet lodí není k dispozici.</t>
     <t id="3184">Zobrazení doků a lodí není dostupné. Znovu otevřete SCV.</t>
     <t id="3185">Nastavení</t>
     <t id="3186">Zobrazit doky/podřízené</t>
@@ -170,5 +170,7 @@
     <t id="3203">Toto zboží se nakupuje i prodává. Zvolte zobrazení v grafu jako výrobce.</t>
     <t id="3204">Toto zboží se nakupuje i prodává. Zvolte zobrazení v grafu jako spotřebitele.</t>
     <t id="3205">Civilní poptávka: %s</t>
+    <t id="3206">Počty doků vyžadují vlastnictví hráčem.</t>
+    <t id="3207">Stav nečinnosti vyžaduje vlastnictví nebo spojenectví.</t>
   </page>
 </language>

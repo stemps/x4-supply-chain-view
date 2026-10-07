@@ -169,7 +169,7 @@
     <t id="3178">Cargo drones</t>
     <t id="3179">Free excludes berths with a docked ship and berths reserved for a ship that is approaching.</t>
     <t id="3180">Docks</t>
-    <t id="3181">Ship and dock counts require player ownership.</t>
+    <t id="3181">Ship counts unavailable.</t>
     <t id="3184">Dock/ship display unavailable. Reopen SCV to retry.</t>
     <t id="3185">Settings</t>
     <t id="3186">Show docks/subordinates</t>
@@ -192,5 +192,7 @@
     <t id="3203">This ware is both bought and sold. Choose to draw it in the graph as a producer.</t>
     <t id="3204">This ware is both bought and sold. Choose to draw it in the graph as a consumer.</t>
     <t id="3205">Civilian demand: %s</t>
+    <t id="3206">Dock counts require player ownership.</t>
+    <t id="3207">Idle state requires player ownership or alliance.</t>
   </page>
 </language>

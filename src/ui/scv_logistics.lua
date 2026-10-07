@@ -19,13 +19,19 @@ function SCV_Logistics.read(id64, requestDocks)
 			result[role][size] = { total = 0, idle = 0 }
 		end
 	end
-	-- Vanilla's property-owned summary is player-only. Do not expose foreign
-	-- subordinate orders or unscanned dock modules through an MD back door.
-	if safe(false, GetComponentData, id64, "isplayerowned") == true then
+	-- Match vanilla's visibility. The map shows any station's subordinates by type
+	-- (menu_map.lua:14481, ungated) but their idle state only for own or allied
+	-- stations (menu_map.lua:9569, `isplayerowned or isally`). Dock counts stay
+	-- player-only: vanilla shows no per-size free berths for any station, so never
+	-- open the MD dock query to foreign stations.
+	local playerOwned = safe(false, GetComponentData, id64, "isplayerowned") == true
+	local idleVisible = playerOwned or safe(false, GetComponentData, id64, "isally") == true
+	result.playerOwned, result.idleVisible = playerOwned, idleVisible
+	do
 		local ok, err = pcall(function ()
 			if not IsValidComponent(id64) then error("station no longer exists") end
 			local seen, queue, cursor = {}, { id64 }, 1
-			result.shipsKnown, result.idleKnown = true, true
+			result.shipsKnown, result.idleKnown = true, idleVisible
 			while cursor <= #queue do
 				local ship = queue[cursor]
 				cursor = cursor + 1
@@ -59,7 +65,8 @@ function SCV_Logistics.read(id64, requestDocks)
 										if type(icon) == "string" and icon ~= "" then bucket.icon = icon end
 									end
 									bucket.total = bucket.total + 1
-									local orders = nonnegativeInteger(safe(nil, function () return C.GetNumOrders(ConvertIDTo64Bit(ship)) end))
+									local orders = idleVisible
+										and nonnegativeInteger(safe(nil, function () return C.GetNumOrders(ConvertIDTo64Bit(ship)) end)) or nil
 									if orders == nil then
 										bucket.idleUnknown = true
 										if role then result.idleKnown = false end
@@ -80,7 +87,7 @@ function SCV_Logistics.read(id64, requestDocks)
 			result.shipsKnown, result.idleKnown = false, false
 			warnOnce("logistics-ships:" .. tostring(err), "ship logistics unavailable: " .. tostring(err))
 		end
-		requestDocks(id64, result)
+		if playerOwned then requestDocks(id64, result) end
 	end
 	local unitsVisible = safe(false, function () return C.IsInfoUnlockedForPlayer(id64, "units_amount") end)
 		and safe(false, function () return C.IsInfoUnlockedForPlayer(id64, "units_details") end)

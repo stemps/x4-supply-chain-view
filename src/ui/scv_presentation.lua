@@ -81,7 +81,7 @@ function SCV_Presentation.new(config, dispatch)
 				text = dockLabel(data, size, true),
 				color = dock and dock.total > 0 and dock.free == 0 and Color.text_warning or nil,
 				tip = T(3180) .. " " .. string.upper(size) .. ": " .. dockLabel(data, size, false)
-					.. "\n\n" .. T(3171) .. "\n\n" .. T(3179) .. "\n\n" .. T(3172) .. (not data.shipsKnown and ("\n\n" .. T(3181)) or ""),
+					.. "\n\n" .. T(3171) .. "\n\n" .. T(3179) .. "\n\n" .. T(3172) .. (data.playerOwned == false and ("\n\n" .. T(3206)) or ""),
 			}
 		end
 		entries[#entries + 1] = { text = "\27[ship_xs_drone_trade_01] " .. logisticsCount(data.drones, data.drones ~= nil), color = data.factionColor,
@@ -94,13 +94,15 @@ function SCV_Presentation.new(config, dispatch)
 			end
 		end
 		table.sort(categories, function (a, b) return a.rank > b.rank end)
+		local idleHidden = data.idleVisible == false and ("\n\n" .. T(3207)) or ""
 		for _, bucket in ipairs(categories) do
 			local name = bucket.name or (string.upper(bucket.size) .. " " .. bucket.purpose)
 			local percent = not bucket.idleUnknown and string.format("%.1f%%", math.floor(1000 * bucket.idle / bucket.total) / 10) or "?"
 			entries[#entries + 1] = { text = "\27[" .. (bucket.icon or "ship_m_transporter_01") .. "] " .. bucket.total,
 				color = data.factionColor,
 				tip = string.upper(bucket.size) .. ": " .. name .. ": " .. bucket.total .. "\n\n"
-					.. logisticsIdleLabel(logisticsCount(bucket.idle, not bucket.idleUnknown), tostring(bucket.total), percent) .. "\n\n" .. T(3174) }
+					.. logisticsIdleLabel(logisticsCount(bucket.idle, not bucket.idleUnknown), tostring(bucket.total), percent) .. "\n\n" .. T(3174)
+					.. idleHidden }
 		end
 		if not data.shipsKnown then
 			entries[#entries + 1] = { text = "\27[ship_m_transporter_01] ?", color = data.factionColor, tip = T(3181) }
@@ -108,7 +110,8 @@ function SCV_Presentation.new(config, dispatch)
 		local totals = SCV_Graph.logisticsTotals(data)
 		entries[#entries + 1] = { text = logisticsTint("\27[ships_idling_01] " .. logisticsCount(totals.idle, totals.idleKnown), totals.severity),
 			color = totals.severity == "critical" and Color.text_error or totals.severity == "warning" and Color.text_warning or nil,
-			tip = T(3176) .. " + " .. T(3177) .. "\n\n" .. menu.idleText(data) .. "\n\n" .. T(3174) .. "\n\n" .. T(3175) }
+			tip = T(3176) .. " + " .. T(3177) .. "\n\n" .. menu.idleText(data) .. "\n\n" .. T(3174)
+				.. (data.playerOwned == false and idleHidden or ("\n\n" .. T(3175))) }
 		return entries
 	end
 

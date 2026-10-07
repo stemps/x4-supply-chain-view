@@ -37,6 +37,7 @@ function GetComponentData(id,key)
  local w=assert(world[id])
  if key=='idcode' then return w.code end
  if key=='isplayerowned' then return w.owned == true end
+ if key=='isally' then return w.ally == true end
  if key=='macro' then return id end
  if key=='owner' then return 'player' end
  if key=='shiptypename' then return (w.size or '')..' '..(w.purpose or '') end
@@ -123,8 +124,31 @@ brokenChildren='M'
 assert(not SCV_Data.readLogistics('A').shipsKnown)
 brokenChildren=nil
 world.A.owned=false
+-- Foreign stations: vanilla shows subordinates by type for any owner, idle state
+-- only for allies, and no per-size docks. Foreign idle counts never warn.
 local npc=SCV_Data.readLogistics('A')
-assert(not npc.shipsKnown and npc.drones==24 and next(npc.docks)==nil)
+assert(npc.shipsKnown and not npc.idleKnown and npc.drones==24 and next(npc.docks)==nil)
+assert(npc.playerOwned==false and npc.idleVisible==false)
+assert(npc.traders.s.total==1 and npc.traders.s.idleUnknown and npc.traders.s.idle==0)
+assert(npc.miners.l.total==1 and npc.miners.l.idleUnknown)
+local npcTotals=SCV_Graph.logisticsTotals(npc)
+assert(npcTotals.total==3 and npcTotals.shipsKnown and not npcTotals.idleKnown and npcTotals.severity=='ok')
+local npcEntries=menu.logisticsEntries(npc)
+assert(#npcEntries==10, 'foreign ship categories are listed')
+assert(npcEntries[2].tip:find(texts[3206],1,true), 'docks explain the ownership gate')
+assert(npcEntries[#npcEntries].text:find('] ?',1,true) and npcEntries[#npcEntries].tip:find(texts[3207],1,true))
+assert(not npcEntries[#npcEntries].tip:find(texts[3175],1,true), 'no idle thresholds on foreign stations')
+assert(npcEntries[6].tip:find(texts[3207],1,true))
+world.A.ally=true
+local ally=SCV_Data.readLogistics('A')
+assert(ally.shipsKnown and ally.idleKnown and ally.idleVisible and next(ally.docks)==nil)
+assert(ally.traders.s.idle==1 and ally.miners.m.idle==1 and not ally.traders.s.idleUnknown)
+local allyTotals=SCV_Graph.logisticsTotals(ally)
+assert(allyTotals.idle==2 and allyTotals.total==3 and allyTotals.severity=='ok', 'allied idle ships never warn')
+local allyEntries=menu.logisticsEntries(ally)
+assert(allyEntries[#allyEntries].text:find('] 2',1,true) and allyEntries[#allyEntries].color==nil)
+assert(not allyEntries[6].tip:find(texts[3207],1,true))
+world.A.ally=nil
 unitsLocked=true
 assert(SCV_Data.readLogistics('A').drones==nil)
 unitsLocked=false; world.A.owned=true
@@ -144,6 +168,11 @@ end
 SCV_Data.startLogistics(function() changes=changes+1 end)
 local a=SCV_Data.readLogistics('A'); local first=requests[#requests][2]
 local b=SCV_Data.readLogistics('B'); local second=requests[#requests][2]
+world.A.owned, world.A.ally = false, true
+local before=#requests
+SCV_Data.readLogistics('A')
+assert(#requests==before, 'the MD dock query never runs for foreign stations')
+world.A.owned, world.A.ally = true, nil
 -- Coalesced engine events must not lose either result. Includes 0/0 and a
 -- completely occupied or reserved class, as reported by native match_dock.
 deliver({[first]={'AAA',0,0,0,6,1,3},[second]={'BBB',0,0,0,0,0,0}})

@@ -18,6 +18,8 @@ local function module(id)
 end
 function DebugError(s) logs[#logs+1] = s end
 function ConvertStringTo64Bit(id) return id end
+function ConvertIDTo64Bit(id) return id end
+function GetSubordinates() return {} end
 function IsValidComponent() return true end
 function IsComponentConstruction(id) return module(id).construction or false end
 function IsMacroClass(macro, class) return classes[macro] == class end

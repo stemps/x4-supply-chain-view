@@ -275,7 +275,8 @@ function SCV_Metrics.logisticsTotals(logistics)
 	result.total = result.traders + result.miners
 	result.severity = "ok"
 	-- Compare integers, never a rounded display percentage. No ships is not an error.
-	if result.idleKnown and result.total > 0 then
+	-- Only own ships take orders from the player, so foreign idle counts never warn.
+	if result.idleKnown and result.total > 0 and data.playerOwned ~= false then
 		if result.idle * 4 >= result.total * 3 then result.severity = "critical"
 		elseif result.idle * 2 >= result.total then result.severity = "warning" end
 	end
