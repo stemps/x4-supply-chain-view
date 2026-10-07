@@ -66,7 +66,10 @@ not register menus or start engine sessions themselves.
 
 Reader separates metric inputs and outputs from visible graph endpoints. Graph
 owns cycle handling and budgeting; Chart coordinates layout fitting through
-`SCV_Graph.fitLayout` and the native layout helper. Presentation owns the shared
+`SCV_Graph.fitLayout` and the native layout helper. The helper orders each column
+by neighbour median, then edge slot weight, then input order; Graph feeds it stations
+and wares sorted by display name, so the ties it decides are readable and do not
+depend on chain insertion order or scan-cache state. Presentation owns the shared
 footnote registry used by Chart for caption markers, tooltips and footer lines.
 
 Runtime contracts, engine constraints and implementation findings are documented

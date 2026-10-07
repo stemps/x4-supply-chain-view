@@ -51,6 +51,23 @@ def run(runtime):
     assert(SCV_Data.refreshStep(replacement,10)[1].id=='D')
     assert(#abandoned.pending==1 and next(SCV_Data.cache)==nil)
 
+    -- A partially warm cache must not move cached stations ahead of fresh reads: the
+    -- graph's input order breaks layout ties. A forced rescan keeps chunk semantics.
+    SCV_Data.readStation=function(st) return {id=st.id,wares={},fresh=true} end
+    SCV_Data.cache={Q={id='Q',wares={}},S={id='S',wares={}}}
+    local scanned,done=SCV_Data.scanGroup({{id='P'},{id='Q'},{id='R'},{id='S'}},false)
+    assert(done and #scanned==4)
+    assert(scanned[1].id=='P' and scanned[2].id=='Q' and scanned[3].id=='R' and scanned[4].id=='S')
+    SCV_Data.cache={}
+    local five={{id='1'},{id='2'},{id='3'},{id='4'},{id='5'}}
+    scanned,done=SCV_Data.scanGroup(five,false)
+    assert(not done and #scanned==SCV_Data.SCAN_CHUNK)
+    scanned,done=SCV_Data.scanGroup(five,false)
+    assert(done and #scanned==5 and scanned[5].id=='5')
+    scanned,done=SCV_Data.scanGroup(five,true)
+    assert(not done and #scanned==SCV_Data.SCAN_CHUNK and scanned[1].id=='1')
+    SCV_Data.cache={}
+
     local changed=0
     SCV_Data.startLogistics(function() changed=changed+1 end)
     local callback=events.scv_dock_capacity_ready

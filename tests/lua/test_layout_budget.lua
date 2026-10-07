@@ -143,4 +143,37 @@ if Helper.setupDAGLayout then
 	assert(#g.droppedStations == 0 and #g.nodes == 48)
 	countRouted(g,fitted)
 	print("PASS local vanilla routing, column fallback and fresh predecessor reconstruction")
+
+	-- Layout ties resolve by name, so chain insertion order must not move anything.
+	-- Ids run opposite to names, and ware ids opposite to ware display names.
+	local function tiedWorld(order)
+		local names={"Delta","alpha","Charlie","bravo"}
+		local wareNames={"Zinc","Yarn","Xenon","Wheat"}
+		local all={}
+		for i=1,4 do
+			all[i]={id=tostring(10-i),name=names[i],code="C"..i,wares={
+				["a"..i]={name=wareNames[i],output=true,prodMax=10,prodKnown=true,stock=1,limit=10}}}
+		end
+		local sink={id="0",name="Sink",code="S",wares={}}
+		for i=1,4 do sink.wares["a"..i]={name=wareNames[i],input=true,consMax=1,consKnown=true,stock=1,limit=10} end
+		local out={sink}
+		for _, i in ipairs(order) do out[#out+1]=all[i] end
+		return out
+	end
+	local function positions(order)
+		local tg=graph(tiedWorld(order))
+		G.fitLayout(tg,Helper.setupDAGLayout)
+		local pos, names={}, {}
+		for _, n in ipairs(tg.nodes) do
+			pos[n.scvkind..":"..(n.scvid or n.scvware)]=n.row..","..n.col
+			names[#names+1]=n.name
+		end
+		return pos, table.concat(names,"|")
+	end
+	local p1, n1=positions({1,2,3,4})
+	local p2, n2=positions({4,2,1,3})
+	assert(n1 == n2, "node order independent of member order: "..n1.." vs "..n2)
+	assert(n1 == "alpha|bravo|Charlie|Delta|Sink|Wheat|Xenon|Yarn|Zinc", "name order: "..n1)
+	for k, v in pairs(p1) do assert(p2[k] == v, "same position for "..k..": "..v.." vs "..tostring(p2[k])) end
+	print("PASS name-sorted input gives an insertion-order-independent layout")
 end

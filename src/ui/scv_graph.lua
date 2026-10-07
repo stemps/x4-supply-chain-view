@@ -278,6 +278,21 @@ function SCV_Graph.refreshMetrics(graph, stations)
 	graph.structureChanged, graph.refreshFailed, graph.lockedCount = changed, failed, locked
 end
 
+-- A name-sorted COPY; the caller's array (the chain's member order) is left alone.
+-- Code, then id, break ties so equal names never reach an unstable table.sort.
+function SCV_Graph.sortedStations(stations)
+	local sorted = {}
+	for i, st in ipairs(stations) do sorted[i] = st end
+	table.sort(sorted, function (a, b)
+		local an, bn = string.lower(tostring(a.name or "")), string.lower(tostring(b.name or ""))
+		if an ~= bn then return an < bn end
+		local ac, bc = tostring(a.code or ""), tostring(b.code or "")
+		if ac ~= bc then return ac < bc end
+		return tostring(a.id) < tostring(b.id)
+	end)
+	return sorted
+end
+
 function SCV_Graph.build(stations, options)
 	options = options or {}
 
@@ -290,10 +305,13 @@ function SCV_Graph.build(stations, options)
 	local stationNodes = {}
 	local wareNodes    = {}
 
-	-- Station nodes first, so node order is stable and the diagram does not reshuffle
-	-- between refreshes. Helper's layout iterates originalnodes in order (getNextTier does
-	-- this explicitly rather than iterating the faster hash, to avoid random results), so a
-	-- stable input order is what buys a stable picture.
+	-- Station nodes first, sorted by name, so node order is stable and the diagram does not
+	-- reshuffle between builds. Helper's layout iterates originalnodes in order (getNextTier
+	-- does this explicitly rather than iterating the faster hash, to avoid random results),
+	-- and uses that order as the LAST tie-break after neighbour medians and slot weight
+	-- (helper.lua reduceEdgeCrossings). Sorting by name makes the ties it does decide
+	-- readable and independent of the order stations were added to the chain.
+	stations = SCV_Graph.sortedStations(stations)
 	for _, st in ipairs(stations) do
 		local node = {
 			scvkind   = "station",
@@ -355,20 +373,28 @@ function SCV_Graph.build(stations, options)
 	end
 
 	local edges = {}
-	local visibleWares = {}
+	local visibleWares, samples = {}, {}
 	for ware in pairs(metricProducersOf) do
-		if producersOf[ware] or consumersOf[ware] then visibleWares[#visibleWares + 1] = ware end
+		if producersOf[ware] or consumersOf[ware] then
+			visibleWares[#visibleWares + 1] = ware
+			for _, sid in ipairs(metricProducersOf[ware]) do
+				samples[ware] = stationNodes[sid].wares[ware]
+				if samples[ware] then break end
+			end
+		end
 	end
-	table.sort(visibleWares)
+	-- Display name, not ware id: the id order looks arbitrary on screen. Id breaks ties.
+	table.sort(visibleWares, function (a, b)
+		local an = string.lower(tostring(samples[a] and samples[a].name or a))
+		local bn = string.lower(tostring(samples[b] and samples[b].name or b))
+		if an ~= bn then return an < bn end
+		return a < b
+	end)
 	for _, ware in ipairs(visibleWares) do
 		local producers = producersOf[ware] or {}
 		local consumers = consumersOf[ware] or {}
 		do
-			local sample
-			for _, sid in ipairs(metricProducersOf[ware]) do
-				sample = stationNodes[sid].wares[ware]
-				if sample then break end
-			end
+			local sample = samples[ware]
 
 			local wnode = {
 				scvkind   = "ware",

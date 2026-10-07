@@ -35,35 +35,42 @@ function SCV_Data.refreshStep(state, now) return state:step(now) end
 --
 -- Returns: stations (array, cached entries included), done (bool)
 function SCV_Data.scanGroup(members, force)
-	local pending, out = {}, {}
+	-- Results are slotted by member position, not appended: "cached first, then this
+	-- chunk" would let a partially warm cache reorder the graph input, and input order is
+	-- what breaks the layout's ties.
+	local pending, slots = {}, {}
 
-	for _, st in ipairs(members) do
+	for index, st in ipairs(members) do
 		local cached = SCV_Data.cache[st.id]
 		if force or (not cached) then
-			pending[#pending + 1] = st
+			pending[#pending + 1] = { st = st, index = index }
 		else
-			out[#out + 1] = cached
+			slots[index] = cached
 		end
 	end
 
 	local budget, i = SCV_Data.SCAN_CHUNK, 1
 	while (i <= #pending) and (budget > 0) do
-		local st = pending[i]
+		local st, index = pending[i].st, pending[i].index
 		local ok, result = pcall(SCV_Data.readStation, st)
 		if ok and result then
 			SCV_Data.cache[st.id] = result
-			out[#out + 1] = result
+			slots[index] = result
 		else
 			log("failed to read station " .. tostring(st.name) .. ": " .. tostring(result))
 			-- Keep a stub so the station still appears rather than vanishing silently.
 			local stub = { id = st.id, id64 = st.id64, name = st.name, wares = {}, failed = true }
 			SCV_Data.cache[st.id] = stub
-			out[#out + 1] = stub
+			slots[index] = stub
 		end
 		budget = budget - 1
 		i = i + 1
 	end
 
+	local out = {}
+	for index = 1, #members do
+		if slots[index] then out[#out + 1] = slots[index] end
+	end
 	return out, (i > #pending)
 end
 
