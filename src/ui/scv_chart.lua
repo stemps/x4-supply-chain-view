@@ -152,7 +152,8 @@ function component.displayChain(frame, x, y, width, reuseGraph)
 			return
 		end
 
-		graph = SCV_Graph.build(stations, { isWarningIgnored = SCV_Store.isWarningIgnored, deferBudget = true })
+		graph = SCV_Graph.build(stations, { isWarningIgnored = SCV_Store.isWarningIgnored,
+			isConsumerRole = SCV_Store.isConsumerRole, deferBudget = true })
 		menu.graph = graph
 		if not graph then
 			return
@@ -229,7 +230,7 @@ function component.displayChain(frame, x, y, width, reuseGraph)
 	end
 	menu.flowchart:setDefaultNodeProperties({
 		expandedFrameLayer      = config.expandedMenuFrameLayer,
-		expandedTableNumColumns = 4,
+		expandedTableNumColumns = 6,
 		x     = config.nodeOffsetX,
 		-- per-node width overrides this; it is only the fallback
 		width = config.wareNodeWidth,
@@ -300,6 +301,10 @@ function component.renderFlowchart(graph, junctions)
 			node.handlers.onExpanded  = menu.onFlowchartNodeExpanded
 			node.handlers.onCollapsed = menu.onFlowchartNodeCollapsed
 			moduledata.node = node
+			if menu.restoreNodeKey and menu.restoreNodeKey == menu.nodeKey(nodedata)
+				and menu.restoreChain == SCV_Store.selected() then
+				menu.restoreNode = node
+			end
 		end
 	end
 

@@ -183,5 +183,13 @@
     <t id="3194">Diagram still exceeds its limits after reductions: %s/%s nodes, %s/%s connection segments, %s/%s columns. Split this chain into smaller ones.</t>
     <t id="3195">Some incoming connections hidden to avoid cycles</t>
     <t id="3196">Some incoming connections hidden to fit constraints of the game's flowchart UI component</t>
+    <t id="3197">Treat as producer</t>
+    <t id="3198">Treat as consumer</t>
+    <t id="3199">For ambiguous wares, treat as producer/consumer</t>
+    <t id="3200">Draw every ware this station both buys and sells as a producer.</t>
+    <t id="3201">Draw every ware this station both buys and sells as a consumer.</t>
+    <t id="3202">Currently mixed: some are drawn as producers, some as consumers.</t>
+    <t id="3203">This ware is both bought and sold. Choose to draw it in the graph as a producer.</t>
+    <t id="3204">This ware is both bought and sold. Choose to draw it in the graph as a consumer.</t>
   </page>
 </language>

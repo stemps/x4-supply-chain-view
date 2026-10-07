@@ -256,7 +256,7 @@ function tableMock()
     end
     function t:addRow(key, props)
         local r={key=key,properties=props}; self.rows[#self.rows+1]=r
-        for i=1,4 do
+        for i=1,6 do
             local c={handlers={}}; r[i]=c
             function c:setColSpan(n) self.span=n; return self end
             function c:createIcon(icon, props) self.icon=icon; self.iconProps=props; return self end
@@ -277,6 +277,7 @@ function tableMock()
             end
             function c:createButton(props) self.button=props; return self end
             function c:setText(text) self.text=text; return self end
+            function c:setIcon(icon, props) self.buttonIcon=icon; self.buttonIconProps=props; return self end
         end
         return r
     end
@@ -302,7 +303,7 @@ function compareEntry(role, stationID)
     assert(a.rows[i+3][1].text == b.rows[j+3][1].text)
     assert(a.rows[i+4][1].props.height == 2 and b.rows[j+4][1].props.height == 2)
     assert(a.rows[i+4].properties.borderBelow == false)
-    assert(a.rows[i+2][1].bgspan == 4 and b.rows[j+2][1].bgspan == 4)
+    assert(a.rows[i+2][1].bgspan == 6 and b.rows[j+2][1].bgspan == 6)
     assert(a.rows[i+2][1].span == nil and a.rows[i+2][2].text ~= nil)
     assert(a.rows[i][1].props.mouseOverText and b.rows[j][1].props.mouseOverText)
     local input = stationID == 'B'
@@ -489,7 +490,7 @@ assert(t.rows[3][1].text=='Production' and t.rows[3][2].text=='+50/h')
 assert(t.rows[3][2].props.color=='text_positive')
 assert(t.rows[4][1].text=='Consumption' and t.rows[4][2].text=='-80/h')
 assert(t.rows[4][2].props.color.g==150)
-assert(t.rows[3][1].bgspan==4 and t.rows[4][1].bgspan==4)
+assert(t.rows[3][1].bgspan==6 and t.rows[4][1].bgspan==6)
 assert(t.rows[5][1].text=='Supplied by')
 local dedup=SCV_Graph.storageTotals(graph.stationNodes,'ore',{'a','a'},{'a','b'})
 assert(dedup.stock==150 and dedup.capacity==500)
@@ -543,6 +544,7 @@ lua.execute((root/'tests/lua/test_capacity.lua').read_text(encoding='utf-8'))
 lua.execute((root/'tests/lua/test_processing.lua').read_text(encoding='utf-8'))
 lua.execute((root/'src/ui/scv_store.lua').read_text(encoding='utf-8'))
 lua.execute((root/'tests/lua/test_warnings.lua').read_text(encoding='utf-8'))
+lua.execute((root/'tests/lua/test_roles.lua').read_text(encoding='utf-8'))
 lua.execute((root/'tests/lua/test_menu_lifecycle.lua').read_text(encoding='utf-8'))
 g.germanTexts = lua.table_from({int(t.attrib['id']): read_text(''.join(t.itertext()))
     for t in ET.parse(root/'src/t/0001-l049.xml').iter('t')})
@@ -550,6 +552,7 @@ lua.execute((root/'tests/lua/test_aggregate_labels.lua').read_text(encoding='utf
 lua.execute((root/'tests/lua/test_refresh.lua').read_text(encoding='utf-8'))
 lua.execute((root/'tests/lua/test_export_details.lua').read_text(encoding='utf-8'))
 lua.execute((root/'tests/lua/test_footnotes.lua').read_text(encoding='utf-8'))
+lua.execute((root/'tests/lua/test_restore.lua').read_text(encoding='utf-8'))
 lua.execute('''
 -- Exercise the real chunked scanner and menu lifecycle. No graph may be built from
 -- a partial scan, including a refresh arriving while the scan is in progress.

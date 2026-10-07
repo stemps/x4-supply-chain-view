@@ -403,11 +403,19 @@ local function readWareRoles(id64, recipes)
 		if not intermediates[ware] then inputs[ware] = true end
 	end
 	for ware in pairs(futureResources) do outputs[ware] = nil end
+	-- Output-wins is only the DEFAULT for plain trade goods configured both ways. A
+	-- warehouse at the end of a chain is the opposite case, so the player can choose per
+	-- station (SCV_Graph.applyRoleOverrides). Mark exactly the wares this rule overruled.
+	local dualTrade = {}
 	for ware in pairs(outputs) do
+		if inputs[ware] and tradewares[ware] and not products[ware] and not futureProducts[ware]
+			and not pureresources[ware] then
+			dualTrade[ware] = true
+		end
 		inputs[ware] = nil
 	end
 
-	return outputs, inputs, candidates, intermediates, buildwares, futureResources, rolesKnown, futureProducts, tradewares
+	return outputs, inputs, candidates, intermediates, buildwares, futureResources, rolesKnown, futureProducts, tradewares, dualTrade
 end
 
 -- Reserved trades per ware: how much is on its way IN and how much is committed to go OUT.
@@ -653,7 +661,7 @@ function SCV_Reader.readStation(st, deps)
 	local unlockedCapacity = safe(false, function () return C.IsInfoUnlockedForPlayer(id64, "storage_capacity") end)
 
 	local ratesOut, ratesIn, inventoryKnown, excludedProd, excludedCons, processing, recipes = readTheoreticalRates(id64)
-	local outputs, inputs, candidates, _, buildwares, futureResources, rolesKnown, futureProducts, tradewares = readWareRoles(id64, recipes)
+	local outputs, inputs, candidates, _, buildwares, futureResources, rolesKnown, futureProducts, tradewares, dualTrade = readWareRoles(id64, recipes)
 	local workforceReserve = readWorkforceReserve(id64)
 	local reservations, reservationsKnown = readReservations(id64)
 	local capacity, capacityRead = readCapacity(id64)
@@ -759,6 +767,8 @@ function SCV_Reader.readStation(st, deps)
 				metricInput = metricInput,
 				inputProvenance = workforceOnly and "workforce" or "other",
 				export = export,
+				-- An export decision owns the role; only an untouched output-wins ware may flip.
+				dualTrade   = (dualTrade[ware] and output and not export) or nil,
 				-- reserved trades, for the detail panel's bars
 				incoming    = (reservations[ware] and reservations[ware].incoming) or 0,
 				outgoing    = (reservations[ware] and reservations[ware].outgoing) or 0,

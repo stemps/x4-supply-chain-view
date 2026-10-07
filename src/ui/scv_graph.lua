@@ -167,6 +167,37 @@ function SCV_Graph.metricInput(w)
 	return not not w.input
 end
 
+-- Player-chosen roles for wares a station both buys and sells (reader: dualTrade).
+-- Output wins by default; policy(code, ware) == true shows the ware as an input instead.
+-- Build AND refresh apply this to the station data before anything compares roles: applied
+-- on one side only, every refresh would see a role change and mark the structure stale.
+-- A stored choice for a ware that is no longer dualTrade is ignored, not an error.
+--
+-- SETS the role in both directions rather than only flipping: SCV_Data caches station
+-- tables between builds, so a ware flipped by an earlier build must flip back when the
+-- player switches it to producer again.
+function SCV_Graph.applyRoleOverrides(stations, policy)
+	for _, st in ipairs(stations or {}) do
+		local code = st.code
+		local valid = type(code) == "string" and code ~= "" and not st.failed and not st.missing
+		for ware, w in pairs(st.wares or {}) do
+			if w.dualTrade then
+				local consumer = valid and policy ~= nil and policy(code, ware) == true
+				if consumer and not w.consumerRole then
+					w.producerMetricInput = w.metricInput
+					w.output, w.input = false, true
+					w.metricOutput, w.metricInput = false, true
+					w.consumerRole = true
+				elseif w.consumerRole and not consumer then
+					w.output, w.input = true, false
+					w.metricOutput, w.metricInput = true, w.producerMetricInput
+					w.consumerRole, w.producerMetricInput = nil, nil
+				end
+			end
+		end
+	end
+end
+
 -- Capture all source roles, including boundary wares and nodes hidden by the budget.
 -- This baseline is immutable until the user rebuilds the view.
 function SCV_Graph.captureStructure(stations)
@@ -192,7 +223,8 @@ local function unknownWare(w)
 	return { name = w.name, transport = w.transport, input = w.input, output = w.output,
 		metricOutput = SCV_Graph.metricOutput(w), metricInput = SCV_Graph.metricInput(w),
 		inputProvenance = w.inputProvenance, export = w.export and { state = "unknown" } or nil,
-		rateBasis = w.rateBasis,
+		rateBasis = w.rateBasis, dualTrade = w.dualTrade, consumerRole = w.consumerRole,
+		producerMetricInput = w.producerMetricInput,
 		stock = 0, limit = 0, capacityUnits = 0, prodMax = 0, consMax = 0,
 		production = 0, consumption = 0, workforce = 0, incoming = 0, outgoing = 0,
 		stockKnown = false, limitKnown = false, capacityUnitsKnown = false, prodKnown = false,
@@ -202,6 +234,7 @@ end
 -- Publish a whole sweep without touching topology or any widget/layout references.
 -- Ware tables remain stable too: an expanded panel may already reference them.
 function SCV_Graph.refreshMetrics(graph, stations)
+	SCV_Graph.applyRoleOverrides(stations, graph.rolePolicy)
 	local current = {}
 	for _, st in ipairs(stations) do current[st.id] = st end
 	local changed, failed, locked = false, false, 0
@@ -251,6 +284,7 @@ function SCV_Graph.build(stations, options)
 	if (not stations) or (#stations == 0) then
 		return nil, "empty"
 	end
+	SCV_Graph.applyRoleOverrides(stations, options.isConsumerRole)
 
 	local nodes        = {}
 	local stationNodes = {}
@@ -364,6 +398,7 @@ function SCV_Graph.build(stations, options)
 
 	local graph = {
 		sourceStructure = SCV_Graph.captureStructure(stations),
+		rolePolicy      = options.isConsumerRole,
 		nodes           = nodes,
 		stationNodes    = stationNodes,
 		wareNodes       = wareNodes,

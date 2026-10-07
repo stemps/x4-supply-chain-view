@@ -161,5 +161,13 @@
     <t id="3194">Po zmniejszeniu diagram nadal przekracza limity: %s/%s węzłów, %s/%s segmentów połączeń, %s/%s kolumn. Podziel ten łańcuch.</t>
     <t id="3195">Niektóre połączenia przychodzące są ukryte, aby uniknąć cykli</t>
     <t id="3196">Niektóre połączenia przychodzące są ukryte ze względu na ograniczenia komponentu schematów blokowych w interfejsie gry</t>
+    <t id="3197">Traktuj jako producenta</t>
+    <t id="3198">Traktuj jako konsumenta</t>
+    <t id="3199">Niejednoznaczne towary traktuj jako producenta/konsumenta</t>
+    <t id="3200">Pokaż wszystkie towary, które ta stacja kupuje i sprzedaje, jako produkowane.</t>
+    <t id="3201">Pokaż wszystkie towary, które ta stacja kupuje i sprzedaje, jako konsumowane.</t>
+    <t id="3202">Obecnie mieszane: część jest pokazana jako produkowana, część jako konsumowana.</t>
+    <t id="3203">Ten towar jest kupowany i sprzedawany. Wybierz, aby pokazać go na wykresie jako producenta.</t>
+    <t id="3204">Ten towar jest kupowany i sprzedawany. Wybierz, aby pokazać go na wykresie jako konsumenta.</t>
   </page>
 </language>

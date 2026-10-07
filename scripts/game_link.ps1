@@ -1,13 +1,18 @@
 # Link or unlink this repo's src/ mod folder into the game's extensions folder via a directory junction.
 # Extensions dir resolution: $env:X4_EXTENSIONS > toolkit .claude/x4-paths.env > $X4_GAME\extensions.
+# -Source (repo-relative mod folder, default src) and -Name (extension folder name, default the
+# repo folder name) link another mod folder from this repo, such as a development sample.
 param(
-    [Parameter(Mandatory = $true)][ValidateSet('link', 'unlink', 'status')][string]$Action
+    [Parameter(Mandatory = $true)][ValidateSet('link', 'unlink', 'status')][string]$Action,
+    [string]$Source = 'src',
+    [string]$Name = ''
 )
 $ErrorActionPreference = 'Stop'
 
 $modDir = Split-Path -Parent $PSScriptRoot
-$modName = Split-Path -Leaf $modDir
-$srcDir = Join-Path $modDir 'src'
+$modName = if ($Name) { $Name } else { Split-Path -Leaf $modDir }
+$srcDir = Join-Path $modDir $Source
+if (-not (Test-Path -LiteralPath $srcDir -PathType Container)) { throw "Mod folder not found: $srcDir" }
 
 function Read-PathsEnv {
     $values = @{}
@@ -43,7 +48,7 @@ switch ($Action) {
     'status' {
         if (-not $item) { Write-Output "Not linked: $linkPath does not exist." }
         elseif ($isLink -and (Resolve-Path -LiteralPath $target).Path -ne (Resolve-Path -LiteralPath $srcDir).Path) {
-            Write-Output "Outdated link: $linkPath -> $target (expected $srcDir). Run 'just unlink' then 'just link'."
+            Write-Output "Outdated link: $linkPath -> $target (expected $srcDir). Unlink it, then link again."
         }
         elseif ($isLink) { Write-Output "Linked: $linkPath -> $target" }
         else { Write-Output "Not a link: $linkPath is a regular folder (copied deploy?)." }
@@ -54,7 +59,7 @@ switch ($Action) {
                 Write-Output "Already linked: $linkPath -> $target"
                 exit 0
             }
-            throw "$linkPath already links to $target. Run 'just unlink' first."
+            throw "$linkPath already links to $target. Unlink it first."
         }
         if ($item) { throw "$linkPath exists as a regular folder. Remove or rename it first; refusing to overwrite." }
         New-Item -ItemType Junction -Path $linkPath -Target $srcDir | Out-Null

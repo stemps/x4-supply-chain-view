@@ -45,6 +45,19 @@ The reader also distinguishes future-only input roles from unavailable demand:
 complete inventories and zero native consumption establish known zero demand while
 the graph retains the planned connection.
 
+A plain trade ware a station both buys and sells is an output by default ("output
+wins"); the reader marks it `dualTrade`. The player may store a consumer role per
+station code and ware (`SCV_Store` `consumerRoles`). `SCV_Graph.applyRoleOverrides`
+sets the role in both directions, because the scan cache reuses station tables
+between builds. `build` and `refreshMetrics` both apply it before roles are
+compared, so an override never reads as a structure change. A role change moves
+edges, so the per-ware icon and the station-wide switch in the station popup
+rebuild the chain instead of republishing metrics.
+
+`menu.display(presentationOnly, reason)` is the single redraw entry. It logs the
+reason, remembers the open detail panel by node key, and `onUpdate` re-expands the
+matching node of the new chart in the same chain.
+
 ## Component integration
 
 UI components are constructed before the menu is registered. Thin menu wrappers

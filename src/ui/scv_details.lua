@@ -124,24 +124,48 @@ function SCV_Details.new(menu, config, presentation)
 	-- checkbox; names span the first two, and right-hand metrics span the last three.
 	local function setupColumns(ftable)
 		ftable:setColWidthPercent(1, 68)
-		ftable:setColWidth(3, Helper.standardTextHeight)
-		ftable:setColWidth(4, Helper.standardTextHeight)
+		-- Four text-height slots: warning bell + checkbox, then the producer/consumer radio.
+		for col = 3, 6 do ftable:setColWidth(col, Helper.standardTextHeight) end
 		-- Keep selectable entry rows for native scrolling, but hide the focus rectangle.
 		ftable.properties.highlightMode = "off"
 	end
 
 	local function sectionHeader(ftable, text)
 		local row = ftable:addRow(false, { paddingTop = 8 })
-		row[1]:setColSpan(4):createText(text, Helper.headerRow1Properties)
+		row[1]:setColSpan(6):createText(text, Helper.headerRow1Properties)
 	end
 
 	local function noneRow(ftable)
 		local row = ftable:addRow(false, {})
-		row[1]:setColSpan(4):createText(T(3049), { color = Color["text_inactive"] })
+		row[1]:setColSpan(6):createText(T(3049), { color = Color["text_inactive"] })
+	end
+
+	-- Producer/consumer radio for wares a station both buys and sells, in columns 5 and 6.
+	-- Vanilla's export/import pair (an arrow out of / into a tray); the selected one uses
+	-- vanilla's mode-selector background (menu_station_configuration.lua leftbar), the
+	-- other is dimmed and switches on click. state: true = consumer, false = producer,
+	-- nil = mixed (station switch only), where neither is selected.
+	local function roleRadio(row, state, producerTip, consumerTip, onSelect)
+		local size = Helper.scaleY(Helper.standardTextHeight)
+		for i, consumer in ipairs({ false, true }) do
+			local cell = row[4 + i]
+			local selected = state == consumer
+			cell:createButton({ scaling = false, width = size, height = size,
+				x = math.max(0, cell:getColSpanWidth() - size),
+				bgColor = selected and Color["row_background_selected"] or Color["button_background_default"],
+				mouseOverText = consumer and consumerTip or producerTip })
+				:setIcon(consumer and "menu_import" or "menu_export",
+					{ color = selected and Color["text_normal"] or Color["text_inactive"] })
+			if not selected then
+				cell.handlers.onClick = function () onSelect(consumer) end
+			end
+		end
 	end
 
 	-- Shared renderer: only the label and role differ between station/ware popups.
-	local function detailEntry(ftable, key, name, w, isInput, stationCode, ware)
+	-- radioColumns: this popup shows a role radio somewhere, so the warning bell moves left
+	-- (columns 3-4) to keep columns 5-6 for the radio. Otherwise the bell stays rightmost.
+	local function detailEntry(ftable, key, name, w, isInput, stationCode, ware, radioColumns)
 		local fields = liveFields(function ()
 			local m = SCV_Graph.detailMetrics(w, isInput)
 			local b = m.bar
@@ -168,34 +192,45 @@ function SCV_Details.new(menu, config, presentation)
 			return ftable:addRow(rowkey, { bgColor = Color["row_background_unselectable"], borderBelow = false })
 		end
 		local r = metricRow(key)
-		local canToggle = isInput and stationCode ~= nil and stationCode ~= ""
-		r[1]:setBackgroundColSpan(4):setColSpan(canToggle and 2 or 4)
+		local hasCode = stationCode ~= nil and stationCode ~= ""
+		local canToggle = isInput and hasCode
+		-- Bought AND sold here: the player picks which side of the chain the station is on.
+		-- Only in the section of the current role: workforce use can list a producer twice.
+		local consumer = w.consumerRole == true
+		local canSwitch = radioColumns and w.dualTrade and hasCode and consumer == (isInput == true)
+		local bell = radioColumns and 3 or 5
+		r[1]:setBackgroundColSpan(6):setColSpan(canToggle and bell - 1 or canSwitch and 4 or 6)
 		r[1]:createText(name, { wordwrap = true, color = fields("labelColor"), mouseOverText = fields("labelTip") })
+		if canSwitch then
+			-- Title, blank line, explanation.
+			roleRadio(r, consumer, T(3197) .. "\n\n" .. T(3203), T(3198) .. "\n\n" .. T(3204),
+				function (choice) menu.setConsumerRole(stationCode, ware, choice) end)
+		end
 		if canToggle then
 			local size = Helper.scaleY(Helper.standardTextHeight)
 			-- Native ringing bell without a surrounding circle.
-			r[3]:createIcon("terraforming_xen_alert", {
+			r[bell]:createIcon("terraforming_xen_alert", {
 				scaling = false, width = size, height = size,
 				color = function () return Color[w.warningIgnored and "text_inactive" or "text_normal"] end,
 				mouseOverText = function () return T(w.warningIgnored and 3154 or 3153) end,
 			})
-			r[4]:createCheckBox(function () return not w.warningIgnored end, {
-				scaling = false, width = size, height = size, x = math.max(0, r[4]:getColSpanWidth() - size),
+			r[bell + 1]:createCheckBox(function () return not w.warningIgnored end, {
+				scaling = false, width = size, height = size, x = math.max(0, r[bell + 1]:getColSpanWidth() - size),
 				mouseOverText = function () return T(w.warningIgnored and 3154 or 3153) end,
 			})
-			r[4].handlers.onClick = function (_, checked) menu.setWareWarnings(stationCode, ware, checked) end
+			r[bell + 1].handlers.onClick = function (_, checked) menu.setWareWarnings(stationCode, ware, checked) end
 		end
 		r = metricRow(false)
-		barCell(r[1]:setColSpan(4), w, name)
+		barCell(r[1]:setColSpan(6), w, name)
 		r = metricRow(false)
-		r[1]:setBackgroundColSpan(4):createText(fields("amount"), { wordwrap = true, mouseOverText = fields("amountTip") })
-		r[2]:setColSpan(3):createText(fields("rate"), { halign = "right", wordwrap = true, mouseOverText = fields("long"), color = fields("rateColor") })
+		r[1]:setBackgroundColSpan(6):createText(fields("amount"), { wordwrap = true, mouseOverText = fields("amountTip") })
+		r[2]:setColSpan(5):createText(fields("rate"), { halign = "right", wordwrap = true, mouseOverText = fields("long"), color = fields("rateColor") })
 		r = metricRow(false)
-		r[1]:setColSpan(4):createText(fields("coverage"),
+		r[1]:setColSpan(6):createText(fields("coverage"),
 			{ wordwrap = true, mouseOverText = fields("coverageTip"), color = Color["text_inactive"] })
 		if w.export then
 			r = metricRow(false)
-			r[1]:setColSpan(4):createText(function ()
+			r[1]:setColSpan(6):createText(function ()
 				local e = w.export or { state = "unknown" }
 				local function rate(value) return value ~= nil and formatRate(value) or "?" end
 				local state = ({ export = 3188, self = 3189, import = 3190, unknown = 3191 })[e.state] or 3191
@@ -209,7 +244,7 @@ function SCV_Details.new(menu, config, presentation)
 		end
 		-- A small full-width spacer, following vanilla's explicit-height text rows.
 		r = ftable:addRow(false, { borderBelow = false })
-		r[1]:setColSpan(4):createText(" ", { fontsize = 1, height = 2 })
+		r[1]:setColSpan(6):createText(" ", { fontsize = 1, height = 2 })
 	end
 
 	function details.expandStation(node, frame, ftable, nodedata)
@@ -223,14 +258,14 @@ function SCV_Details.new(menu, config, presentation)
 		-- because the widget system dispatches only expand/collapse and slider events for a
 		-- flowchart node - there is no click event for an icon on its label.
 		local row = ftable:addRow(true, {})
-		row[1]:setColSpan(4):createButton({ mouseOverText = T(3030) })
+		row[1]:setColSpan(6):createButton({ mouseOverText = T(3030) })
 			:setText(T(3030), { halign = "center" })
 		local id64 = ConvertStringTo64Bit(nodedata.scvid)
 		row[1].handlers.onClick = function () openStationOverview(id64) end
 
 		-- Match the vanilla map's player-owned station configurator action.
 		row = ftable:addRow(true, {})
-		row[1]:setColSpan(4):createButton({ mouseOverText = T(3103), active = GetComponentData(id64, "isplayerowned") })
+		row[1]:setColSpan(6):createButton({ mouseOverText = T(3103), active = GetComponentData(id64, "isplayerowned") })
 			:setText(T(3103), { halign = "center" })
 		row[1].handlers.onClick = function ()
 			if not GetComponentData(id64, "isplayerowned") then return end
@@ -247,21 +282,31 @@ function SCV_Details.new(menu, config, presentation)
 				return logisticsTint(T(3180) .. " " .. (dockSize == "l" and "L/XL" or string.upper(dockSize)),
 					dock and dock.total > 0 and dock.free == 0 and "warning" or "ok")
 			end, { mouseOverText = dockTip })
-			row[2]:setColSpan(3):createText(function () return dockLabel(nodedata.logistics, dockSize, false) end,
+			row[2]:setColSpan(5):createText(function () return dockLabel(nodedata.logistics, dockSize, false) end,
 				{ halign = "right", mouseOverText = dockTip })
 		end
 		row = ftable:addRow(false, {})
 		row[1]:createText(T(3178))
-		row[2]:setColSpan(3):createText(function ()
+		row[2]:setColSpan(5):createText(function ()
 			local drones = nodedata.logistics and nodedata.logistics.drones
 			return logisticsCount(drones, drones ~= nil)
 		end, { halign = "right" })
 
 		if (#inputs == 0) and (#outputs == 0) then
 			row = ftable:addRow(false, {})
-			row[1]:setColSpan(4):createText(T(3040), { wordwrap = true, color = Color["text_inactive"] })
+			row[1]:setColSpan(6):createText(T(3040), { wordwrap = true, color = Color["text_inactive"] })
 			return
 		end
+
+		-- One radio for every ware this station both buys and sells. Mixed selects neither.
+		local dual, consumers = {}, 0
+		for ware, w in pairs(nodedata.wares or {}) do
+			if w.dualTrade then
+				dual[#dual + 1] = ware
+				if w.consumerRole then consumers = consumers + 1 end
+			end
+		end
+		local radioColumns = #dual > 0 and nodedata.code ~= nil and nodedata.code ~= ""
 
 		local function section(title, list, isInput)
 			sectionHeader(ftable, title)
@@ -270,8 +315,18 @@ function SCV_Details.new(menu, config, presentation)
 				return
 			end
 			for _, entry in ipairs(list) do
-				detailEntry(ftable, "ware:" .. entry.ware, entry.w.name or entry.ware, entry.w, isInput, nodedata.code, entry.ware)
+				detailEntry(ftable, "ware:" .. entry.ware, entry.w.name or entry.ware, entry.w, isInput, nodedata.code, entry.ware, radioColumns)
 			end
+		end
+		if radioColumns then
+			table.sort(dual)
+			local state = nil -- mixed
+			if consumers == #dual then state = true elseif consumers == 0 then state = false end
+			local mixed = state == nil and ("\n" .. T(3202)) or ""
+			row = ftable:addRow(true, { paddingTop = 8 })
+			row[1]:setColSpan(4):createText(T(3199), { wordwrap = true })
+			roleRadio(row, state, T(3197) .. "\n\n" .. T(3200) .. mixed, T(3198) .. "\n\n" .. T(3201) .. mixed,
+				function (choice) menu.setStationConsumerRole(nodedata.code, dual, choice) end)
 		end
 
 		section(T(3031), inputs, true)
@@ -303,7 +358,7 @@ function SCV_Details.new(menu, config, presentation)
 				tip = aggregateStockTooltip(nodedata.name, storage) }
 		end)
 		local totals = ftable:addRow("totals", { bgColor = Color["row_background_unselectable"], borderBelow = false })
-		totals[1]:setColSpan(4):createText(fields("amount"), { wordwrap = true, mouseOverText = fields("tip") })
+		totals[1]:setColSpan(6):createText(fields("amount"), { wordwrap = true, mouseOverText = fields("tip") })
 		local function totalRate(label, amountKey, knownKey, sign, color, tooltip)
 			local values = liveFields(function ()
 				local amount, known = nodedata[amountKey], nodedata[knownKey]
@@ -316,8 +371,8 @@ function SCV_Details.new(menu, config, presentation)
 				return { value = value, tip = tip }
 			end)
 			local row = ftable:addRow(false, { bgColor = Color["row_background_unselectable"], borderBelow = false })
-			row[1]:setBackgroundColSpan(4):createText(T(label), { mouseOverText = values("tip") })
-			row[2]:setColSpan(3):createText(values("value"), { halign = "right", wordwrap = true, color = color, mouseOverText = values("tip") })
+			row[1]:setBackgroundColSpan(6):createText(T(label), { mouseOverText = values("tip") })
+			row[2]:setColSpan(5):createText(values("value"), { halign = "right", wordwrap = true, color = color, mouseOverText = values("tip") })
 		end
 		totalRate(3084, "supplyCap", "supplyKnown", "+", Color["text_positive"], 3086)
 		totalRate(3085, "demandCap", "demandKnown", "-", config.consumptionColor, 3087)

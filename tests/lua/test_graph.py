@@ -363,6 +363,60 @@ g = G.build(lua.table(station("s1", "Lonely", {"x": dict(output=True, production
 check("single station builds with its output node", g is not None and g.counts.nodes == 2)
 check("  ...and one output edge", g.counts.edges == 1)
 
+print("\n=== player-chosen consumer role for bought-and-sold wares ===")
+lua.execute("""
+function roleWorld(dual)
+    return {
+        {id='p', code='PRD-001', name='Producer', wares={energycells={name='Energy', output=true,
+            stock=100, limit=1000, prodMax=50, prodKnown=true}}},
+        -- A warehouse: output wins, so it reads as a second producer by default.
+        {id='w', code='WAR-001', name='Warehouse', wares={energycells={name='Energy', output=true,
+            dualTrade=dual, stock=500, limit=5000, prodMax=0, consMax=0}}},
+    }
+end
+consumerSet = {}
+function consumerPolicy(code, ware) return consumerSet[code .. '|' .. ware] == true end
+""")
+L = lua.globals()
+g = G.build(L.roleWorld(True), lua.table(isConsumerRole=L.consumerPolicy))
+ec = g.wareNodes["energycells"]
+check("default keeps output wins (two producers, no consumer)",
+      len(ec.producers) == 2 and len(ec.consumers) == 0)
+L.consumerSet["WAR-001|energycells"] = True
+g = G.build(L.roleWorld(True), lua.table(isConsumerRole=L.consumerPolicy))
+ec = g.wareNodes["energycells"]
+w = g.stationNodes["w"].wares["energycells"]
+check("override makes the warehouse the consumer",
+      to_list(ec.producers) == ["p"] and to_list(ec.consumers) == ["w"])
+check("  ...with metric roles to match", ec.metricConsumers[1] == "w" and len(ec.metricProducers) == 1)
+check("  ...and the producer's output is no longer unsold",
+      "energycells" not in to_list(g.stationNodes["p"].unsold))
+check("  ...and the ware is marked as player-chosen", w.consumerRole and not w.output and w.input)
+check("  ...no cycle introduced", is_acyclic(g) and len(g.droppedEdges) == 0)
+G.refreshMetrics(g, L.roleWorld(True))
+check("steady refresh with override is not a structure change", not g.structureChanged)
+check("  ...and keeps the ware's readings", g.stationNodes["w"].wares["energycells"].stockKnown is not False
+      and g.stationNodes["w"].wares["energycells"].stock == 500)
+
+g = G.build(L.roleWorld(False), lua.table(isConsumerRole=L.consumerPolicy))
+check("override ignored for a ware that is not bought and sold",
+      len(g.wareNodes["energycells"].consumers) == 0 and len(g.wareNodes["energycells"].producers) == 2)
+
+cached = L.roleWorld(True)
+g = G.build(cached, lua.table(isConsumerRole=L.consumerPolicy))
+L.consumerSet["WAR-001|energycells"] = None
+g = G.build(cached, lua.table(isConsumerRole=L.consumerPolicy))
+cw = g.stationNodes["w"].wares["energycells"]
+check("rebuild from cached tables flips back to producer",
+      len(g.wareNodes["energycells"].producers) == 2 and cw.output and not cw.input and not cw.consumerRole)
+check("  ...restoring the producer's metric roles", G.metricOutput(cw) and not G.metricInput(cw))
+
+L.consumerSet["WAR-001|energycells"] = True
+g = G.build(lua.table(L.roleWorld(True)[2]), lua.table(isConsumerRole=L.consumerPolicy))
+check("sole bought-and-sold station as consumer has no ware node, shows unmet",
+      g.wareNodes["energycells"] is None and "energycells" in to_list(g.stationNodes["w"].unmet))
+L.consumerSet["WAR-001|energycells"] = None
+
 print("\n" + "=" * 52)
 if fails:
     print(f"{len(fails)} FAILED:")

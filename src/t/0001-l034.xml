@@ -161,5 +161,13 @@
     <t id="3194">Tras las reducciones, el diagrama aún supera los límites: %s/%s nodos, %s/%s segmentos de conexión, %s/%s columnas. Divida esta cadena.</t>
     <t id="3195">Algunas conexiones entrantes están ocultas para evitar ciclos</t>
     <t id="3196">Algunas conexiones entrantes están ocultas para respetar los límites del componente de diagramas de flujo de la interfaz del juego</t>
+    <t id="3197">Tratar como productor</t>
+    <t id="3198">Tratar como consumidor</t>
+    <t id="3199">Mercancías ambiguas: tratar como productor/consumidor</t>
+    <t id="3200">Mostrar todas las mercancías que esta estación compra y vende como producidas.</t>
+    <t id="3201">Mostrar todas las mercancías que esta estación compra y vende como consumidas.</t>
+    <t id="3202">Actualmente mixto: algunas se muestran como producidas y otras como consumidas.</t>
+    <t id="3203">Esta mercancía se compra y se vende. Elige mostrarla en el gráfico como productor.</t>
+    <t id="3204">Esta mercancía se compra y se vende. Elige mostrarla en el gráfico como consumidor.</t>
   </page>
 </language>

@@ -219,8 +219,10 @@ Live mixed-race allocation remains an in-game verification item.
 The singleton store uses persistence version 6.
 
 `__SCV_GROUPS` stores `selected`, parallel `names`/encoded `members` arrays,
-`ignoredWarnings` as `stationCode|wareId` strings, and boolean `showLogistics`.
-Warning exclusions survive chain removal and apply across chains. Invalid or
+`ignoredWarnings` and `consumerRoles` as `stationCode|wareId` strings, and
+boolean `showLogistics`. Both per-station ware lists survive chain removal and
+apply across chains; a missing `consumerRoles` field loads as empty, so the
+version stayed 6. Invalid or
 missing display preferences default true; explicit false persists. A read miss
 retains the member for later relinking.
 
@@ -273,6 +275,33 @@ ware is not explicitly traded, and native consumption/workforce reads confirm ze
 Failed reads, excluded rates and current build-queue demand remain unknown. Planned
 production completeness is unchanged.
 
+Player-chosen roles: a plain trade ware a station both buys and sells is an
+output by default (`dualTrade` marks exactly the wares output-wins overruled;
+products and export decisions never qualify). A stored consumer role flips it
+to an input in BOTH `build` and `refreshMetrics`; applying it on one side only
+makes every refresh see a role change and mark the structure stale. The scan
+cache hands the SAME station tables to the next build, so the override must set
+the role in both directions - a flip-only version cannot switch back to
+producer. A role change moves edges, so the toggle rebuilds instead of
+republishing metrics.
+
+Role icons are vanilla `menu_export` (arrow out of a tray: producer) and
+`menu_import` (arrow into a tray: consumer). Vanilla uses them for construction
+plan export/import; the shapes were checked by extracting the textures. The
+`menu_trade_offer_incoming/outgoing` pair was rejected because its names are
+inverted in vanilla (helper.lua:10545). Small icon buttons follow vanilla's
+`createButton({ width/height = text height }):setIcon(...)`; buttons share the
+base cell `x` property, so they right-align like the warning checkbox.
+
+The role control is a two-button radio (export = producer, import = consumer)
+after the warning toggle. Selected uses vanilla's mode-selector styling
+(`row_background_selected` vs `button_background_default`,
+menu_station_configuration.lua left bar) and has no click handler; the other is
+dimmed with `text_inactive`. The station radio selects neither when mixed. The
+popup table has 6 columns (`expandedTableNumColumns`, flowchart-wide): popups
+with a radio put the bell in 3-4 and the radio in 5-6; other popups keep the bell
+rightmost in 5-6. Table mocks in the tests must create 6 cells per row.
+
 The cache and published graph share the same logistics record. A dock response
 before publication updates a pending record; a response after publication
 updates the displayed record. Copying these records would break that contract.
@@ -285,6 +314,19 @@ timeout or stop. Registration and unregistration use the identical bound
 handler.
 
 ### Screen behavior and lifecycle contracts
+
+Every `menu.display` collapses the open detail panel, including presentation-only
+redraws when the status strip changes height (a notice appearing or expiring, a
+refresh failure, a structure change). The panel is restored the vanilla way
+(menu_research.lua `restoreNodeTech`/`restoreNode`): remember the node key
+(`station:<id>` / `ware:<ware>`), pick the matching node while rendering, expand it
+in `onUpdate` once the widget has an `id`. The chain is recorded when the panel
+OPENS - a chain switch changes the selection before its redraw, so reading it at
+redraw time would always match. A scan placeholder keeps the request pending; an
+open management panel wins, since expanding closes it. Each redraw logs one
+`SCV: redraw: <reason>` line with the status text; this replaced the per-chart
+`strip-diag` dump (~25-50 lines per redraw).
+
 
 `showLogistics=false` suppresses strip measurement/rendering and node spacing;
 it does not stop collection, dock requests, warning calculations or expanded

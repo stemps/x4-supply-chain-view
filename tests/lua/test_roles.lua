@@ -1,0 +1,112 @@
+-- Player-chosen consumer role: the real store, graph, station popup and radio handlers.
+local function T(id) return ReadText(77001, id) end
+local oldDisplay, oldGraph = menu.display, menu.graph
+local oldScaleY = Helper.scaleY
+Helper.scaleY = Helper.scaleY or function(x) return x end
+local function world()
+    return {
+        {id='p', code='PRD-001', name='Producer', wares={energycells={name='Energy', output=true,
+            stock=100, limit=1000, prodMax=50, prodKnown=true}}},
+        {id='w', code='WAR-001', name='Warehouse', wares={
+            energycells={name='Energy', output=true, dualTrade=true, stock=500, limit=5000, incoming=0, outgoing=0},
+            ore={name='Ore', output=true, dualTrade=true, stock=10, limit=100, incoming=0, outgoing=0},
+            silicon={name='Silicon', output=true, stock=10, limit=100, incoming=0, outgoing=0}}},
+        {id='n', code='', name='No code', wares={energycells={name='Energy', output=true,
+            dualTrade=true, stock=0, limit=0}}},
+    }
+end
+local policy = {isConsumerRole=SCV_Store.isConsumerRole}
+for _, ware in ipairs({'energycells', 'ore'}) do SCV_Store.setConsumerRole('WAR-001', ware, false) end
+local frame = {properties={height=600}}
+local size = Helper.scaleY(Helper.standardTextHeight)
+local function find(t, key)
+    for _, row in ipairs(t.rows) do if row.key == key then return row end end
+    error('missing row '..key)
+end
+local function radios(t)
+    local out = {}
+    for _, row in ipairs(t.rows) do
+        if row[5].buttonIcon == 'menu_export' and row[6].buttonIcon == 'menu_import' then out[#out+1] = row end
+    end
+    return out
+end
+local function popup(graph, id)
+    local panel = tableMock()
+    menu.graph = graph
+    menu.expandStation(nil, frame, panel, graph.stationNodes[id])
+    return panel
+end
+-- Selected: vanilla's mode-selector background and normal icon colour, no click handler.
+local function selected(cell)
+    return cell.button.bgColor == Color.row_background_selected
+        and cell.buttonIconProps.color == Color.text_normal and cell.handlers.onClick == nil
+end
+local function unselected(cell)
+    return cell.button.bgColor == Color.button_background_default
+        and cell.buttonIconProps.color == Color.text_inactive and cell.handlers.onClick ~= nil
+end
+local displays = 0
+menu.display = function() displays = displays + 1 end
+
+-- Default: a producer row shows the radio in the last two columns, producer selected.
+local graph = SCV_Graph.build(world(), policy)
+local panel = popup(graph, 'w')
+local entry = find(panel, 'ware:energycells')
+assert(entry[1].span == 4, 'an output row has no bell; the name runs up to the radio')
+assert(selected(entry[5]) and unselected(entry[6]))
+assert(entry[5].button.mouseOverText == T(3197) .. '\n\n' .. T(3203)
+    and entry[6].button.mouseOverText == T(3198) .. '\n\n' .. T(3204))
+assert(entry[5].button.scaling == false and entry[5].button.width == size and entry[5].button.height == size)
+assert(entry[6].button.x == 160 - size, 'right-aligned in its column')
+assert(find(panel, 'ware:silicon')[1].span == 6 and not find(panel, 'ware:silicon')[5].button,
+    'a ware that is not bought and sold has no radio')
+
+-- One station radio above the sections, all producers.
+local rows = radios(panel)
+assert(#rows == 3, 'two ware radios and one station radio, got '..#rows)
+local station = rows[1]
+assert(station[1].text == T(3199) and station[1].span == 4)
+assert(selected(station[5]) and unselected(station[6]))
+assert(station[5].button.mouseOverText == T(3197) .. '\n\n' .. T(3200)
+    and station[6].button.mouseOverText == T(3198) .. '\n\n' .. T(3201))
+assert(#radios(popup(graph, 'p')) == 0 and #radios(popup(graph, 'n')) == 0,
+    'no radio without a bought-and-sold ware or without a station code')
+
+-- Choosing consumer on one ware stores one choice and rebuilds.
+entry[6].handlers.onClick()
+assert(displays == 1 and SCV_Store.isConsumerRole('WAR-001', 'energycells')
+    and not SCV_Store.isConsumerRole('WAR-001', 'ore'))
+graph = SCV_Graph.build(world(), policy)
+assert(graph.wareNodes.energycells.consumers[1] == 'w')
+
+-- As an input: name, warning bell + checkbox, then the radio with consumer selected.
+panel = popup(graph, 'w')
+entry = find(panel, 'ware:energycells')
+assert(entry[1].span == 2, 'the name yields to the bell and the radio')
+assert(entry[3].icon == 'terraforming_xen_alert' and entry[4].checkbox, 'alert toggle first')
+assert(unselected(entry[5]) and selected(entry[6]), 'radio after the alert toggle')
+
+-- Mixed: the station radio selects neither and says so; consumer makes them all consumers.
+station = radios(panel)[1]
+assert(unselected(station[5]) and unselected(station[6]))
+assert(station[5].button.mouseOverText == T(3197) .. '\n\n' .. T(3200) .. '\n' .. T(3202)
+    and station[6].button.mouseOverText == T(3198) .. '\n\n' .. T(3201) .. '\n' .. T(3202))
+station[6].handlers.onClick()
+assert(displays == 2 and SCV_Store.isConsumerRole('WAR-001', 'energycells')
+    and SCV_Store.isConsumerRole('WAR-001', 'ore') and not SCV_Store.isConsumerRole('WAR-001', 'silicon'))
+graph = SCV_Graph.build(world(), policy)
+station = radios(popup(graph, 'w'))[1]
+assert(unselected(station[5]) and selected(station[6]))
+station[5].handlers.onClick()
+assert(displays == 3 and not SCV_Store.isConsumerRole('WAR-001', 'energycells')
+    and not SCV_Store.isConsumerRole('WAR-001', 'ore'))
+
+-- Workforce use lists a producer in both sections; its radio appears only once.
+local staffed = world()
+staffed[2].wares.energycells.metricInput = true
+panel = popup(SCV_Graph.build(staffed, policy), 'w')
+assert(#radios(panel) == 3, 'ware radio duplicated across sections')
+
+menu.display, menu.graph = oldDisplay, oldGraph
+Helper.scaleY = oldScaleY
+print('Consumer role radios, station radio, persistence and rebuild contracts passed.')

@@ -16,7 +16,7 @@ for runtime in (LuaRuntime, LuaJITRuntime):
             function t:setColWidth() end
             function t:addRow(key)
                 local row = {key=key}
-                for i=1,4 do
+                for i=1,6 do
                     local cell = {}
                     function cell:setColSpan() return self end
                     function cell:setBackgroundColSpan() return self end

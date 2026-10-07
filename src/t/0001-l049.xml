@@ -161,5 +161,13 @@
     <t id="3194">Auch nach Verkleinerung überschreitet das Diagramm die Grenzen: %s/%s Knoten, %s/%s Verbindungssegmente, %s/%s Spalten. Teile diese Lieferkette auf.</t>
     <t id="3195">Einige eingehende Verbindungen sind ausgeblendet, um Kreisläufe zu vermeiden</t>
     <t id="3196">Einige eingehende Verbindungen sind ausgeblendet, um die Grenzen der Flussdiagramm-Komponente der Spieloberfläche einzuhalten</t>
+    <t id="3197">Als Erzeuger behandeln</t>
+    <t id="3198">Als Verbraucher behandeln</t>
+    <t id="3199">Mehrdeutige Waren als Erzeuger/Verbraucher behandeln</t>
+    <t id="3200">Jede Ware, die diese Station kauft und verkauft, als Erzeuger darstellen.</t>
+    <t id="3201">Jede Ware, die diese Station kauft und verkauft, als Verbraucher darstellen.</t>
+    <t id="3202">Derzeit gemischt: einige werden als Erzeuger, andere als Verbraucher dargestellt.</t>
+    <t id="3203">Diese Ware wird gekauft und verkauft. Wähle, sie im Diagramm als Erzeuger darzustellen.</t>
+    <t id="3204">Diese Ware wird gekauft und verkauft. Wähle, sie im Diagramm als Verbraucher darzustellen.</t>
   </page>
 </language>

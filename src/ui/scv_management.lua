@@ -89,7 +89,7 @@ function SCV_Management.new(menu, config, presentation)
 			menu.nameEntry = nil
 			if menu.managementMode == "rename" then
 				menu.closeManagement()
-				menu.display(true)
+				menu.display(true, "rename")
 				return
 			end
 			menu.renameIndex = nil
@@ -198,7 +198,7 @@ function SCV_Management.new(menu, config, presentation)
 		if not SCV_Store.setShowLogistics(enabled) then return end
 		menu.closeManagement()
 		-- Recreate widgets with compact node spacing, retaining topology and scan cursors.
-		menu.display(true)
+		menu.display(true, "settings")
 		menu.openManagement("settings")
 	end
 

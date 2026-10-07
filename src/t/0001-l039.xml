@@ -161,5 +161,13 @@
     <t id="3194">Dopo le riduzioni il diagramma supera ancora i limiti: %s/%s nodi, %s/%s segmenti di collegamento, %s/%s colonne. Dividi questa catena.</t>
     <t id="3195">Alcuni collegamenti in entrata sono nascosti per evitare cicli</t>
     <t id="3196">Alcuni collegamenti in entrata sono nascosti per rispettare i limiti del componente dei diagrammi di flusso dell’interfaccia di gioco</t>
+    <t id="3197">Tratta come produttore</t>
+    <t id="3198">Tratta come consumatore</t>
+    <t id="3199">Merci ambigue: tratta come produttore/consumatore</t>
+    <t id="3200">Mostra tutte le merci che questa stazione compra e vende come prodotte.</t>
+    <t id="3201">Mostra tutte le merci che questa stazione compra e vende come consumate.</t>
+    <t id="3202">Attualmente misto: alcune sono mostrate come prodotte, altre come consumate.</t>
+    <t id="3203">Questa merce viene comprata e venduta. Scegli di mostrarla nel grafico come produttore.</t>
+    <t id="3204">Questa merce viene comprata e venduta. Scegli di mostrarla nel grafico come consumatore.</t>
   </page>
 </language>

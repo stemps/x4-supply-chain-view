@@ -12,7 +12,7 @@ function IsMacroClass(_, kind) return kind == "production" end
 function GetComponentData(id, key)
 	if key == "tradewares" and s.badRoles then error("unknown trade roles") end
 	if key == "macro" then return s.unequal and (id == "module0" and "small" or "large") or "factory" end
-	if key == "availableproducts" then return s.intermediate and {} or {s.ware} end
+	if key == "availableproducts" then return (s.intermediate or s.noProduct) and {} or {s.ware} end
 	if key == "pureresources" then return s.resource and {s.ware} or {} end
 	if key == "intermediatewares" then return s.intermediate and {s.ware} or {} end
 	if key == "tradewares" then return s.trade and {s.ware} or {} end
@@ -115,12 +115,17 @@ return function()
 	assert(ware().output and ware().export.state == "unknown", "planned-only capacity cannot establish surplus")
 	reset(); s.modules=0; s.trade=true; s.races={}; s.capacity=0; s.current=0
 	assert(ware().output and not ware().input and not ware().export, "trade hubs keep output wins")
+	assert(not ware().dualTrade, "a listed product is not a plain trade ware")
+	reset(); s.modules=0; s.noProduct=true; s.trade=true; s.races={}; s.capacity=0; s.current=0
+	assert(ware().output and not ware().input and not ware().export and ware().dualTrade,
+		"bought-and-sold trade ware keeps output wins and may be shown as a consumer by choice")
 	reset(); s.badRoles=true
 	assert(ware().output and ware().inputProvenance == "other" and ware().export.state == "unknown")
 	reset(); s.badWorkforce=true
 	assert(ware().output and ware().metricInput and ware().export.state == "unknown")
 	reset(); s.trade=true; s.production=50
 	assert(ware().input and ware().inputProvenance == "other", "trade inputs are protected")
+	assert(not ware().dualTrade, "an export decision owns the role")
 	reset(); s.badActual=true
 	assert(ware().output and ware().metricInput and not ware().consKnown)
 

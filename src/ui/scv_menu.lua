@@ -116,6 +116,8 @@ function menu.cleanup()
 	menu.notice          = nil
 	menu.expandedNode    = nil
 	menu.expandedMenuFrame = nil
+	menu.restoreNode, menu.restoreNodeKey, menu.restoreChain = nil, nil, nil
+	menu.expandedChain   = nil
 	menu.refresh         = nil
 	menu.topLevelOffsetY = nil
 	menu.flowchart       = nil
@@ -174,8 +176,9 @@ function menu.onShowMenu()
 	menu.refreshState = nil
 	menu.metricRevision = 0
 	menu.scanDone = false
+	menu.restoreNode, menu.restoreNodeKey, menu.restoreChain = nil, nil, nil
 
-	menu.display()
+	menu.display(false, "open")
 end
 
 menu.updateInterval = 0 -- Native logistics follows scrolling and hover every frame.
@@ -207,14 +210,21 @@ function menu.onUpdate()
 			if done then
 				menu.scanDone = true
 				menu.refresh = nil -- this display also satisfies any pending refresh
-				menu.display()
+				menu.display(false, "scan complete")
 			end
 		end
 	end
 
 	if menu.refresh and (menu.refresh <= getElapsedTime()) and menu.managementMode ~= "rename" then
 		menu.refresh = nil
-		menu.display()
+		menu.display(false, "queued refresh")
+	end
+	-- The rebuilt node exists only once the frame has created its widget (vanilla checks .id).
+	local restore = menu.restoreNode
+	if restore and restore.id then
+		menu.restoreNode, menu.restoreNodeKey, menu.restoreChain = nil, nil, nil
+		-- Expanding closes management panels; an open one (e.g. settings) wins.
+		if not menu.expandedNode and not menu.managementMode then restore:expand() end
 	end
 	if menu.scanDone and menu.refreshState and menu.graph and menu.mode == "chain" then
 		local snapshot = SCV_Data.refreshStep(menu.refreshState, getElapsedTime())
@@ -355,18 +365,54 @@ function menu.setWareWarnings(stationCode, ware, enabled)
 	menu.updateMetricDisplay()
 end
 
+-- Unlike a warning, a role moves edges: rebuild the chain rather than refresh metrics.
+function menu.setConsumerRole(stationCode, ware, consumer)
+	if not SCV_Store.setConsumerRole(stationCode, ware, consumer) then return end
+	menu.display(false, "role change")
+end
+
+-- Station-wide switch: every listed ware, then one rebuild.
+function menu.setStationConsumerRole(stationCode, wares, consumer)
+	local changed = false
+	for _, ware in ipairs(wares or {}) do
+		changed = SCV_Store.setConsumerRole(stationCode, ware, consumer) or changed
+	end
+	if changed then menu.display(false, "station role change") end
+end
+
 -- ---------------------------------------------------------------------------------
 -- Display
 -- ---------------------------------------------------------------------------------
 
-function menu.display(presentationOnly)
+-- Stable identity of a graph node across rebuilds: the same station or ware.
+function menu.nodeKey(nodedata)
+	if type(nodedata) ~= "table" then return nil end
+	if nodedata.scvkind == "station" then return "station:" .. tostring(nodedata.scvid) end
+	if nodedata.scvkind == "ware" then return "ware:" .. tostring(nodedata.scvware) end
+	return nil
+end
+
+-- Every redraw destroys the open detail panel. Remember which node it belonged to, as
+-- vanilla does (menu_research.lua restoreNodeTech/restoreNode): renderFlowchart picks the
+-- matching new node and onUpdate expands it once the widget exists. Only within the same
+-- chain - a node with the same key in another chain is a different question.
+function menu.display(presentationOnly, reason)
+	local expanded = menu.expandedNode
+	local key = expanded and expanded.customdata and menu.nodeKey(expanded.customdata.nodedata)
+	-- The chain the panel was opened in: selection may already have moved on (chain switch).
+	if key then menu.restoreNodeKey, menu.restoreChain = key, menu.expandedChain end
+	local status = menu.statusKey and menu.statusKey ~= "" and (string.gsub(menu.statusKey, "\n", " | ")) or nil
+	log("redraw: " .. tostring(reason or (presentationOnly and "presentation" or "rebuild"))
+		.. (key and ("; reopening " .. key) or "")
+		.. (status and ("; status: " .. status) or ""))
 	menu.clearLogisticsStrip()
 	menu.flowchart = nil
+	menu.restoreNode = nil
 	local managementMode = menu.managementMode
 	if not presentationOnly then
 		menu.closeManagement()
 	end
-	if menu.expandedNode then menu.expandedNode:collapse() end
+	if expanded then expanded:collapse() end
 	Helper.clearDataForRefresh(menu, config.mainFrameLayer)
 	-- A redraw destroys any open detail panel along with everything else; holding on to the
 	-- node would make the next close try to collapse a node that no longer exists.
@@ -396,6 +442,11 @@ function menu.display(presentationOnly)
 	end
 
 	menu.frame:display()
+	-- A rendered chart without the remembered node (dropped, other chain) ends the restore;
+	-- a placeholder (scan still running) keeps it pending for the real chart.
+	if menu.restoreNodeKey and menu.flowchart and not menu.restoreNode then
+		menu.restoreNodeKey, menu.restoreChain = nil, nil
+	end
 	if menu.mode == "chain" then
 		if not presentationOnly then
 			if managementMode == "stations" or managementMode == "settings" then menu.openManagement(managementMode) end
@@ -464,7 +515,7 @@ function menu.updateStatusStrip()
 	if occupied ~= (menu.statusHeight or 0) then
 		menu.statusHeight = occupied
 		-- Only recreate native presentation; keep graph, layout and refresh cursor.
-		menu.display(true)
+		menu.display(true, "status strip changed")
 		if menu.managementMode and menu.managementMode ~= "rename" then menu.openManagement(menu.managementMode) end
 	end
 end
@@ -495,6 +546,7 @@ function menu.onFlowchartNodeExpanded(node, frame, ftable, ftable2)
 		node.flowchart:collapseAllNodes()
 	end
 	menu.expandedNode = node
+	menu.expandedChain = SCV_Store.selected()
 	-- Remember the frame too: the collapse handler must only clear the panel that belongs to
 	-- the node being collapsed. collapseAllNodes() above fires a collapse for the PREVIOUS
 	-- node while this one is opening, and without the pairing that would wipe the new panel.

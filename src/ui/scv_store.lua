@@ -36,6 +36,7 @@
 --     names    = { "Ore Chain", "Shipyard Feed" },
 --     members  = { "506813|HEA-485,501323|CXG-006", "422158|PHM-325" },
 --     ignoredWarnings = { "HEA-485|ore" },
+--     consumerRoles = { "WAR-001|energycells" },
 --     showLogistics = true,
 --   }
 --
@@ -57,9 +58,12 @@ end
 local chains = nil
 local selectedIdx = 1
 local ignoredWarnings = {}
+-- Station+ware pairs shown as consumers although the station also sells the ware.
+local consumerRoles = {}
 local showLogistics = true
 
-local function warningKey(code, ware)
+-- Durable "CODE|ware" key shared by every per-station ware preference.
+local function stationWareKey(code, ware)
 	if type(code) ~= "string" or code == "" or code:find("[|,]")
 		or type(ware) ~= "string" or ware == "" or ware:find("[|,]") then return nil end
 	return code .. "|" .. ware
@@ -163,6 +167,9 @@ function SCV_Store.save()
 	local ignored = {}
 	for key in pairs(ignoredWarnings) do ignored[#ignored + 1] = key end
 	table.sort(ignored)
+	local consumers = {}
+	for key in pairs(consumerRoles) do consumers[#consumers + 1] = key end
+	table.sort(consumers)
 	for i, chain in ipairs(chains or {}) do
 		names[i] = tostring(chain.name or "?")
 		members[i] = encodeMembers(chain.members or {})
@@ -173,6 +180,7 @@ function SCV_Store.save()
 		names    = names,
 		members  = members,
 		ignoredWarnings = ignored,
+		consumerRoles = consumers,
 		showLogistics = showLogistics,
 	}
 end
@@ -181,6 +189,7 @@ local function rebuildFromStorage()
 	chains = {}
 	selectedIdx = 1
 	ignoredWarnings = {}
+	consumerRoles = {}
 	showLogistics = true
 
 	if type(__SCV_GROUPS) ~= "table" then
@@ -191,14 +200,17 @@ local function rebuildFromStorage()
 	if type(__SCV_GROUPS.showLogistics) == "boolean" then
 		showLogistics = __SCV_GROUPS.showLogistics
 	end
-	if type(__SCV_GROUPS.ignoredWarnings) == "table" then
-		for _, key in ipairs(__SCV_GROUPS.ignoredWarnings) do
+	local function readKeys(list, into)
+		if type(list) ~= "table" then return end
+		for _, key in ipairs(list) do
 			if type(key) == "string" then
 				local code, ware = key:match("^([^|]+)|([^|]+)$")
-				if warningKey(code, ware) then ignoredWarnings[key] = true end
+				if stationWareKey(code, ware) then into[key] = true end
 			end
 		end
 	end
+	readKeys(__SCV_GROUPS.ignoredWarnings, ignoredWarnings)
+	readKeys(__SCV_GROUPS.consumerRoles, consumerRoles)
 	local legacy = 0
 	if type(__SCV_GROUPS.names) == "table" then
 		-- v3 and v4 share this shape; v3 member strings simply have no codes
@@ -269,15 +281,30 @@ end
 
 function SCV_Store.isWarningIgnored(stationCode, wareId)
 	SCV_Store.load()
-	local key = warningKey(stationCode, wareId)
+	local key = stationWareKey(stationCode, wareId)
 	return key ~= nil and ignoredWarnings[key] == true
 end
 
 function SCV_Store.setWarningIgnored(stationCode, wareId, ignored)
 	SCV_Store.load()
-	local key = warningKey(stationCode, wareId)
+	local key = stationWareKey(stationCode, wareId)
 	if not key then return false end
 	ignoredWarnings[key] = ignored and true or nil
+	SCV_Store.save()
+	return true
+end
+
+function SCV_Store.isConsumerRole(stationCode, wareId)
+	SCV_Store.load()
+	local key = stationWareKey(stationCode, wareId)
+	return key ~= nil and consumerRoles[key] == true
+end
+
+function SCV_Store.setConsumerRole(stationCode, wareId, consumer)
+	SCV_Store.load()
+	local key = stationWareKey(stationCode, wareId)
+	if not key then return false end
+	consumerRoles[key] = consumer and true or nil
 	SCV_Store.save()
 	return true
 end

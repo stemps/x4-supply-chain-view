@@ -25,11 +25,11 @@ local function find(t, key)
     for _, row in ipairs(t.rows) do if row.key == key then return row end end
     error('missing row '..key)
 end
-local toggle = find(panel, 'ware:ore')[4]
+local toggle = find(panel, 'ware:ore')[6]
 assert(toggle.checkbox and toggle.checked())
-assert(find(panel, 'ware:ore')[1].bgspan == 4, 'name row must have no vertical dividers')
-assert(find(panel, 'ware:ore')[1].span == 2)
-local bell = find(panel, 'ware:ore')[3]
+assert(find(panel, 'ware:ore')[1].bgspan == 6, 'name row must have no vertical dividers')
+assert(find(panel, 'ware:ore')[1].span == 4, 'no radio in this popup: the bell stays rightmost')
+local bell = find(panel, 'ware:ore')[5]
 assert(bell.icon == 'terraforming_xen_alert' and bell.iconProps.color() == Color.text_normal)
 assert(toggle.checkbox.scaling == false and toggle.checkbox.width == Helper.scaleY(Helper.standardTextHeight))
 assert(toggle.checkbox.mouseOverText():find('enabled'))
@@ -37,7 +37,7 @@ local oldFrame, oldExpanded = menu.frame, menu.expandedMenuFrame
 local updates = 0
 menu.frame = {update=function() updates=updates+1 end}
 menu.expandedMenuFrame = {update=function()
-    for _, row in ipairs(panel.rows) do for i=1,4 do row[i]:update() end end
+    for _, row in ipairs(panel.rows) do for i=1,6 do row[i]:update() end end
     updates=updates+1
 end}
 local revision = menu.metricRevision or 0
@@ -49,13 +49,13 @@ assert(consumer.wares.ore.health.severity == 'ok' and consumer.wares.ore.health.
 assert(consumer.severity == 'critical' and consumer.worstWare == 'food')
 assert(graph.stationNodes.other.severity == 'critical')
 assert(graph.wareNodes.ore.demandCap == originalDemand and graph.wareNodes.ore.storage.stock == originalStock)
-find(panel, 'ware:food')[4].handlers.onClick(nil, false)
+find(panel, 'ware:food')[6].handlers.onClick(nil, false)
 assert(consumer.severity == 'ok' and consumer.worstWare == nil)
 local warePanel = tableMock()
 menu.expandWare(nil, frame, warePanel, graph.wareNodes.ore)
-local consumerToggle = find(warePanel, 'station:consumer')[4]
+local consumerToggle = find(warePanel, 'station:consumer')[6]
 assert(consumerToggle.checkbox and not consumerToggle.checked())
-assert(not find(warePanel, 'station:supplier')[4].checkbox)
+assert(not find(warePanel, 'station:supplier')[6].checkbox)
 SCV_Graph.refreshMetrics(graph, world())
 assert(consumer.wares.ore.warningIgnored and consumer.severity == 'ok')
 assert(graph.wareNodes.ore.demandCap == originalDemand and graph.wareNodes.ore.storage.stock == originalStock)

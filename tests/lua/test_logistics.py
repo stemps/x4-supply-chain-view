@@ -230,7 +230,7 @@ function rows:setColWidthPercent() end
 function rows:setColWidth() end
 function rows:addRow()
  local row={}
- for i=1,4 do
+ for i=1,6 do
   local cell={handlers={}}; row[i]=cell
   function cell:setColSpan() return self end
   function cell:createText(text,props) self.text=text; self.props=props; return self end
