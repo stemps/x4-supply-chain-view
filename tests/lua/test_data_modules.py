@@ -81,7 +81,7 @@ def run(runtime):
     SCV_Data.requestDocks('A',fresh)
     local token=requests[#requests][2]
     assert(token~=oldtoken)
-    mailbox={[oldtoken]={'AAA',1,2,1,2,1,2},[token]={'AAA',0,2,1,2,2,2}}
+    mailbox={[oldtoken]={'AAA',1,2,1,2,1,2,0,0,{}},[token]={'AAA',0,2,1,2,2,2,0,0,{}}}
     events.scv_dock_capacity_ready()
     assert(next(old.docks)==nil and fresh.docks.s.free==0 and changed==1)
     SCV_Data.stopLogistics()

@@ -203,13 +203,40 @@ Logistics visibility matches vanilla's map. Any station's subordinate counts by
 type are shown, as in vanilla (`menu_map.lua:14481`, no gate). Idle state is read
 only for own or allied stations (`menu_map.lua:9569`, `isplayerowned or isally`);
 other owners show `?`. Free berths per dock size are player-only: vanilla shows
-none for any station, and the MD dock query is never sent for a foreign station.
+none for any station. The MD dock query is sent for every station (for the dock
+queue) but answers berth fields with -1 for a foreign one, and Lua rejects a
+foreign reply that carries berth counts.
 Idle warnings (orange/red) apply only to player-owned stations, because only own
 ships take the player's orders. Cargo drones use
 `C.GetNumStoredUnits(station, "transport", false)` with information-unlock gates.
 Dock queries follow `find_dockingbay` / `match_dock free="true"`: operational
 external trading berths only, each assigned to its largest size, with L/XL combined.
 Free berths exclude reservations; never infer them as total minus docked ships.
+
+### Docking queue (vanilla, read in `reference\`)
+
+- `event_object_docking_queued` names only the docking ship, never the station
+  (`common.xsd`), so listeners must sit on ships. A galaxy-wide ship group (as
+  the Dock Queue Indicator mod does) is the price of listening while closed.
+- `order.dock` re-requests while queued: `wait [10s, $waittime].min`, then
+  `remove_docking_request immediate`, then `request_docking` again
+  (`order.dock.xml` around lines 785-859). Each pass re-fires the queued event, so
+  listeners armed late still find every waiting `DockAt`/`DockAndWait` ship
+  within about 10 s. `$waittime` defaults to 10 min, after which the order gives up.
+- The target station is `order.$destination` of a `DockAt` or `DockAndWait`
+  order, the same test vanilla uses in `fight.attack.object.station.xml:329`.
+  Trade ships dock through `DockAt` orders inserted ahead of the trade order
+  (`orders.base.tradecomputer.xml:78`).
+- Not attributable: `move.flee.dock` requests several stations at once and
+  cancels all but one, once, with no re-request loop. Drones run `order.dock` as a
+  script without a `DockAt` order, request with `highpriority`, and mostly dock
+  at their mother ship.
+- UNVERIFIED: whether the `remove_docking_request` in each re-request pass fires
+  `event_object_docking_aborted`. SCV does not remove on abort or deny for that
+  reason and relies on a liveness window instead.
+- `$container.istrafficlevel.normal|heavy|gridlock` is the engine's own congestion
+  class (`scriptproperties.xml:657`); vanilla reads it once
+  (`interrupt.restock.xml:779`). Its thresholds are not documented.
 
 ### Workforce demand and full-staffing reserve
 
@@ -356,6 +383,29 @@ responses. It retains previous successful counts while replacements are pending,
 preserves the earliest replacement deadline, and clears retained counts on
 timeout or stop. Registration and unregistration use the identical bound
 handler.
+
+### Dock queue watch
+
+`scv_logistics.xml` tracks dock queues only while SCV asks. The first
+`dock_capacity` request arms `QueueWatch`; every request stamps its station in
+`DockQueue.$Watch` and, for a new sector, adds that sector's non-unit undocked
+ships to the listener group immediately. `QueueRefresh` (10 s, only while armed)
+expires stations not asked about for 15 s, rebuilds the group from the watched
+sectors and drops entries that got a dock, vanished or stopped re-requesting.
+An empty watch signals `DockQueueStop`, which is also triggered by the
+`dock_watch_stop` UI event from `SCV_DockSession:stop()` and by
+`event_game_loaded`, and resets `QueueWatch` and all tables. While SCV is closed
+nothing runs. A ship counts while it re-requested within 25 s and has no
+assigned dock; foreign stations count only `isknown` ships. For 12 s after a
+station enters the watch the reply is -1 (unknown), because a fresh listener has
+not yet seen a full re-request cycle and zero would be a guess.
+
+Reply shape: `[code, sF, sT, mF, mT, lF, lT, queue, traffic, names]`, names
+capped at 10 `"knownname (idcode)"` strings. The queue cell is always the
+rightmost strip cell, directly beside the idle counter: a green `-` for
+none waiting, green/orange/red counts, and an untinted `?` when unknown.
+`prepareLogisticsColumns` treats strip slot 5 (the spacer before drones) as the
+flexible gap and pads there, so a new cell must never be inserted before slot 6.
 
 ### Screen behavior and lifecycle contracts
 

@@ -172,5 +172,14 @@
     <t id="3205">Demanda civil: %s</t>
     <t id="3206">O número de docas requer ser proprietário.</t>
     <t id="3207">O estado ocioso requer ser proprietário ou aliado.</t>
+    <t id="3208">Aguardando doca</t>
+    <t id="3209">Tráfego de atracação: %s</t>
+    <t id="3210">normal</t>
+    <t id="3211">intenso</t>
+    <t id="3212">congestionado</t>
+    <t id="3214">Coletando dados do jogo...</t>
+    <t id="3215">Estações alheias: apenas naves conhecidas por você são contadas.</t>
+    <t id="3217">+%s a mais</t>
+    <t id="3218">Naves aguardando:</t>
   </page>
 </language>

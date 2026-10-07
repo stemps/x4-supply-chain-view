@@ -172,5 +172,14 @@
     <t id="3205">Demanda civil: %s</t>
     <t id="3206">El número de muelles requiere ser propietario.</t>
     <t id="3207">El estado inactivo requiere ser propietario o aliado.</t>
+    <t id="3208">Esperando muelle</t>
+    <t id="3209">Tráfico de atraque: %s</t>
+    <t id="3210">normal</t>
+    <t id="3211">denso</t>
+    <t id="3212">atasco</t>
+    <t id="3214">Recopilando datos del juego...</t>
+    <t id="3215">Estaciones ajenas: solo se cuentan las naves que conoces.</t>
+    <t id="3217">+%s más</t>
+    <t id="3218">Naves en espera:</t>
   </page>
 </language>

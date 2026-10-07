@@ -172,5 +172,14 @@
     <t id="3205">Domanda civile: %s</t>
     <t id="3206">Il numero di attracchi richiede la proprietà.</t>
     <t id="3207">Lo stato di inattività richiede proprietà o alleanza.</t>
+    <t id="3208">In attesa di attracco</t>
+    <t id="3209">Traffico di attracco: %s</t>
+    <t id="3210">normale</t>
+    <t id="3211">intenso</t>
+    <t id="3212">congestionato</t>
+    <t id="3214">Raccolta dei dati di gioco...</t>
+    <t id="3215">Stazioni altrui: sono conteggiate solo le navi a te note.</t>
+    <t id="3217">+%s altre</t>
+    <t id="3218">Navi in attesa:</t>
   </page>
 </language>

@@ -36,7 +36,12 @@ local function clearDockMailbox()
 end
 
 function SCV_DockSession:stop()
-	if self.active then UnregisterEvent(dockEvent, self.boundCallback) end
+	if self.active then
+		UnregisterEvent(dockEvent, self.boundCallback)
+		-- MD keeps a dock queue watch armed only while SCV asks. Its own watchdog
+		-- disarms it too, so a lost stop event costs at most one linger period.
+		safe(nil, AddUITriggeredEvent, "SCVSupplyChainMenu", "dock_watch_stop")
+	end
 	self.active, self.callback, self.session = false, nil, nil
 	self.pending, self.stations = {}, {}
 	self.last = {}
@@ -68,12 +73,52 @@ function SCV_DockSession:request(id64, logistics)
 	-- Preserve the last successful sample while its replacement is in flight.
 	-- The cache is session-local and guarded by the station's persistent code.
 	local previous = self.last[id]
-	if previous and previous.code == code then logistics.docks = previous.docks end
+	if previous and previous.code == code then logistics.docks, logistics.queue = previous.docks, previous.queue end
 	self.stations[id] = token
 	self.pending[token] = { id = id, code = code, logistics = logistics,
 		deadline = pending and pending.code == code and pending.deadline or getElapsedTime() + self.getInterval() }
 	safe(nil, AddUITriggeredEvent, "SCVSupplyChainMenu", "dock_capacity",
 		{ ConvertStringToLuaID(tostring(id64)), token, code })
+end
+
+-- Dock fields are free/total per size for own stations and -1 for foreign
+-- ones, where vanilla shows no per-size berths. Returns nil for any other shape.
+local function parseDocks(values, owned)
+	local docks = {}
+	for i, size in ipairs({ "s", "m", "l" }) do
+		local free, total = values[2 * i], values[2 * i + 1]
+		if owned then
+			free, total = nonnegativeInteger(free), nonnegativeInteger(total)
+			if free == nil or total == nil or free > total then return nil end
+			docks[size] = { free = free, total = total }
+		elseif free ~= -1 or total ~= -1 then
+			return nil
+		end
+	end
+	return docks
+end
+
+-- count is nil while the MD watch is still warming up: a fresh listener has not
+-- yet seen a full re-request cycle, so zero would be a guess.
+local function parseQueue(values)
+	local count = values[8] ~= -1 and nonnegativeInteger(values[8]) or nil
+	local traffic = nonnegativeInteger(values[9])
+	if (count == nil and values[8] ~= -1) or traffic == nil or traffic > 2 or type(values[10]) ~= "table" then
+		return nil
+	end
+	local ships = {}
+	for _, name in ipairs(values[10]) do
+		if type(name) ~= "string" then return nil end
+		ships[#ships + 1] = name
+	end
+	if count ~= nil and #ships > count then return nil end
+	return { count = count, traffic = traffic, ships = ships }
+end
+
+local function clearSample(logistics)
+	local had = next(logistics.docks) ~= nil or logistics.queue ~= nil
+	logistics.docks, logistics.queue = {}, nil
+	return had
 end
 
 function SCV_DockSession:expire(now)
@@ -82,8 +127,7 @@ function SCV_DockSession:expire(now)
 		if now >= request.deadline then
 			self.pending[token], self.stations[request.id] = nil, nil
 			self.last[request.id] = nil
-			if next(request.logistics.docks) then changed = true end
-			request.logistics.docks = {}
+			if clearSample(request.logistics) then changed = true end
 		end
 	end
 	if changed and self.callback then self.callback() end
@@ -104,26 +148,20 @@ function SCV_DockSession:onDockCapacity()
 		if request then
 			self.pending[correlationToken], self.stations[request.id] = nil, nil
 			local id64 = ConvertStringTo64Bit(request.id)
-			local valid = type(values) == "table" and #values == 7 and values[1] == request.code
+			local docks, queue
+			if type(values) == "table" and #values == 10 and values[1] == request.code
 				and safe(false, IsValidComponent, id64)
-				and safe(nil, GetComponentData, id64, "idcode") == request.code
-				and safe(false, GetComponentData, id64, "isplayerowned") == true
-			local docks = {}
-			if valid then
-				for i, size in ipairs({ "s", "m", "l" }) do
-					local free, total = nonnegativeInteger(values[2 * i]), nonnegativeInteger(values[2 * i + 1])
-					if free == nil or total == nil or free > total then valid = false; break end
-					docks[size] = { free = free, total = total }
-				end
+				and safe(nil, GetComponentData, id64, "idcode") == request.code then
+				docks = parseDocks(values, safe(false, GetComponentData, id64, "isplayerowned") == true)
+				queue = docks and parseQueue(values)
 			end
-			if valid then
-				request.logistics.docks = docks
-				self.last[request.id] = { code = request.code, docks = docks }
+			if docks and queue then
+				request.logistics.docks, request.logistics.queue = docks, queue
+				self.last[request.id] = { code = request.code, docks = docks, queue = queue }
 				changed = true
 			else
 				self.last[request.id] = nil
-				if next(request.logistics.docks) then changed = true end
-				request.logistics.docks = {}
+				if clearSample(request.logistics) then changed = true end
 			end
 		end
 	end

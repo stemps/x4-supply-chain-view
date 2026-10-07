@@ -48,7 +48,7 @@ for i=1,50 do
     anchors[id]={500+((i-1)%10)*1100,100+math.floor((i-1)/10)*150}
     nodes[i]={scvkind='station',col=((i-1)%10)+1,logistics=data,
         logisticsRows=menu.logisticsRows(data),[1]={node={id=id},properties={}}}
-    expected=expected+6+#data.categories
+    expected=expected+7+#data.categories -- docks(4), drones, idle, dock queue
 end
 menu.closed=false; menu.mode='chain'; menu.refresh=nil; menu.nativeLogisticsFailed=nil
 menu.expandedMenuFrame=nil; menu.managementFrame=nil; menu.statusFrame=nil
@@ -122,7 +122,7 @@ menu.updateLogisticsStrip(); assert(active()==0,'pending native panel hides ever
 menu.expandedMenuFrame.id='panel'
 menu.updateLogisticsStrip(); assert(active()==0,'final panel occludes metrics')
 menu.expandedMenuFrame=nil; menu.updateLogisticsStrip(); assert(#hits==expected)
-anchors.native1=nil; menu.updateLogisticsStrip(); assert(#hits==expected-24,'scroll-out releases first strip')
+anchors.native1=nil; menu.updateLogisticsStrip(); assert(#hits==expected-25,'scroll-out releases first strip (7 fixed cells + 18 categories)')
 anchors.native1={500,100}; menu.updateLogisticsStrip(); assert(#hits==expected)
 menu.clearLogisticsStrip(); assert(active()==0 and tip==nil)
 menu.updateLogisticsStrip(); assert(clones==capacity,'reuse after cleanup')

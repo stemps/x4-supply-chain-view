@@ -27,7 +27,7 @@ SCV_Data.startLogistics(menu.onDockMetrics)
 local received = {}
 local function reply(request, i)
 	local total = cycle * 100 + i
-	deliver({ [request[2]] = { world[request[1]].code, i, total, i, total + 1, i, total + 2 } })
+	deliver({ [request[2]] = { world[request[1]].code, i, total, i, total + 1, i, total + 2, 0, 0, {} } })
 	received[request[1]] = (received[request[1]] or 0) + 1
 end
 for sweep = 1, 3 do

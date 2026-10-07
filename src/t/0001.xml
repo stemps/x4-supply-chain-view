@@ -194,5 +194,14 @@
     <t id="3205">Civilian demand: %s</t>
     <t id="3206">Dock counts require player ownership.</t>
     <t id="3207">Idle state requires player ownership or alliance.</t>
+    <t id="3208">Waiting for a dock</t>
+    <t id="3209">Docking traffic: %s</t>
+    <t id="3210">normal</t>
+    <t id="3211">heavy</t>
+    <t id="3212">gridlock</t>
+    <t id="3214">Collecting game data...</t>
+    <t id="3215">Foreign stations: only ships known to you are counted.</t>
+    <t id="3217">+%s more</t>
+    <t id="3218">Ships waiting:</t>
   </page>
 </language>

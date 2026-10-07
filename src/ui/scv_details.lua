@@ -291,6 +291,12 @@ function SCV_Details.new(menu, config, presentation)
 			local drones = nodedata.logistics and nodedata.logistics.drones
 			return logisticsCount(drones, drones ~= nil)
 		end, { halign = "right" })
+		local function queueTip() return presentation.dockQueueTip(nodedata.logistics) end
+		row = ftable:addRow(false, {})
+		row[1]:createText(T(3208), { mouseOverText = queueTip })
+		row[2]:setColSpan(5):createText(function ()
+			return presentation.dockQueueLabel(nodedata.logistics and nodedata.logistics.queue)
+		end, { halign = "right", mouseOverText = queueTip })
 
 		if (#inputs == 0) and (#outputs == 0) then
 			row = ftable:addRow(false, {})

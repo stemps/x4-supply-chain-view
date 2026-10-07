@@ -76,8 +76,10 @@ function RegisterEvent(name,fn) events[name]=fn end
 function UnregisterEvent(name,fn) assert(events[name]==fn); events[name]=nil end
 function SetNPCBlackboard(player,key,value) assert(player=='player' and key=='$scv_dock_results'); mailbox=value end
 function GetNPCBlackboard(player,key) assert(player=='player' and key=='$scv_dock_results'); return mailbox end
+stops=0
 function AddUITriggeredEvent(screen,control,params)
- assert(screen=='SCVSupplyChainMenu' and control=='dock_capacity')
+ assert(screen=='SCVSupplyChainMenu' and (control=='dock_capacity' or control=='dock_watch_stop'))
+ if control=='dock_watch_stop' then stops=stops+1; return end
  requests[#requests+1]=params
 end
 package.preload.ffi=function() return {C=C,string=tostring} end
@@ -108,10 +110,10 @@ assert(data.miners.m.total==1 and data.miners.m.idle==1)
 assert(data.categories[35].total==1 and data.categories[35].purpose=='fight')
 assert(data.factionColor=='faction_green')
 local entries=menu.logisticsEntries(data)
-assert(#entries==10, 'dock icon + 3 docks + drones + 4 nonzero ship categories + idle')
+assert(#entries==11, 'dock icon + 3 docks + drones + 4 nonzero ship categories + idle + queue')
 assert(entries[6].text:find('macro_icon',1,true) and entries[6].tip:find('L',1,true))
 for i=6,9 do assert(entries[i].color=='faction_green' and entries[i].tip:find('Idle:',1,true)) end
-assert(#menu.logisticsEntries(SCV_Data.readLogistics('B'))==6, 'zero categories must be absent')
+assert(#menu.logisticsEntries(SCV_Data.readLogistics('B'))==7, 'zero categories must be absent')
 assert(#requests==0, 'closed menu must not request docks')
 local totals=SCV_Graph.logisticsTotals(data)
 assert(totals.total==3 and totals.idle==2 and totals.severity=='warning')
@@ -134,10 +136,10 @@ assert(npc.miners.l.total==1 and npc.miners.l.idleUnknown)
 local npcTotals=SCV_Graph.logisticsTotals(npc)
 assert(npcTotals.total==3 and npcTotals.shipsKnown and not npcTotals.idleKnown and npcTotals.severity=='ok')
 local npcEntries=menu.logisticsEntries(npc)
-assert(#npcEntries==10, 'foreign ship categories are listed')
+assert(#npcEntries==11, 'foreign ship categories are listed')
 assert(npcEntries[2].tip:find(texts[3206],1,true), 'docks explain the ownership gate')
-assert(npcEntries[#npcEntries].text:find('] ?',1,true) and npcEntries[#npcEntries].tip:find(texts[3207],1,true))
-assert(not npcEntries[#npcEntries].tip:find(texts[3175],1,true), 'no idle thresholds on foreign stations')
+assert(npcEntries[#npcEntries-1].text:find('] ?',1,true) and npcEntries[#npcEntries-1].tip:find(texts[3207],1,true))
+assert(not npcEntries[#npcEntries-1].tip:find(texts[3175],1,true), 'no idle thresholds on foreign stations')
 assert(npcEntries[6].tip:find(texts[3207],1,true))
 world.A.ally=true
 local ally=SCV_Data.readLogistics('A')
@@ -146,7 +148,7 @@ assert(ally.traders.s.idle==1 and ally.miners.m.idle==1 and not ally.traders.s.i
 local allyTotals=SCV_Graph.logisticsTotals(ally)
 assert(allyTotals.idle==2 and allyTotals.total==3 and allyTotals.severity=='ok', 'allied idle ships never warn')
 local allyEntries=menu.logisticsEntries(ally)
-assert(allyEntries[#allyEntries].text:find('] 2',1,true) and allyEntries[#allyEntries].color==nil)
+assert(allyEntries[#allyEntries-1].text:find('] 2',1,true) and allyEntries[#allyEntries-1].color==nil)
 assert(not allyEntries[6].tip:find(texts[3207],1,true))
 world.A.ally=nil
 unitsLocked=true
@@ -168,58 +170,53 @@ end
 SCV_Data.startLogistics(function() changes=changes+1 end)
 local a=SCV_Data.readLogistics('A'); local first=requests[#requests][2]
 local b=SCV_Data.readLogistics('B'); local second=requests[#requests][2]
-world.A.owned, world.A.ally = false, true
-local before=#requests
-SCV_Data.readLogistics('A')
-assert(#requests==before, 'the MD dock query never runs for foreign stations')
-world.A.owned, world.A.ally = true, nil
 -- Coalesced engine events must not lose either result. Includes 0/0 and a
 -- completely occupied or reserved class, as reported by native match_dock.
-deliver({[first]={'AAA',0,0,0,6,1,3},[second]={'BBB',0,0,0,0,0,0}})
+deliver({[first]={'AAA',0,0,0,6,1,3,0,0,{}},[second]={'BBB',0,0,0,0,0,0,0,0,{}}})
 assert(a.docks.m.free==0 and a.docks.m.total==6 and a.docks.l.total==3)
 assert(b.docks.s.total==0 and changes==1 and mailbox==nil)
 assert(first:sub(1,1)=='$', 'MD string table keys require a dollar prefix')
 local retained=SCV_Data.readLogistics('B'); local retainedKey=requests[#requests][2]
-deliver({[retainedKey]={'BBB',1,2,0,0,0,0}},true)
+deliver({[retainedKey]={'BBB',1,2,0,0,0,0,0,0,{}}},true)
 assert(retained.docks.s.free==1, 'also accept bridges that preserve the dollar prefix')
 local entries=menu.logisticsEntries(a)
 assert(entries[3].text:find('<text_warning>M 0/6',1,true))
 assert(entries[3].color==Color.text_warning)
 assert(not entries[2].text:find('<text_warning>S 0/0',1,true))
-assert(entries[#entries].text:find('<text_warning>'..string.char(27)..'[ships_idling_01] 2',1,true))
-assert(entries[#entries].color==Color.text_warning)
+assert(entries[#entries-1].text:find('<text_warning>'..string.char(27)..'[ships_idling_01] 2',1,true))
+assert(entries[#entries-1].color==Color.text_warning)
 a.miners.l.idle=1
 entries=menu.logisticsEntries(a)
-assert(entries[#entries].text:find('<text_error>'..string.char(27)..'[ships_idling_01] 3',1,true))
-assert(entries[#entries].color==Color.text_error)
-assert(entries[#entries].tip:find('100.0%',1,true))
+assert(entries[#entries-1].text:find('<text_error>'..string.char(27)..'[ships_idling_01] 3',1,true))
+assert(entries[#entries-1].color==Color.text_error)
+assert(entries[#entries-1].tip:find('100.0%',1,true))
 
 -- Out-of-order response from a superseded station refresh.
 local old=SCV_Data.readLogistics('A'); local stale=requests[#requests][2]
 local fresh=SCV_Data.readLogistics('A'); local current=requests[#requests][2]
 assert(fresh.docks.m.total==6, 'keep known berth counts while the next response is pending')
-deliver({[stale]={'AAA',1,1,1,1,1,1}})
+deliver({[stale]={'AAA',1,1,1,1,1,1,0,0,{}}})
 assert(old.docks.m.total==6 and fresh.docks.m.total==6, 'stale responses must not replace the retained sample')
-deliver({[current]={'AAA',1,1,2,2,3,3}})
+deliver({[current]={'AAA',1,1,2,2,3,3,0,0,{}}})
 assert(fresh.docks.m.free==2)
 local timeout=SCV_Data.readLogistics('A'); local late=requests[#requests][2]
 assert(timeout.docks.m.free==2)
 local beforeTimeout=changes
-now=now+5; deliver({[late]={'AAA',1,1,1,1,1,1}})
+now=now+5; deliver({[late]={'AAA',1,1,1,1,1,1,0,0,{}}})
 assert(next(timeout.docks)==nil and changes==beforeTimeout+1, 'timeout clears and republishes retained counts')
-for _,bad in ipairs({{'WRONG',1,1,1,1,1,1},{'AAA',2,1,0,0,0,0},
- {'AAA',-1,1,0,0,0,0},{'AAA',0.5,1,0,0,0,0},{'AAA',0,0}}) do
+for _,bad in ipairs({{'WRONG',1,1,1,1,1,1,0,0,{}},{'AAA',2,1,0,0,0,0,0,0,{}},
+ {'AAA',-1,1,0,0,0,0,0,0,{}},{'AAA',0.5,1,0,0,0,0,0,0,{}},{'AAA',0,0}}) do
  local seed=SCV_Data.readLogistics('A'); local seedToken=requests[#requests][2]
- deliver({[seedToken]={'AAA',1,1,2,2,3,3}})
+ deliver({[seedToken]={'AAA',1,1,2,2,3,3,0,0,{}}})
  local record=SCV_Data.readLogistics('A'); local token=requests[#requests][2]
  assert(record.docks.m.free==2)
  local beforeInvalid=changes
  deliver({[token]=bad}); assert(next(record.docks)==nil and changes==beforeInvalid+1)
 end
-local seed=SCV_Data.readLogistics('A'); deliver({[requests[#requests][2]]={'AAA',1,1,2,2,3,3}})
+local seed=SCV_Data.readLogistics('A'); deliver({[requests[#requests][2]]={'AAA',1,1,2,2,3,3,0,0,{}}})
 local sold=SCV_Data.readLogistics('A'); local token=requests[#requests][2]
 assert(sold.docks.m.free==2)
-world.A.owned=false; deliver({[token]={'AAA',1,1,1,1,1,1}})
+world.A.owned=false; deliver({[token]={'AAA',1,1,1,1,1,1,0,0,{}}})
 assert(next(sold.docks)==nil); world.A.owned=true
 -- Replacing an in-flight request cannot indefinitely extend retained data.
 local waiting=SCV_Data.readLogistics('B')
@@ -228,19 +225,71 @@ local replacement=SCV_Data.readLogistics('B')
 assert(replacement.docks.s.free==1)
 now=now+1; SCV_Data.expireDockRequests(now)
 assert(next(replacement.docks)==nil)
-local seeded=SCV_Data.readLogistics('B'); deliver({[requests[#requests][2]]={'BBB',1,2,0,0,0,0}})
+local seeded=SCV_Data.readLogistics('B'); deliver({[requests[#requests][2]]={'BBB',1,2,0,0,0,0,0,0,{}}})
 world.B.code='NEW'
 assert(next(SCV_Data.readLogistics('B').docks)==nil, 'different station code must not inherit berth counts')
 world.B.code='BBB'
+world.A.owned, world.A.ally = false, true
+local before=#requests
+local foreign=SCV_Data.readLogistics('A'); local foreignToken=requests[#requests][2]
+assert(#requests==before+1, 'foreign stations are queried for their dock queue')
+-- Foreign replies carry -1 berth fields; a berth count for them is rejected.
+deliver({[foreignToken]={'AAA',-1,-1,-1,-1,-1,-1,3,1,{'Trader (ABC-123)','Miner (DEF-456)'}}})
+assert(next(foreign.docks)==nil and foreign.queue.count==3 and foreign.queue.traffic==1 and #foreign.queue.ships==2)
+local qentries=menu.logisticsEntries(foreign)
+local q=qentries[#qentries]
+assert(q.text:find('order_dockandwait',1,true) and q.text:find('<text_warning>3',1,true) and not q.groupStart)
+assert(q.color==Color.text_warning)
+assert(q.tip:find('Trader (ABC-123)',1,true) and q.tip:find(texts[3215],1,true))
+local tipLines={}
+for line in (q.tip..string.char(10)):gmatch('(.-)'..string.char(10)) do tipLines[#tipLines+1]=line end
+assert(tipLines[1]==texts[3208]..': 3' and tipLines[2]==(texts[3209]:gsub('%%s',texts[3211])))
+assert(tipLines[3]=='' and tipLines[4]==texts[3218] and tipLines[5]=='Trader (ABC-123)' and tipLines[6]=='Miner (DEF-456)')
+local emptyTip=menu.logisticsEntries({queue={count=0,traffic=0,ships={}},docks={}})
+assert(not emptyTip[#emptyTip].tip:find(texts[3218],1,true), 'no ship list header when nothing waits')
+assert(q.tip:find(texts[3211],1,true) and q.tip:find((texts[3217]:gsub('%%s','1')),1,true))
+assert(qentries[#qentries-1].text:find('ships_idling_01',1,true), 'queue sits right of the idle counter')
+local leak=SCV_Data.readLogistics('A'); local leakToken=requests[#requests][2]
+deliver({[leakToken]={'AAA',1,1,1,1,1,1,0,0,{}}})
+assert(next(leak.docks)==nil and leak.queue==nil, 'berth counts for a foreign station are rejected')
+world.A.owned, world.A.ally = true, nil
+-- Warm-up (-1) shows '?' rather than a zero; zero waiting hides the entry.
+local warm=SCV_Data.readLogistics('A'); local warmToken=requests[#requests][2]
+deliver({[warmToken]={'AAA',1,1,1,1,1,1,-1,0,{}}})
+assert(warm.queue and warm.queue.count==nil)
+local wentries=menu.logisticsEntries(warm)
+local w=wentries[#wentries]
+assert(#wentries==11 and w.text:find('] ?',1,true) and not w.text:find('<text_',1,true) and w.color==nil, 'unknown is untinted')
+assert(w.tip==texts[3214], 'warm-up tooltip is only the collecting line')
+assert(not q.tip:find('Fleeing',1,true) and not q.tip:find('Green up to',1,true), 'no explanatory paragraphs')
+local idle=SCV_Data.readLogistics('A'); local idleToken=requests[#requests][2]
+deliver({[idleToken]={'AAA',1,1,1,1,1,1,0,2,{}}})
+local ientries=menu.logisticsEntries(idle)
+assert(idle.queue.count==0 and idle.queue.traffic==2 and #ientries==11)
+assert(ientries[11].text:find('<text_positive>-',1,true) and ientries[11].color==Color.text_positive, 'empty queue is a green dash')
+local none=menu.logisticsEntries({docks={}})
+assert(none[#none].text:find('order_dockandwait] ?',1,true) and none[#none].color==nil, 'no reply yet shows an untinted ?')
+for _,pair in ipairs({{0,'text_positive'},{2,'text_positive'},{3,'text_warning'},{5,'text_warning'},{6,'text_error'}}) do
+ local probe=menu.logisticsEntries({queue={count=pair[1],traffic=0,ships={}},docks={}})
+ assert(probe[#probe].color==Color[pair[2]], 'queue colour at '..pair[1])
+end
+for _,bad in ipairs({{'AAA',1,1,1,1,1,1,-2,0,{}},{'AAA',1,1,1,1,1,1,0,3,{}},{'AAA',1,1,1,1,1,1,0.5,0,{}},
+ {'AAA',1,1,1,1,1,1,0,0,'x'},{'AAA',1,1,1,1,1,1,1,0,{'a','b'}},{'AAA',1,1,1,1,1,1,0,0,{7}}}) do
+ local record=SCV_Data.readLogistics('A'); local token=requests[#requests][2]
+ deliver({[token]=bad}); assert(record.queue==nil and next(record.docks)==nil, 'malformed queue rejects the reply')
+end
 local previous=SCV_Data.readLogistics('A'); token=requests[#requests][2]
-SCV_Data.invalidate(); deliver({[token]={'AAA',1,1,1,1,1,1}})
+SCV_Data.invalidate(); deliver({[token]={'AAA',1,1,1,1,1,1,0,0,{}}})
 assert(next(previous.docks)==nil, 'changed chain cannot consume old replies')
+local stopsBefore=stops
 SCV_Data.stopLogistics(); local count=#requests
+assert(stops==stopsBefore+1, 'closing SCV disarms the MD dock queue watch')
+SCV_Data.stopLogistics(); assert(stops==stopsBefore+1, 'an inactive session sends no stop')
 SCV_Data.readLogistics('A'); assert(#requests==count and next(events)==nil)
 SCV_Data.onDockCapacity() -- stale native callback is harmless
 SCV_Data.startLogistics(function() changes=changes+1 end)
 assert(next(SCV_Data.readLogistics('B').docks)==nil, 'new session has no retained dock counts')
-deliver({[token]={'AAA',1,1,1,1,1,1}})
+deliver({[token]={'AAA',1,1,1,1,1,1,0,0,{}}})
 assert(next(previous.docks)==nil, 'save/reopen cannot consume previous session data')
 
 -- Initial graph and publication retain the actual snapshot object, so a valid
@@ -269,12 +318,16 @@ function rows:addRow()
  self.entries[#self.entries+1]=row; return row
 end
 menu.expandStation(nil,panel,rows,node)
-local dockCell
+local dockCell, queueCell
 for _,row in ipairs(rows.entries) do
  local label=type(row[1].text)=='function' and row[1].text() or row[1].text
  if label=='Docks M' then dockCell=row[2] end
+ if label==texts[3208] then queueCell=row[2] end
 end
 assert(dockCell and dockCell.text()=='2/2')
+fresh.queue=nil; assert(queueCell and queueCell.text()=='?', 'popup queue row is live and honest when unknown')
+fresh.queue={count=7,traffic=0,ships={}}; assert(queueCell.text():find('<text_error>7',1,true))
+fresh.queue=nil
 fresh.docks.m={free=0,total=2}
 assert(dockCell.text():find('<text_warning>0/2',1,true))
 local outline=node.severity
@@ -330,7 +383,20 @@ values = [el.get('value', '') for el in md.iter()]
 assert not any(' in ' in value for value in values)
 assert '$FreeDocks.indexof.{$Dock}' in values
 assert '$Dock.docksize.indexof.{tag.dock_xl} or $Dock.docksize.indexof.{tag.dock_l}' in values
-assert len(md.findall('.//event_ui_triggered')) == 1
-assert not md.findall('.//delay')
+triggers = sorted(el.get('control') for el in md.iter('event_ui_triggered'))
+assert triggers == ["'dock_capacity'", "'dock_watch_stop'"], triggers
 assert not md.findall('.//set_order')
+assert not md.findall('.//request_docking') and not md.findall('.//remove_docking_request')
+# The dock queue watch is the only timed cue, and it runs only while armed.
+watch = md.find(".//cue[@name='QueueWatch']")
+assert watch.find('conditions/event_cue_signalled') is not None
+delays = md.findall('.//delay')
+assert len(delays) == 1 and delays[0] in list(watch.iter('delay'))
+# Never a galaxy-wide search: listener ships come from the watched stations' sectors.
+for find in md.iter('find_ship'):
+    assert find.get('space') in ('$Station.sector', '$WStation.sector'), find.get('space')
+    assert find.get('unit') == 'false' and find.get('docked') == 'false'
+assert md.find(".//cue[@name='QueueOnQueued']/conditions/event_object_docking_queued").get('group') == '$Ships'
+stop = md.find(".//cue[@name='DockQueueStop']")
+assert stop.find('.//event_game_loaded') is not None and stop.find(".//reset_cue[@cue='QueueWatch']") is not None
 print('PASS logistics: Lua and LuaJIT readers, thresholds, dock mailbox, lifecycle, graph and native query contract')

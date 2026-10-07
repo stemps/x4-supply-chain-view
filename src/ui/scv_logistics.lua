@@ -21,9 +21,9 @@ function SCV_Logistics.read(id64, requestDocks)
 	end
 	-- Match vanilla's visibility. The map shows any station's subordinates by type
 	-- (menu_map.lua:14481, ungated) but their idle state only for own or allied
-	-- stations (menu_map.lua:9569, `isplayerowned or isally`). Dock counts stay
-	-- player-only: vanilla shows no per-size free berths for any station, so never
-	-- open the MD dock query to foreign stations.
+	-- stations (menu_map.lua:9569, `isplayerowned or isally`). The MD query runs
+	-- for every station for the dock queue, but it counts per-size free berths only
+	-- for own stations: vanilla shows no per-size berths for foreign ones.
 	local playerOwned = safe(false, GetComponentData, id64, "isplayerowned") == true
 	local idleVisible = playerOwned or safe(false, GetComponentData, id64, "isally") == true
 	result.playerOwned, result.idleVisible = playerOwned, idleVisible
@@ -87,7 +87,7 @@ function SCV_Logistics.read(id64, requestDocks)
 			result.shipsKnown, result.idleKnown = false, false
 			warnOnce("logistics-ships:" .. tostring(err), "ship logistics unavailable: " .. tostring(err))
 		end
-		if playerOwned then requestDocks(id64, result) end
+		requestDocks(id64, result)
 	end
 	local unitsVisible = safe(false, function () return C.IsInfoUnlockedForPlayer(id64, "units_amount") end)
 		and safe(false, function () return C.IsInfoUnlockedForPlayer(id64, "units_details") end)

@@ -15,7 +15,7 @@ for _, example in ipairs({
 		scale = uiScale
 		local data = {docks=example, drones=example.drones, shipsKnown=true, categories={}}
 		local rows = menu.logisticsRows(data)
-		assert(#rows == 1 and #rows[1].entries == 7, "zero ship categories occupy no metric columns")
+		assert(#rows == 1 and #rows[1].entries == 8, "zero ship categories occupy no metric columns")
 		for _, entry in ipairs(rows[1].entries) do
 			if entry.text ~= "" then
 				local header, count = entry.text:match("^(.-)\n(.*)$")
@@ -42,10 +42,12 @@ local alignmentGraph = {nodes={short,long}}
 menu.prepareLogisticsColumns(alignmentGraph)
 local sharedCount = #long.logisticsRows[1].entries
 assert(#short.logisticsRows[1].entries == sharedCount)
-assert(short.logisticsRows[1].entries[sharedCount].text:find("ships_idling_01",1,true))
-assert(short.logisticsRows[1].entries[sharedCount-1].text:find("ship_xs_drone_trade_01",1,true))
-assert(short.logisticsRows[1].entries[sharedCount].tip:find("\n\n",1,true))
-assert(not short.logisticsRows[1].entries[sharedCount].tip:find("—",1,true))
+-- The dock queue is the rightmost cell, directly beside the idle counter.
+assert(short.logisticsRows[1].entries[sharedCount].text:find("order_dockandwait",1,true))
+assert(short.logisticsRows[1].entries[sharedCount-1].text:find("ships_idling_01",1,true))
+assert(short.logisticsRows[1].entries[sharedCount-2].text:find("ship_xs_drone_trade_01",1,true))
+assert(short.logisticsRows[1].entries[sharedCount-1].tip:find("\n\n",1,true))
+assert(not short.logisticsRows[1].entries[sharedCount-1].tip:find("—",1,true))
 menu.prepareLogisticsColumns(alignmentGraph)
 assert(#short.logisticsRows[1].entries == sharedCount, "alignment padding must not accumulate")
 

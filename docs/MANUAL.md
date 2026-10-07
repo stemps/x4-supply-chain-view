@@ -92,8 +92,16 @@ the station.
 
 ## Declaration of AI usage
 
-Development of this mod makes use of AI, based on the excellent
-[X4 Claude Modding Tool](https://www.nexusmods.com/x4foundations/mods/2186) by
-[ttyyygggg](https://www.nexusmods.com/profile/ttyyygggg). I know not everybody
-likes AI usage. That's totally fine. If that is that case, you probably want to
-give this a pass.
+Development of this mod makes use of AI for coding and in-game assets. I know
+not everybody likes AI usage. I understand that. That's totally fine. If that is
+that case, you probably want to give this a pass.
+
+## Acknowledgements
+
+Thanks to:
+- [ChemODun](https://www.nexusmods.com/profile/ChemODun) for the
+  [Dock Queue Indicator](https://www.nexusmods.com/x4foundations/mods/2430) mod
+  and for giving me permission to adopt their implementation of the dock queue
+  for this mod
+- [ttyyygggg](https://www.nexusmods.com/profile/ttyyygggg) for the
+  [X4 Claude Modding Tool](https://www.nexusmods.com/x4foundations/mods/2186)

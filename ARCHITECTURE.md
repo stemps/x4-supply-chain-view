@@ -19,7 +19,8 @@ publishing), `docs/`, `images/` and metadata.
 | `SCV_Graph` | Topology, cycle/budget handling and in-place metric publication. Existing calculation APIs forward to Metrics. |
 | `SCV_Reader` | Engine station/ware reads; the lazy station-code index lasts for the addon environment. |
 | `SCV_Logistics` | Subordinate and drone reads; receives a dock-request callback. |
-| `SCV_DockSession` | One active session owned by the Data facade: requests, tokens, retained dock samples and bound event handler. |
+| `SCV_DockSession` | One active session owned by the Data facade: requests, tokens, retained dock and dock-queue samples, bound event handler, and the stop event that disarms the MD queue watch. |
+| `md/scv_logistics.xml` | The only MD script. `DockCapacity` answers one station per UI request through the token mailbox. `DockQueue` holds the queue watch, armed by the first request and disarmed by stop, watchdog or save load, so nothing runs while SCV is closed. |
 | `SCV_Refresh` | One short-lived sweep scheduler owned by the menu, with copied membership, cursor and pending records. |
 | `SCV_Data` | Public facade, initial scan cache, dynamic reader adapters and active dock session. |
 | `SCV_Text` | Shared page-bound localization functions and per-addon-load missing-text diagnostics. |

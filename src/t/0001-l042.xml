@@ -172,5 +172,14 @@
     <t id="3205">Civilní poptávka: %s</t>
     <t id="3206">Počty doků vyžadují vlastnictví hráčem.</t>
     <t id="3207">Stav nečinnosti vyžaduje vlastnictví nebo spojenectví.</t>
+    <t id="3208">Čeká na dok</t>
+    <t id="3209">Provoz doků: %s</t>
+    <t id="3210">normální</t>
+    <t id="3211">hustý</t>
+    <t id="3212">ucpaný</t>
+    <t id="3214">Sběr herních dat...</t>
+    <t id="3215">Cizí stanice: počítají se jen lodě, které znáte.</t>
+    <t id="3217">+%s dalších</t>
+    <t id="3218">Čekající lodě:</t>
   </page>
 </language>

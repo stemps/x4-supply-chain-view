@@ -34,6 +34,9 @@ local config = {
 	wareNodeWidth          = 300,
 	nodeOffsetX            = 20,
 	consumptionColor       = { r = 255, g = 150, b = 150, a = 100, glow = 0 },
+	-- Ships waiting for a dock: green up to the first value, orange up to the second, red above.
+	dockQueueGreenMax      = 2,
+	dockQueueYellowMax     = 5,
 }
 
 local function log(msg)

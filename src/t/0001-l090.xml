@@ -172,5 +172,14 @@
     <t id="3205">Sivil talep: %s</t>
     <t id="3206">Rıhtım sayıları oyuncu mülkiyeti gerektirir.</t>
     <t id="3207">Boşta durumu oyuncu mülkiyeti veya ittifak gerektirir.</t>
+    <t id="3208">Rıhtım bekliyor</t>
+    <t id="3209">Yanaşma trafiği: %s</t>
+    <t id="3210">normal</t>
+    <t id="3211">yoğun</t>
+    <t id="3212">tıkalı</t>
+    <t id="3214">Oyun verileri toplanıyor...</t>
+    <t id="3215">Yabancı istasyonlar: yalnızca bildiğiniz gemiler sayılır.</t>
+    <t id="3217">+%s daha</t>
+    <t id="3218">Bekleyen gemiler:</t>
   </page>
 </language>

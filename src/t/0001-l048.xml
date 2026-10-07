@@ -172,5 +172,14 @@
     <t id="3205">Popyt cywilny: %s</t>
     <t id="3206">Liczba doków wymaga własności gracza.</t>
     <t id="3207">Stan bezczynności wymaga własności lub sojuszu.</t>
+    <t id="3208">Czeka na dok</t>
+    <t id="3209">Ruch dokowania: %s</t>
+    <t id="3210">normalny</t>
+    <t id="3211">duży</t>
+    <t id="3212">zator</t>
+    <t id="3214">Zbieranie danych gry...</t>
+    <t id="3215">Obce stacje: liczone są tylko statki, które znasz.</t>
+    <t id="3217">+%s więcej</t>
+    <t id="3218">Czekające statki:</t>
   </page>
 </language>

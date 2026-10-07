@@ -172,5 +172,14 @@
     <t id="3205">Demande civile : %s</t>
     <t id="3206">Le nombre de quais nécessite d’être propriétaire.</t>
     <t id="3207">L’état d’inactivité nécessite d’être propriétaire ou allié.</t>
+    <t id="3208">En attente d’amarrage</t>
+    <t id="3209">Trafic d’amarrage : %s</t>
+    <t id="3210">normal</t>
+    <t id="3211">dense</t>
+    <t id="3212">saturé</t>
+    <t id="3214">Collecte des données de jeu...</t>
+    <t id="3215">Stations étrangères : seuls les vaisseaux que vous connaissez sont comptés.</t>
+    <t id="3217">+%s de plus</t>
+    <t id="3218">Vaisseaux en attente :</t>
   </page>
 </language>

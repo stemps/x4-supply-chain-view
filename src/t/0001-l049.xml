@@ -172,5 +172,14 @@
     <t id="3205">Zivile Nachfrage: %s</t>
     <t id="3206">Dockanzahl nur für eigene Stationen.</t>
     <t id="3207">Leerlaufstatus nur für eigene oder verbündete Stationen.</t>
+    <t id="3208">Wartet auf Dock</t>
+    <t id="3209">Dockverkehr: %s</t>
+    <t id="3210">normal</t>
+    <t id="3211">stark</t>
+    <t id="3212">überlastet</t>
+    <t id="3214">Spieldaten werden gesammelt...</t>
+    <t id="3215">Fremde Stationen: nur dir bekannte Schiffe werden gezählt.</t>
+    <t id="3217">+%s weitere</t>
+    <t id="3218">Wartende Schiffe:</t>
   </page>
 </language>

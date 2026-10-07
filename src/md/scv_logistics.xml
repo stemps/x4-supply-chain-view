@@ -2,7 +2,10 @@
 <mdscript name="SCV_Logistics" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="md.xsd">
   <cues>
     <!-- On-demand only. lib.recall.subordinates uses this same native free-dock
-         filter. Never reserve a berth or alter a ship's orders to measure it. -->
+         filter. Never reserve a berth or alter a ship's orders to measure it.
+         Reply: [code, sFree, sTotal, mFree, mTotal, lFree, lTotal, queue, traffic, names].
+         Dock fields are -1 for foreign stations (vanilla shows no per-size berths
+         there). queue is -1 while the dock queue watch is still warming up. -->
     <cue name="DockCapacity" instantiate="true">
       <conditions>
         <event_ui_triggered screen="'SCVSupplyChainMenu'" control="'dock_capacity'"/>
@@ -12,44 +15,238 @@
           <set_value name="$Station" exact="event.param3.{1}"/>
           <set_value name="$Token" exact="event.param3.{2}"/>
           <set_value name="$Code" exact="event.param3.{3}"/>
-          <do_if value="typeof $Station == datatype.component and $Station.exists and $Station.isclass.station and $Station.owner == faction.player and $Station.idcode == $Code and typeof $Token == datatype.string">
-            <find_dockingbay name="$Docks" object="$Station" checkoperational="true" multiple="true">
-              <match_dock storage="false" trading="true" hidden="false" showroom="false" ventureronly="false" allowplayeronly="false"/>
-            </find_dockingbay>
-            <find_dockingbay name="$FreeDocks" object="$Station" checkoperational="true" multiple="true">
-              <match_dock storage="false" trading="true" hidden="false" showroom="false" ventureronly="false" allowplayeronly="false" free="true"/>
-            </find_dockingbay>
-            <set_value name="$Counts" exact="[0, 0, 0, 0, 0, 0]"/>
-            <do_all exact="$Docks.count" counter="$i">
-              <set_value name="$Dock" exact="$Docks.{$i}"/>
-              <set_value name="$Index" exact="0"/>
-              <do_if value="$Dock.external and $Dock.isdockingallowed">
-                <!-- The largest supported size owns a shared berth. L includes XL. -->
-                <do_if value="$Dock.docksize.indexof.{tag.dock_xl} or $Dock.docksize.indexof.{tag.dock_l}">
-                  <set_value name="$Index" exact="5"/>
+          <do_if value="typeof $Station == datatype.component and $Station.exists and $Station.isclass.station and $Station.idcode == $Code and typeof $Token == datatype.string">
+            <set_value name="$Counts" exact="[-1, -1, -1, -1, -1, -1]"/>
+            <do_if value="$Station.owner == faction.player">
+              <find_dockingbay name="$Docks" object="$Station" checkoperational="true" multiple="true">
+                <match_dock storage="false" trading="true" hidden="false" showroom="false" ventureronly="false" allowplayeronly="false"/>
+              </find_dockingbay>
+              <find_dockingbay name="$FreeDocks" object="$Station" checkoperational="true" multiple="true">
+                <match_dock storage="false" trading="true" hidden="false" showroom="false" ventureronly="false" allowplayeronly="false" free="true"/>
+              </find_dockingbay>
+              <set_value name="$Counts" exact="[0, 0, 0, 0, 0, 0]"/>
+              <do_all exact="$Docks.count" counter="$i">
+                <set_value name="$Dock" exact="$Docks.{$i}"/>
+                <set_value name="$Index" exact="0"/>
+                <do_if value="$Dock.external and $Dock.isdockingallowed">
+                  <!-- The largest supported size owns a shared berth. L includes XL. -->
+                  <do_if value="$Dock.docksize.indexof.{tag.dock_xl} or $Dock.docksize.indexof.{tag.dock_l}">
+                    <set_value name="$Index" exact="5"/>
+                  </do_if>
+                  <do_elseif value="$Dock.docksize.indexof.{tag.dock_m}">
+                    <set_value name="$Index" exact="3"/>
+                  </do_elseif>
+                  <do_elseif value="$Dock.docksize.indexof.{tag.dock_s}">
+                    <set_value name="$Index" exact="1"/>
+                  </do_elseif>
                 </do_if>
-                <do_elseif value="$Dock.docksize.indexof.{tag.dock_m}">
-                  <set_value name="$Index" exact="3"/>
-                </do_elseif>
-                <do_elseif value="$Dock.docksize.indexof.{tag.dock_s}">
-                  <set_value name="$Index" exact="1"/>
-                </do_elseif>
-              </do_if>
-              <do_if value="$Index gt 0">
-                <set_value name="$Counts.{$Index + 1}" operation="add" exact="1"/>
-                <do_if value="$FreeDocks.indexof.{$Dock}">
-                  <set_value name="$Counts.{$Index}" operation="add" exact="1"/>
+                <do_if value="$Index gt 0">
+                  <set_value name="$Counts.{$Index + 1}" operation="add" exact="1"/>
+                  <do_if value="$FreeDocks.indexof.{$Dock}">
+                    <set_value name="$Counts.{$Index}" operation="add" exact="1"/>
+                  </do_if>
                 </do_if>
-              </do_if>
-            </do_all>
+              </do_all>
+              <remove_value name="$Docks"/>
+              <remove_value name="$FreeDocks"/>
+              <remove_value name="$Dock"/>
+              <remove_value name="$Index"/>
+            </do_if>
+
+            <!-- Dock queue: watching starts with the first request and stops when
+                 SCV closes or stops asking. A new sector is added to the listener
+                 group at once rather than on the next refresh tick. -->
+            <do_if value="QueueWatch.state == cuestate.waiting">
+              <signal_cue_instantly cue="QueueWatch"/>
+            </do_if>
+            <do_if value="not DockQueue.$Since.{$Station}?">
+              <set_value name="DockQueue.$Since.{$Station}" exact="player.age"/>
+            </do_if>
+            <set_value name="DockQueue.$Watch.{$Station}" exact="player.age"/>
+            <do_if value="not DockQueue.$Sectors.{$Station.sector}?">
+              <set_value name="DockQueue.$Sectors.{$Station.sector}" exact="true"/>
+              <find_ship name="$Found" space="$Station.sector" unit="false" docked="false" multiple="true"/>
+              <add_to_group groupname="DockQueue.$Ships" list="$Found" check="false"/>
+              <remove_value name="$Found"/>
+            </do_if>
+            <set_value name="$Queue" exact="-1"/>
+            <set_value name="$Names" exact="[]"/>
+            <do_if value="player.age - DockQueue.$Since.{$Station} ge DockQueue.$WarmUp">
+              <set_value name="$Queue" exact="0"/>
+              <do_for_each name="$QShip" valuename="$QEntry" in="DockQueue.$Queued">
+                <do_if value="$QEntry.$station == $Station and $QShip.exists and not $QShip.assigneddock and not $QShip.dock and player.age - $QEntry.$last le DockQueue.$Alive">
+                  <set_value name="$Queue" operation="add" exact="1"/>
+                  <do_if value="$Names.count lt 10">
+                    <append_to_list name="$Names" exact="$QShip.knownname + ' (' + $QShip.idcode + ')'"/>
+                  </do_if>
+                </do_if>
+              </do_for_each>
+              <remove_value name="$QShip"/>
+              <remove_value name="$QEntry"/>
+            </do_if>
+            <set_value name="$Traffic" exact="if $Station.istrafficlevel.gridlock then 2 else if $Station.istrafficlevel.heavy then 1 else 0"/>
+
             <do_if value="not player.entity.$scv_dock_results?">
               <set_value name="player.entity.$scv_dock_results" exact="table[]"/>
             </do_if>
-            <set_value name="player.entity.$scv_dock_results.{$Token}" exact="[$Code, $Counts.{1}, $Counts.{2}, $Counts.{3}, $Counts.{4}, $Counts.{5}, $Counts.{6}]"/>
+            <set_value name="player.entity.$scv_dock_results.{$Token}" exact="[$Code, $Counts.{1}, $Counts.{2}, $Counts.{3}, $Counts.{4}, $Counts.{5}, $Counts.{6}, $Queue, $Traffic, $Names]"/>
             <raise_lua_event name="'scv_dock_capacity_ready'"/>
+            <remove_value name="$Counts"/>
+            <remove_value name="$Queue"/>
+            <remove_value name="$Names"/>
+            <remove_value name="$Traffic"/>
           </do_if>
+          <remove_value name="$Station"/>
+          <remove_value name="$Token"/>
+          <remove_value name="$Code"/>
         </do_if>
       </actions>
+    </cue>
+
+    <!-- Dock queue tracking, armed only while SCV asks for it.
+         event_object_docking_queued names only the ship, so the listener group
+         holds the ships in sectors SCV is showing, never the whole galaxy. The
+         station comes from the ship's DockAt/DockAndWait order, the same test as
+         fight.attack.object.station.xml. Ships under order.dock re-request every
+         10 s while queued (order.dock.xml), which re-fires the event: that is both
+         how ships already waiting are found and how a ship stays counted.
+         Fleeing ships (move.flee.dock requests several stations at once) and
+         drones carry no attributable destination and are not counted. -->
+    <cue name="DockQueue">
+      <actions>
+        <include_actions ref="DockQueueReset"/>
+      </actions>
+      <cues>
+        <library name="DockQueueReset">
+          <actions>
+            <set_value name="$Watch" exact="table[]"/>
+            <set_value name="$Since" exact="table[]"/>
+            <set_value name="$Sectors" exact="table[]"/>
+            <set_value name="$Queued" exact="table[]"/>
+            <create_group groupname="$Ships"/>
+            <!-- Stop watching a station SCV has not asked about for this long. -->
+            <set_value name="$Linger" exact="15s"/>
+            <!-- A queued ship re-requests every 10 s; count it while it did so recently. -->
+            <set_value name="$Alive" exact="25s"/>
+            <!-- Before a full re-request cycle has passed, zero waiting would be a guess. -->
+            <set_value name="$WarmUp" exact="12s"/>
+          </actions>
+        </library>
+
+        <cue name="QueueWatch">
+          <conditions>
+            <event_cue_signalled/>
+          </conditions>
+          <cues>
+            <cue name="QueueRefresh">
+              <delay exact="10s"/>
+              <actions>
+                <set_value name="$Expired" exact="[]"/>
+                <do_for_each name="$WStation" valuename="$WLast" in="$Watch">
+                  <do_if value="not $WStation.exists or player.age - $WLast gt $Linger">
+                    <append_to_list name="$Expired" exact="$WStation"/>
+                  </do_if>
+                </do_for_each>
+                <do_for_each name="$WStation" in="$Expired">
+                  <remove_value name="$Watch.{$WStation}"/>
+                  <remove_value name="$Since.{$WStation}"/>
+                </do_for_each>
+                <remove_value name="$Expired"/>
+                <remove_value name="$WStation"/>
+                <remove_value name="$WLast"/>
+                <do_if value="$Watch.keys.count == 0">
+                  <!-- Watchdog: SCV closed without a stop event (UI reload, menu error). -->
+                  <signal_cue cue="DockQueueStop"/>
+                </do_if>
+                <do_else>
+                  <set_value name="$Sectors" exact="table[]"/>
+                  <set_value name="$Found" exact="[]"/>
+                  <do_for_each name="$WStation" in="$Watch">
+                    <do_if value="not $Sectors.{$WStation.sector}?">
+                      <set_value name="$Sectors.{$WStation.sector}" exact="true"/>
+                      <find_ship name="$Found" space="$WStation.sector" unit="false" docked="false" multiple="true" append="true"/>
+                    </do_if>
+                  </do_for_each>
+                  <add_to_group groupname="$Ships" list="$Found" replace="true" check="false"/>
+                  <remove_value name="$Found"/>
+                  <remove_value name="$WStation"/>
+                  <set_value name="$Drop" exact="[]"/>
+                  <do_for_each name="$QShip" valuename="$QEntry" in="$Queued">
+                    <do_if value="not $QShip.exists or not $Watch.{$QEntry.$station}? or $QShip.assigneddock or $QShip.dock or player.age - $QEntry.$last gt $Alive">
+                      <append_to_list name="$Drop" exact="$QShip"/>
+                    </do_if>
+                  </do_for_each>
+                  <do_for_each name="$QShip" in="$Drop">
+                    <remove_value name="$Queued.{$QShip}"/>
+                  </do_for_each>
+                  <remove_value name="$Drop"/>
+                  <remove_value name="$QShip"/>
+                  <remove_value name="$QEntry"/>
+                  <reset_cue cue="this"/>
+                </do_else>
+              </actions>
+            </cue>
+
+            <cue name="QueueOnQueued" instantiate="true">
+              <conditions>
+                <event_object_docking_queued group="$Ships"/>
+              </conditions>
+              <actions>
+                <set_value name="$EShip" exact="event.object"/>
+                <set_value name="$EDest" exact="null"/>
+                <do_if value="@$EShip.order.id == 'DockAt' or @$EShip.order.id == 'DockAndWait'">
+                  <set_value name="$EDest" exact="@$EShip.order.$destination"/>
+                </do_if>
+                <!-- Foreign stations only count ships the player knows about. -->
+                <do_if value="$EDest and $Watch.{$EDest}? and not $EShip.isunit and ($EDest.isplayerowned or $EShip.isknown)">
+                  <do_if value="$Queued.{$EShip}? and $Queued.{$EShip}.$station == $EDest">
+                    <set_value name="$Queued.{$EShip}.$last" exact="player.age"/>
+                  </do_if>
+                  <do_else>
+                    <set_value name="$Queued.{$EShip}" exact="table[$station = $EDest, $first = player.age, $last = player.age]"/>
+                  </do_else>
+                </do_if>
+                <remove_value name="$EShip"/>
+                <remove_value name="$EDest"/>
+              </actions>
+            </cue>
+
+            <!-- Aborted/denied are not used: order.dock withdraws and renews its
+                 request every 10 s while waiting, and the liveness window covers
+                 ships that really leave. -->
+            <cue name="QueueOnServed" instantiate="true">
+              <conditions>
+                <check_any>
+                  <event_object_dock_assigned group="$Ships"/>
+                  <event_object_destroyed group="$Ships"/>
+                </check_any>
+              </conditions>
+              <actions>
+                <do_if value="$Queued.{event.object}?">
+                  <remove_value name="$Queued.{event.object}"/>
+                </do_if>
+              </actions>
+            </cue>
+          </cues>
+        </cue>
+
+        <cue name="DockQueueStop" instantiate="true">
+          <conditions>
+            <check_any>
+              <event_cue_signalled/>
+              <event_ui_triggered screen="'SCVSupplyChainMenu'" control="'dock_watch_stop'"/>
+              <event_game_loaded/>
+            </check_any>
+          </conditions>
+          <actions>
+            <do_if value="QueueWatch.state != cuestate.waiting">
+              <reset_cue cue="QueueWatch"/>
+            </do_if>
+            <clear_group group="$Ships"/>
+            <include_actions ref="DockQueueReset"/>
+          </actions>
+        </cue>
+      </cues>
     </cue>
   </cues>
 </mdscript>

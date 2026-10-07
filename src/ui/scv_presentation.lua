@@ -62,6 +62,38 @@ function SCV_Presentation.new(config, dispatch)
 		return logisticsTint(text, dock and dock.total > 0 and dock.free == 0 and "warning" or "ok")
 	end
 
+	local trafficText = { [0] = 3210, [1] = 3211, [2] = 3212 }
+
+	-- Always shown: a green "-" when nothing waits, "?" in the normal text colour
+	-- while unknown (no reply yet, or the MD watch is still warming up).
+	local function dockQueueColor(count)
+		if count <= config.dockQueueGreenMax then return "text_positive" end
+		return count <= config.dockQueueYellowMax and "text_warning" or "text_error"
+	end
+
+	local function dockQueueLabel(queue)
+		local count = queue and queue.count
+		local text = count == 0 and "-" or logisticsCount(count, count ~= nil)
+		return count and (Helper.convertColorToText(Color[dockQueueColor(count)]) .. text .. "\27X") or text
+	end
+
+	local function dockQueueTip(logistics)
+		local queue = logistics and logistics.queue
+		-- A reply of -1 means the MD watch has not yet seen a full re-request cycle.
+		if queue and queue.count == nil then return T(3214) end
+		local lines = { T(3208) .. ": " .. logisticsCount(queue and queue.count, queue and queue.count ~= nil) }
+		if queue then
+			lines[#lines + 1] = T(3209, T(trafficText[queue.traffic] or 3210))
+			if #queue.ships > 0 then
+				lines[#lines + 1] = "\n" .. T(3218)
+				for _, name in ipairs(queue.ships) do lines[#lines + 1] = name end
+				if queue.count and queue.count > #queue.ships then lines[#lines + 1] = T(3217, queue.count - #queue.ships) end
+			end
+		end
+		if logistics and logistics.playerOwned == false then lines[#lines + 1] = "\n" .. T(3215) end
+		return table.concat(lines, "\n")
+	end
+
 	function presentation.idleText(logistics)
 		local totals = SCV_Graph.logisticsTotals(logistics)
 		-- Never round a sub-threshold ratio up to a displayed 50% or 75%.
@@ -112,6 +144,9 @@ function SCV_Presentation.new(config, dispatch)
 			color = totals.severity == "critical" and Color.text_error or totals.severity == "warning" and Color.text_warning or nil,
 			tip = T(3176) .. " + " .. T(3177) .. "\n\n" .. menu.idleText(data) .. "\n\n" .. T(3174)
 				.. (data.playerOwned == false and idleHidden or ("\n\n" .. T(3175))) }
+		local queueCount = data.queue and data.queue.count
+		entries[#entries + 1] = { text = "\27[order_dockandwait] " .. dockQueueLabel(data.queue),
+			color = queueCount and Color[dockQueueColor(queueCount)] or nil, tip = dockQueueTip(data) }
 		return entries
 	end
 
@@ -342,6 +377,8 @@ function SCV_Presentation.new(config, dispatch)
 	presentation.logisticsCount = logisticsCount
 	presentation.logisticsIdleLabel = logisticsIdleLabel
 	presentation.dockLabel = dockLabel
+	presentation.dockQueueLabel = dockQueueLabel
+	presentation.dockQueueTip = dockQueueTip
 	presentation.T = T
 	presentation.severityColor = severityColor
 	presentation.formatAmount = formatAmount
