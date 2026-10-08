@@ -246,7 +246,7 @@ class Preflights:
             publisher.preflight(version, notes)
 
 
-def publish_steam(root, tag, steam, confirm_uploaded=False, retry=False, minor=False):
+def publish_steam(root, tag, steam, confirm_uploaded=False, retry=False, minor=False, then=''):
     import workshop_build
     try:
         folder, digest, commit, notes = workshop_build.tagged_stage(root, tag, steam.config)
@@ -254,7 +254,7 @@ def publish_steam(root, tag, steam, confirm_uploaded=False, retry=False, minor=F
                       minor=minor)
     except (ReleaseError, OSError, ValueError, KeyError) as error:
         raise ReleaseError(f'Steam Workshop publication incomplete: {error}\n'
-                           f'Git release retained. Resume: just publish-steam {tag}') from None
+                           f'Git release retained. Resume: just publish-steam {tag}{then}') from None
     from manual_bbcode import handoff
     try:
         handoff(root, tag, commit, 'steam')
@@ -264,16 +264,27 @@ def publish_steam(root, tag, steam, confirm_uploaded=False, retry=False, minor=F
               f'just steam-description {tag}', file=sys.stderr)
 
 
+def publish_discord(root, tag, discord, confirm_posted=False, retry=False):
+    from release_archive import tagged_files
+    try:
+        commit, _, _, notes = tagged_files(root, tag)
+        discord.publish(tag, commit, notes, confirm_posted=confirm_posted, retry=retry)
+    except (ReleaseError, OSError, ValueError, KeyError) as error:
+        raise ReleaseError(f'Discord announcement incomplete: {error}\n'
+                           f'Release retained. Resume: just publish-discord {tag}') from None
+
+
 def main():
     import argparse
     from release_archive import local_zip, tagged_zip
     from nexus_publish import Publisher
     from steam_publish import SteamPublisher
+    from discord_publish import DiscordPublisher
     import workshop_build
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('command', nargs='?', default='release',
                         choices=['release', 'build-zip', 'publish-nexus', 'publish-steam', 'build-workshop',
-                                 'workshop-placeholder'])
+                                 'workshop-placeholder', 'publish-discord'])
     parser.add_argument('tag', nargs='?')
     parser.add_argument('--adopt-version', help='Verified Nexus version ID after an uncertain creation')
     parser.add_argument('--retry-version', action='store_true', help='Confirm uncertain creation failed, then retry')
@@ -283,11 +294,18 @@ def main():
     parser.add_argument('--retry-upload', action='store_true', help='Confirm an uncertain Steam upload failed, then retry')
     parser.add_argument('--minor', action='store_true',
                         help='Steam update without a version change (WorkshopTool -minor)')
+    parser.add_argument('--confirm-posted', action='store_true',
+                        help='Record an uncertain Discord post as complete after checking the channel')
+    parser.add_argument('--retry-post', action='store_true', help='Confirm an uncertain Discord post failed, then retry')
     args = parser.parse_args()
     if args.command != 'publish-nexus' and (args.adopt_version or args.retry_version or args.changelog_status):
         parser.error('Recovery flags are only valid with publish-nexus')
     if args.command != 'publish-steam' and (args.confirm_uploaded or args.retry_upload or args.minor):
         parser.error('Steam recovery flags are only valid with publish-steam')
+    if args.command != 'publish-discord' and (args.confirm_posted or args.retry_post):
+        parser.error('Discord recovery flags are only valid with publish-discord')
+    if args.confirm_posted and args.retry_post:
+        parser.error('--confirm-posted and --retry-post are mutually exclusive')
     if args.adopt_version and args.retry_version:
         parser.error('--adopt-version and --retry-version are mutually exclusive')
     if args.confirm_uploaded and args.retry_upload:
@@ -298,6 +316,12 @@ def main():
             parser.error(f'{args.command} takes no tag')
         {'build-zip': local_zip, 'build-workshop': workshop_build.local_stage,
          'workshop-placeholder': workshop_build.placeholder}[args.command](root)
+        return
+    discord = DiscordPublisher(root)
+    if args.command == 'publish-discord':
+        if not args.tag:
+            parser.error('publish-discord requires a tag')
+        publish_discord(root, args.tag, discord, args.confirm_posted, args.retry_post)
         return
     steam = SteamPublisher(root)
     if args.command == 'publish-steam':
@@ -314,6 +338,8 @@ def main():
         targets = (publisher, steam) if steam.enabled else (publisher,)
         if steam.config and not steam.enabled:
             print('Steam Workshop skipped: steam.json has no published_file_id yet.')
+        if discord.enabled:
+            targets += (discord,)
         archive = Release(root).run(publisher=Preflights(*targets))
         tag = 'v' + archive.stem.rsplit('-', 1)[1]
     else:
@@ -330,6 +356,8 @@ def main():
         raise ReleaseError(f'Nexus publication incomplete: {error}\n'
                            f'Git release retained. Resume: just publish-nexus {tag}'
                            + (f', then just publish-steam {tag}' if args.command == 'release' and steam.enabled
+                              else '')
+                           + (f', then just publish-discord {tag}' if args.command == 'release' and discord.enabled
                               else '')) from None
     try:
         handoff(root, tag, commit)
@@ -338,7 +366,9 @@ def main():
               'No publication retry is needed. Open the generated file if present, or run:\n'
               f'just nexus-description {tag}', file=sys.stderr)
     if args.command == 'release' and steam.enabled:
-        publish_steam(root, tag, steam)
+        publish_steam(root, tag, steam, then=f', then just publish-discord {tag}' if discord.enabled else '')
+    if args.command == 'release' and discord.enabled:
+        publish_discord(root, tag, discord)
 
 
 if __name__ == "__main__":

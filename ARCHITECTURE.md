@@ -124,6 +124,13 @@ suggestion comes from the manifest version; later releases use the latest tag.
   `dist/steam/`. Uncertain outcomes are resolved with `--confirm-uploaded` or
   `--retry-upload`; `--minor` is for an unchanged version. Releases skip Steam
   while `steam.json` is absent or has no `published_file_id`.
+- `scripts/discord_publish.py`: posts the release announcement (title, Nexus/Steam
+  links, tag notes) through the webhook of the channel in `discord.json`. The URL
+  is a secret read from the env var that file names, never written anywhere. Release
+  preflight checks the webhook points at that channel and the text fits 2000
+  characters; the post runs last, only after Nexus (and Steam, if recorded) are done.
+  Receipts in `dist/discord/`; uncertain outcomes are resolved with
+  `--confirm-posted` or `--retry-post`. Releases skip Discord without `discord.json`.
 - `scripts/manual_bbcode.py`: converts the released `docs/MANUAL.md` to Nexus or
   Steam BBCode (`dist/<nexus|steam>/<tag>/description-<nexus|steam>.bbcode.txt`) and opens
   Notepad for copy/paste. Unsupported Markdown fails before releasing, and so does

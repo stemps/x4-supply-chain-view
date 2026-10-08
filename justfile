@@ -85,6 +85,7 @@ test-release:
     uv run --with markdown-it-py==4.0.0 python tests/release/test_archive.py
     uv run --with markdown-it-py==4.0.0 python tests/release/test_release_support.py
     uv run python tests/release/test_workshop.py
+    uv run python tests/release/test_discord.py
 
 # Validate, record, push, package and publish a release from clean main.
 release:
@@ -109,6 +110,10 @@ publish-nexus tag *args:
 # Publish or resume a tagged release on the Steam Workshop (WorkshopTool; Steam must be running).
 publish-steam tag *args:
     uv run --with markdown-it-py==4.0.0 python scripts/release.py publish-steam "{{tag}}" {{args}}
+
+# Announce a published release in the Discord channel named in discord.json.
+publish-discord tag *args:
+    uv run python scripts/release.py publish-discord "{{tag}}" {{args}}
 
 # Render and open the manual at a release tag, branch or commit without publishing anything.
 nexus-description ref:
