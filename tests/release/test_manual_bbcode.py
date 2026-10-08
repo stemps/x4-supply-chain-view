@@ -9,6 +9,7 @@ from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'scripts'))
 import manual_bbcode as manual
+import discord_publish
 import nexus_publish
 import release
 import release_archive
@@ -171,11 +172,13 @@ class ResolveTests(unittest.TestCase):
 
 class PublicationTests(unittest.TestCase):
     def invoke(self, command, *, publication_error=None, handoff_error=None, conversion_error=None,
-               steam_enabled=False, steam_error=None):
+               steam_enabled=False, steam_error=None, discord_enabled=False):
         publisher = Mock()
         events = []
         steam = Mock(enabled=steam_enabled, config={'published_file_id': '1'} if steam_enabled else None)
         self.steam = steam
+        # Never the repository's real discord.json: no test may reach a live webhook.
+        self.discord = Mock(enabled=discord_enabled)
         publisher.publish.side_effect = lambda *a, **kw: events.append('publish')
         if publication_error:
             publisher.publish.side_effect = publication_error
@@ -185,6 +188,9 @@ class PublicationTests(unittest.TestCase):
             stack.enter_context(patch.object(sys, 'argv', ['release.py', *command]))
             stack.enter_context(patch.object(nexus_publish, 'Publisher', return_value=publisher))
             stack.enter_context(patch.object(steam_publish, 'SteamPublisher', return_value=steam))
+            stack.enter_context(patch.object(discord_publish, 'DiscordPublisher', return_value=self.discord))
+            self.publish_discord = stack.enter_context(patch.object(release, 'publish_discord',
+                side_effect=lambda *a, **kw: events.append('discord')))
             self.publish_steam = stack.enter_context(patch.object(release, 'publish_steam',
                 side_effect=steam_error or (lambda *a, **kw: events.append('steam'))))
             self.run_release = stack.enter_context(patch.object(release.Release, 'run',
@@ -230,6 +236,25 @@ class PublicationTests(unittest.TestCase):
         self.assertEqual(self.invoke(['release'], steam_enabled=True), ['convert', 'publish', 'handoff', 'steam'])
         targets = self.run_release.call_args.kwargs['publisher'].publishers
         self.assertEqual(targets, (self.publisher, self.steam))
+
+    def test_release_announces_on_discord_last(self):
+        self.assertEqual(self.invoke(['release'], steam_enabled=True, discord_enabled=True),
+                         ['convert', 'publish', 'handoff', 'steam', 'discord'])
+        targets = self.run_release.call_args.kwargs['publisher'].publishers
+        self.assertEqual(targets, (self.publisher, self.steam, self.discord))
+
+    def test_publication_failure_never_announces(self):
+        with self.assertRaisesRegex(ReleaseError, 'then just publish-steam v1.2.3, then just publish-discord v1.2.3'):
+            self.invoke(['release'], steam_enabled=True, discord_enabled=True,
+                        publication_error=ReleaseError('Upload failed'))
+        with self.assertRaisesRegex(ReleaseError, 'Steam failed'):
+            self.invoke(['release'], steam_enabled=True, discord_enabled=True,
+                        steam_error=ReleaseError('Steam failed'))
+        self.publish_discord.assert_not_called()
+
+    def test_release_without_discord_config_skips_discord(self):
+        self.assertEqual(self.invoke(['release'], steam_enabled=True), ['convert', 'publish', 'handoff', 'steam'])
+        self.publish_discord.assert_not_called()
 
     def test_release_without_steam_config_skips_steam(self):
         self.assertEqual(self.invoke(['release']), ['convert', 'publish', 'handoff'])

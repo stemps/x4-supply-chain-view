@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import datetime
+import json
 import os
 from pathlib import Path
 import re
@@ -85,13 +86,51 @@ class Release:
         suggested = f"{major}.{minor + 1}.0" if minor < 99 else f"{major + 1}.0.0"
         return tag, suggested
 
-    def notes(self, previous):
+    def draft_path(self, version):
+        # Inside .git: per clone, never shipped, invisible to the clean-tree preflight.
+        return self.root / self.git("rev-parse", "--git-path", "release-notes") / f"v{version}.json"
+
+    def draft(self, version, history):
+        """Notes saved by an earlier attempt at this version, plus commits made since."""
+        path = self.draft_path(version)
+        if not path.exists():
+            return None
+        saved = json.loads(path.read_text(encoding="utf-8"))
+        text = saved["notes"]
+        head = self.git("rev-parse", "HEAD")
+        if saved["head"] != head:
+            ancestor = subprocess.run(["git", "merge-base", "--is-ancestor", saved["head"], "HEAD"],
+                                      cwd=self.root, capture_output=True).returncode == 0
+            if ancestor:
+                newer = self.git("log", "--reverse", "--format=%s", f"{saved['head']}..HEAD").splitlines()
+                text += "".join(f"\n- {s}" for s in newer)
+                print(f"Restored release notes from the previous v{version} attempt, "
+                      f"plus {len(newer)} newer commit(s).")
+            else:
+                print(f"Restored release notes from the previous v{version} attempt. Its commit is no longer "
+                      f"in the history; check the notes against: git log --oneline {history}")
+        else:
+            print(f"Restored release notes from the previous v{version} attempt.")
+        return text
+
+    def save_draft(self, version, notes):
+        path = self.draft_path(version)
+        path.parent.mkdir(exist_ok=True)
+        temporary = path.with_suffix(".tmp")
+        temporary.write_text(json.dumps({"version": version, "head": self.git("rev-parse", "HEAD"),
+                                         "notes": notes}, indent=2) + "\n", encoding="utf-8")
+        temporary.replace(path)
+
+    def notes(self, previous, version=None):
         history = f"{previous}..HEAD" if previous else "HEAD"
-        subjects = self.git("log", "--reverse", "--format=%s", history).splitlines()
+        restored = self.draft(version, history) if version else None
+        if restored is None:
+            subjects = self.git("log", "--reverse", "--format=%s", history).splitlines()
+            restored = "\n".join(f"- {s}" for s in subjects)
         editor = self.git("var", "GIT_EDITOR")
         with tempfile.TemporaryDirectory(prefix="release-notes-") as directory:
             path = Path(directory) / "release-notes.md"
-            path.write_text("\n".join(f"- {s}" for s in subjects) + "\n", encoding="utf-8")
+            path.write_text(restored + "\n", encoding="utf-8")
             # Git editors are shell command strings. Let Git's shell interpret the
             # configured editor, but pass the filename as a separate positional arg.
             result = subprocess.run(
@@ -103,6 +142,9 @@ class Release:
             notes = path.read_text(encoding="utf-8").strip()
         if not notes or not re.search(r"[\w]", notes):
             raise ReleaseError("Release notes must not be empty.")
+        if version:
+            # Saved before any later step can fail; a retry of this version restores them.
+            self.save_draft(version, notes)
         return notes
 
     def updated_metadata(self, version, notes):
@@ -161,11 +203,17 @@ class Release:
         final = archive_path(self.root, version)
         if final.exists():
             raise ReleaseError(f"Archive already exists: {final}")
-        notes = self.notes(previous)
-        if publisher:
-            publisher.preflight(version, notes)
-        written = self.updated_metadata(version, notes)
-        self.check_unchanged(head, {})
+        notes = self.notes(previous, version)
+        kept = lambda: print(f"Release notes kept in {self.draft_path(version)}; they are restored "
+                             f"when you release {version} again.", file=sys.stderr)
+        try:
+            if publisher:
+                publisher.preflight(version, notes)
+            written = self.updated_metadata(version, notes)
+            self.check_unchanged(head, {})
+        except BaseException:
+            kept()
+            raise
         originals = {p: (self.root / p).read_bytes() if (self.root / p).exists() else None for p in written}
         committed = False
         staged = False
@@ -211,6 +259,8 @@ class Release:
                 note_file = Path(directory) / "tag-notes.md"
                 note_file.write_text(notes + "\n", encoding="utf-8")
                 self.git("tag", "-a", tag, "-F", str(note_file), commit)
+                # The annotated tag now holds the notes, and this version cannot be released again.
+                self.draft_path(version).unlink(missing_ok=True)
                 self.git("push", "--atomic", "origin", f"{commit}:refs/heads/main", f"refs/tags/{tag}:refs/tags/{tag}")
                 final.parent.mkdir(exist_ok=True)
                 # Exclusive creation prevents races from overwriting an existing ZIP.
@@ -224,6 +274,7 @@ class Release:
                       f"If the tag exists, retry: git push --atomic origin main {tag}. "
                       "No rollback was performed. Rebuild any missing ZIP from the verified tag.", file=sys.stderr)
             else:
+                kept()
                 if staged:
                     self.git("reset", "--quiet", head, "--", *self.metadata)
                 for name, data in written.items():

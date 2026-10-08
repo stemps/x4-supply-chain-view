@@ -101,6 +101,9 @@ suggestion comes from the manifest version; later releases use the latest tag.
 
 - `scripts/release.py`: preflight, version/notes, metadata, validation and Git
   orchestration; preserves concurrent edits and rolls back pre-commit failures.
+  Edited notes are saved to `.git/release-notes/v<version>.json` right after the
+  editor closes; a later attempt at the same version reopens them (plus subjects of
+  commits made since) and the file is deleted once the release tag exists.
 - `scripts/release_archive.py`: deterministic ZIPs of `src/` under the manifest
   id, local working-tree builds and reconstruction from verified remote tags.
   Every file in `src/` ships and nothing outside it does. The game's junction

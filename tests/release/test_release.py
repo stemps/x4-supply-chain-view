@@ -132,6 +132,35 @@ class ReleaseTests(ReleaseFixture):
         with self.assertRaises(release.ReleaseError): self.run_release()
         self.assertFalse((self.root / "VERSION").exists())
 
+    # The editor appends a marker so each test sees exactly what the editor was given.
+    @patch.dict(os.environ, {"GIT_EDITOR": "", "VISUAL": "", "EDITOR": ""})
+    def test_notes_restored_after_failed_attempt_of_same_version(self):
+        self.cmd("config", "core.editor", "sh -c 'printf -- \"- Hand-written\\n\" >> \"$1\"' editor")
+        def fail(): raise release.ReleaseError("checks failed")
+        with self.assertRaises(release.ReleaseError): self.run_release("0.1.0", check=fail)
+        self.assertEqual(self.cmd("status", "--porcelain"), "")
+        # Another version starts from the commit subjects again.
+        with self.assertRaises(release.ReleaseError): self.run_release("0.2.0", check=fail)
+        self.assertEqual(self.runner.notes(None, "0.2.0"), "- Initial mod\n- Hand-written\n- Hand-written")
+        # Same version: the edited notes return, plus commits made since that attempt.
+        self.write("src/ui/example.lua", "return 2\n")
+        self.cmd("commit", "-am", "Fix from failed attempt")
+        self.cmd("push")
+        self.run_release("0.1.0")
+        notes = self.cmd("tag", "-l", "--format=%(contents)", "v0.1.0").strip()
+        self.assertEqual(notes, "- Initial mod\n- Hand-written\n- Fix from failed attempt\n- Hand-written")
+        self.assertFalse(self.runner.draft_path("0.1.0").exists())
+        self.assertTrue(self.runner.draft_path("0.2.0").exists())
+
+    def test_notes_saved_when_publisher_preflight_fails(self):
+        from unittest.mock import Mock
+        publisher = Mock()
+        publisher.preflight.side_effect = release.ReleaseError('webhook missing')
+        with self.assertRaises(release.ReleaseError):
+            self.runner.run(ask=lambda _: '0.1.0', check=lambda: None, publisher=publisher)
+        self.assertIn('- Initial mod', self.runner.draft_path('0.1.0').read_text(encoding='utf-8'))
+        self.assertEqual(self.cmd('status', '--porcelain'), '')
+
     def test_check_failure_rolls_back(self):
         original = (self.root / "src/content.xml").read_bytes()
         def fail(): raise release.ReleaseError("checks failed")
