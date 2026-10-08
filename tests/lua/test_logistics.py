@@ -110,9 +110,9 @@ assert(data.miners.m.total==1 and data.miners.m.idle==1)
 assert(data.categories[35].total==1 and data.categories[35].purpose=='fight')
 assert(data.factionColor=='faction_green')
 local entries=menu.logisticsEntries(data)
-assert(#entries==11, 'dock icon + 3 docks + drones + 4 nonzero ship categories + idle + queue')
-assert(entries[6].text:find('macro_icon',1,true) and entries[6].tip:find('L',1,true))
-for i=6,9 do assert(entries[i].color=='faction_green' and entries[i].tip:find('Idle:',1,true)) end
+assert(#entries==11, 'dock icon + 3 docks + queue + drones + 4 nonzero ship categories + idle')
+assert(entries[7].text:find('macro_icon',1,true) and entries[7].tip:find('L',1,true))
+for i=7,10 do assert(entries[i].color=='faction_green' and entries[i].tip:find('Idle:',1,true)) end
 assert(#menu.logisticsEntries(SCV_Data.readLogistics('B'))==7, 'zero categories must be absent')
 assert(#requests==0, 'closed menu must not request docks')
 local totals=SCV_Graph.logisticsTotals(data)
@@ -138,9 +138,9 @@ assert(npcTotals.total==3 and npcTotals.shipsKnown and not npcTotals.idleKnown a
 local npcEntries=menu.logisticsEntries(npc)
 assert(#npcEntries==11, 'foreign ship categories are listed')
 assert(npcEntries[2].tip:find(texts[3206],1,true), 'docks explain the ownership gate')
-assert(npcEntries[#npcEntries-1].text:find('] ?',1,true) and npcEntries[#npcEntries-1].tip:find(texts[3207],1,true))
-assert(not npcEntries[#npcEntries-1].tip:find(texts[3175],1,true), 'no idle thresholds on foreign stations')
-assert(npcEntries[6].tip:find(texts[3207],1,true))
+assert(npcEntries[#npcEntries].text:find('] ?',1,true) and npcEntries[#npcEntries].tip:find(texts[3207],1,true))
+assert(not npcEntries[#npcEntries].tip:find(texts[3175],1,true), 'no idle thresholds on foreign stations')
+assert(npcEntries[7].tip:find(texts[3207],1,true))
 world.A.ally=true
 local ally=SCV_Data.readLogistics('A')
 assert(ally.shipsKnown and ally.idleKnown and ally.idleVisible and next(ally.docks)==nil)
@@ -148,8 +148,8 @@ assert(ally.traders.s.idle==1 and ally.miners.m.idle==1 and not ally.traders.s.i
 local allyTotals=SCV_Graph.logisticsTotals(ally)
 assert(allyTotals.idle==2 and allyTotals.total==3 and allyTotals.severity=='ok', 'allied idle ships never warn')
 local allyEntries=menu.logisticsEntries(ally)
-assert(allyEntries[#allyEntries-1].text:find('] 2',1,true) and allyEntries[#allyEntries-1].color==nil)
-assert(not allyEntries[6].tip:find(texts[3207],1,true))
+assert(allyEntries[#allyEntries].text:find('] 2',1,true) and allyEntries[#allyEntries].color==nil)
+assert(not allyEntries[7].tip:find(texts[3207],1,true))
 world.A.ally=nil
 unitsLocked=true
 assert(SCV_Data.readLogistics('A').drones==nil)
@@ -183,13 +183,13 @@ local entries=menu.logisticsEntries(a)
 assert(entries[3].text:find('<text_warning>M 0/6',1,true))
 assert(entries[3].color==Color.text_warning)
 assert(not entries[2].text:find('<text_warning>S 0/0',1,true))
-assert(entries[#entries-1].text:find('<text_warning>'..string.char(27)..'[ships_idling_01] 2',1,true))
-assert(entries[#entries-1].color==Color.text_warning)
+assert(entries[#entries].text:find('<text_warning>'..string.char(27)..'[ships_idling_01] 2',1,true))
+assert(entries[#entries].color==Color.text_warning)
 a.miners.l.idle=1
 entries=menu.logisticsEntries(a)
-assert(entries[#entries-1].text:find('<text_error>'..string.char(27)..'[ships_idling_01] 3',1,true))
-assert(entries[#entries-1].color==Color.text_error)
-assert(entries[#entries-1].tip:find('100.0%',1,true))
+assert(entries[#entries].text:find('<text_error>'..string.char(27)..'[ships_idling_01] 3',1,true))
+assert(entries[#entries].color==Color.text_error)
+assert(entries[#entries].tip:find('100.0%',1,true))
 
 -- Out-of-order response from a superseded station refresh.
 local old=SCV_Data.readLogistics('A'); local stale=requests[#requests][2]
@@ -237,7 +237,7 @@ assert(#requests==before+1, 'foreign stations are queried for their dock queue')
 deliver({[foreignToken]={'AAA',-1,-1,-1,-1,-1,-1,3,1,{'Trader (ABC-123)','Miner (DEF-456)'}}})
 assert(next(foreign.docks)==nil and foreign.queue.count==3 and foreign.queue.traffic==1 and #foreign.queue.ships==2)
 local qentries=menu.logisticsEntries(foreign)
-local q=qentries[#qentries]
+local q=qentries[5]
 assert(q.text:find('order_dockandwait',1,true) and q.text:find('<text_warning>3',1,true) and not q.groupStart)
 assert(q.color==Color.text_warning)
 assert(q.tip:find('Trader (ABC-123)',1,true) and q.tip:find(texts[3215],1,true))
@@ -246,9 +246,10 @@ for line in (q.tip..string.char(10)):gmatch('(.-)'..string.char(10)) do tipLines
 assert(tipLines[1]==texts[3208]..': 3' and tipLines[2]==(texts[3209]:gsub('%%s',texts[3211])))
 assert(tipLines[3]=='' and tipLines[4]==texts[3218] and tipLines[5]=='Trader (ABC-123)' and tipLines[6]=='Miner (DEF-456)')
 local emptyTip=menu.logisticsEntries({queue={count=0,traffic=0,ships={}},docks={}})
-assert(not emptyTip[#emptyTip].tip:find(texts[3218],1,true), 'no ship list header when nothing waits')
+assert(not emptyTip[5].tip:find(texts[3218],1,true), 'no ship list header when nothing waits')
 assert(q.tip:find(texts[3211],1,true) and q.tip:find((texts[3217]:gsub('%%s','1')),1,true))
-assert(qentries[#qentries-1].text:find('ships_idling_01',1,true), 'queue sits right of the idle counter')
+assert(qentries[6].text:find('ship_xs_drone_trade_01',1,true) and qentries[6].groupStart, 'queue ends the dock group, before the drone spacer')
+assert(qentries[#qentries].text:find('ships_idling_01',1,true), 'idle counter is the rightmost cell')
 local leak=SCV_Data.readLogistics('A'); local leakToken=requests[#requests][2]
 deliver({[leakToken]={'AAA',1,1,1,1,1,1,0,0,{}}})
 assert(next(leak.docks)==nil and leak.queue==nil, 'berth counts for a foreign station are rejected')
@@ -258,7 +259,7 @@ local warm=SCV_Data.readLogistics('A'); local warmToken=requests[#requests][2]
 deliver({[warmToken]={'AAA',1,1,1,1,1,1,-1,0,{}}})
 assert(warm.queue and warm.queue.count==nil)
 local wentries=menu.logisticsEntries(warm)
-local w=wentries[#wentries]
+local w=wentries[5]
 assert(#wentries==11 and w.text:find('] ?',1,true) and not w.text:find('<text_',1,true) and w.color==nil, 'unknown is untinted')
 assert(w.tip==texts[3214], 'warm-up tooltip is only the collecting line')
 assert(not q.tip:find('Fleeing',1,true) and not q.tip:find('Green up to',1,true), 'no explanatory paragraphs')
@@ -266,12 +267,12 @@ local idle=SCV_Data.readLogistics('A'); local idleToken=requests[#requests][2]
 deliver({[idleToken]={'AAA',1,1,1,1,1,1,0,2,{}}})
 local ientries=menu.logisticsEntries(idle)
 assert(idle.queue.count==0 and idle.queue.traffic==2 and #ientries==11)
-assert(ientries[11].text:find('<text_positive>-',1,true) and ientries[11].color==Color.text_positive, 'empty queue is a green dash')
+assert(ientries[5].text:find('<text_positive>-',1,true) and ientries[5].color==Color.text_positive, 'empty queue is a green dash')
 local none=menu.logisticsEntries({docks={}})
-assert(none[#none].text:find('order_dockandwait] ?',1,true) and none[#none].color==nil, 'no reply yet shows an untinted ?')
+assert(none[5].text:find('order_dockandwait] ?',1,true) and none[5].color==nil, 'no reply yet shows an untinted ?')
 for _,pair in ipairs({{0,'text_positive'},{2,'text_positive'},{3,'text_warning'},{5,'text_warning'},{6,'text_error'}}) do
  local probe=menu.logisticsEntries({queue={count=pair[1],traffic=0,ships={}},docks={}})
- assert(probe[#probe].color==Color[pair[2]], 'queue colour at '..pair[1])
+ assert(probe[5].color==Color[pair[2]], 'queue colour at '..pair[1])
 end
 for _,bad in ipairs({{'AAA',1,1,1,1,1,1,-2,0,{}},{'AAA',1,1,1,1,1,1,0,3,{}},{'AAA',1,1,1,1,1,1,0.5,0,{}},
  {'AAA',1,1,1,1,1,1,0,0,'x'},{'AAA',1,1,1,1,1,1,1,0,{'a','b'}},{'AAA',1,1,1,1,1,1,0,0,{7}}}) do

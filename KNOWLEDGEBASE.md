@@ -401,11 +401,12 @@ station enters the watch the reply is -1 (unknown), because a fresh listener has
 not yet seen a full re-request cycle and zero would be a guess.
 
 Reply shape: `[code, sF, sT, mF, mT, lF, lT, queue, traffic, names]`, names
-capped at 10 `"knownname (idcode)"` strings. The queue cell is always the
-rightmost strip cell, directly beside the idle counter: a green `-` for
-none waiting, green/orange/red counts, and an untinted `?` when unknown.
-`prepareLogisticsColumns` treats strip slot 5 (the spacer before drones) as the
-flexible gap and pads there, so a new cell must never be inserted before slot 6.
+capped at 10 `"knownname (idcode)"` strings. The queue cell is strip slot 5,
+directly after the S/M/L berths with no gap: a green `-` for none waiting,
+green/orange/red counts, and an untinted `?` when unknown.
+`prepareLogisticsColumns` treats strip slot 6 (the spacer before drones, its
+`gap` constant) as the flexible gap and pads there. A cell inserted before the
+spacer must move that constant with it.
 
 ### Screen behavior and lifecycle contracts
 

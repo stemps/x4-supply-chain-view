@@ -75,7 +75,7 @@ for runtime in (LuaRuntime, LuaJITRuntime):
         assert(p.idleText({idleKnown=true,shipsKnown=true,idle=1,total=3})=='1 / 3 - 33.3%')
         dispatch.idleText=function() return 'live override' end
         local entries=p.logisticsEntries({shipsKnown=true,idleKnown=true,idle=1,total=3,severity='ok'})
-        assert(entries[#entries-1].tip:find('live override',1,true))
+        assert(entries[#entries].tip:find('live override',1,true))
         dispatch.logisticsEntries=function() return {{text='ICON 42',tip='tip'}} end
         local rows=p.logisticsRows({})
         assert(rows[1].entries[1].text=='ICON\\n42')

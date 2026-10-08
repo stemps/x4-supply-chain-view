@@ -116,6 +116,10 @@ function SCV_Presentation.new(config, dispatch)
 					.. "\n\n" .. T(3171) .. "\n\n" .. T(3179) .. "\n\n" .. T(3172) .. (data.playerOwned == false and ("\n\n" .. T(3206)) or ""),
 			}
 		end
+		-- The queue belongs to the dock group: directly after the berths, before the spacer.
+		local queueCount = data.queue and data.queue.count
+		entries[#entries + 1] = { text = "\27[order_dockandwait] " .. dockQueueLabel(data.queue),
+			color = queueCount and Color[dockQueueColor(queueCount)] or nil, tip = dockQueueTip(data) }
 		entries[#entries + 1] = { text = "\27[ship_xs_drone_trade_01] " .. logisticsCount(data.drones, data.drones ~= nil), color = data.factionColor,
 			groupStart = true,
 			tip = T(3178) .. ": " .. logisticsCount(data.drones, data.drones ~= nil) }
@@ -144,9 +148,6 @@ function SCV_Presentation.new(config, dispatch)
 			color = totals.severity == "critical" and Color.text_error or totals.severity == "warning" and Color.text_warning or nil,
 			tip = T(3176) .. " + " .. T(3177) .. "\n\n" .. menu.idleText(data) .. "\n\n" .. T(3174)
 				.. (data.playerOwned == false and idleHidden or ("\n\n" .. T(3175))) }
-		local queueCount = data.queue and data.queue.count
-		entries[#entries + 1] = { text = "\27[order_dockandwait] " .. dockQueueLabel(data.queue),
-			color = queueCount and Color[dockQueueColor(queueCount)] or nil, tip = dockQueueTip(data) }
 		return entries
 	end
 

@@ -8,6 +8,10 @@ function SCV_LogisticsView.new(menu, config, presentation)
 	local T = presentation.T
 	local function log(msg) DebugError("SCV: " .. tostring(msg)) end
 
+-- Strip slot 6 is the spacer between the dock group (icon, S/M/L, queue) and the
+-- drones; it is the flexible gap that takes the alignment padding and spare width.
+local gap = 6
+
 function component.prepareLogisticsColumns(graph)
 	local layouts = {}
 	menu.logisticsColumnLayouts = layouts
@@ -24,15 +28,15 @@ function component.prepareLogisticsColumns(graph)
 		if node.scvkind == "station" and node.col then
 			local layout, line = layouts[node.col], node.logisticsRows[1]
 			local entries, base = {}, line.baseEntries
-			for i = 1, 5 do entries[i] = base[i] end
+			for i = 1, gap do entries[i] = base[i] end
 			local padding = layout.count - #base
-			for i = 1, padding do entries[5+i] = {text="", tip="", width=1} end
-			for i = 6, #base do entries[i+padding] = base[i] end
+			for i = 1, padding do entries[gap+i] = {text="", tip="", width=1} end
+			for i = gap + 1, #base do entries[i+padding] = base[i] end
 			line.entries = entries
 			for i, entry in ipairs(entries) do
-				if i ~= 5 then layout.widths[i] = math.max(layout.widths[i] or 0, entry.width) end
+				if i ~= gap then layout.widths[i] = math.max(layout.widths[i] or 0, entry.width) end
 			end
-			layout.widths[5] = 10 * (Helper.uiScale or Helper.scaleY(1000)/1000)
+			layout.widths[gap] = 10 * (Helper.uiScale or Helper.scaleY(1000)/1000)
 			layout.height = math.max(layout.height, line.height)
 		end
 	end
@@ -40,7 +44,7 @@ function component.prepareLogisticsColumns(graph)
 		layout.width = math.max(0, #layout.widths - 1) * (Helper.borderSize or 1)
 		for _, w in ipairs(layout.widths) do layout.width = layout.width + w end
 		local targetWidth = math.max(layout.width, Helper.scaleY(config.stationNodeWidth))
-		layout.widths[5] = layout.widths[5] + targetWidth - layout.width
+		layout.widths[gap] = layout.widths[gap] + targetWidth - layout.width
 		layout.width = targetWidth
 	end
 end
