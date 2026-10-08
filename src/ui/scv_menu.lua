@@ -565,7 +565,7 @@ function menu.onFlowchartNodeExpanded(node, frame, ftable, ftable2)
 
 	local ok, err = pcall(function ()
 		if nodedata.scvkind == "station" then
-			menu.expandStation(node, frame, ftable, nodedata)
+			menu.expandStation(node, frame, ftable, nodedata, ftable2)
 		elseif nodedata.scvkind == "ware" then
 			menu.expandWare(node, frame, ftable, nodedata)
 		end
@@ -573,6 +573,17 @@ function menu.onFlowchartNodeExpanded(node, frame, ftable, ftable2)
 	if not ok then
 		-- A failure here would otherwise surface only as a node that will not open.
 		log("detail panel failed: " .. tostring(err))
+	end
+end
+
+-- The detail panel's remove button. Only for the chain the panel was opened in, like the
+-- management list's remove; the panel is closed first since its station is going away.
+function menu.removeExpandedStation(stationId)
+	local chain, index = SCV_Store.selected()
+	if (not chain) or (chain ~= menu.expandedChain) then return end
+	if menu.expandedNode then menu.expandedNode:collapse() end
+	if SCV_Store.removeStation(index, stationId) then
+		menu.markDirty()
 	end
 end
 

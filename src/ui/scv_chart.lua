@@ -62,6 +62,8 @@ function component.decorateNodes(graph)
 				properties = {
 					shape         = "rectangle",
 					width         = config.stationNodeWidth,
+					-- Second table holds the action buttons (scv_details stationToolbar).
+					expandedFrameNumTables = 2,
 					x             = config.nodeOffsetX,
 					y             = node.logisticsRows and (node.logisticsRows[1].height / (Helper.scaleY(1000) / 1000) + 3 + Helper.standardFontSize) / 2 or 0,
 					mouseOverText = (warningReason(warningName, warningHealth, parts)

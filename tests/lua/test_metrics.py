@@ -104,7 +104,8 @@ function GetWareData(ware, key)
     if key == 'volume' then return 1 end
     return key == 'transport' and 'container' or ware
 end
-Helper = { standardFontSize=9, standardTextHeight=20, topLevelMenus={}, headerRow1Properties={},
+Helper = { standardFontSize=9, standardTextHeight=20, standardButtonHeight=25, borderSize=3,
+    topLevelMenus={}, headerRow1Properties={},
     scaleY=function(value) return value end,
     registerMenu=function() end, clearFrame=function() cleared=true end,
     getWorkforceConsumption=function(id, ware) return ware == 'food' and state.workforce or 0 end }
@@ -242,7 +243,8 @@ end
 function tableMock()
     local t={properties={},rows={},groups={}}
     function t:setColWidthPercent() end
-    function t:setColWidth() end
+    function t:setColWidth(col, width, scaling) self.colWidths=self.colWidths or {}; self.colWidths[col]=width end
+    function t:getFullHeight() return 38 end
     function t:addRowGroup(properties)
         local group={properties=properties,rows={}}
         self.groups[#self.groups+1]=group
@@ -416,13 +418,25 @@ assert(math.abs(over.futurePercent-130)<1e-9)
 local yard={scvid='yard',wares={}}
 for i=1,60 do yard.wares['ware'..i]={name=string.rep('long name ',10)..i,input=true,
     stock=100,limit=1000,consKnown=false} end
-local t=tableMock()
-menu.expandStation(nil,{properties={height=220}},t,yard)
+local t,bar=tableMock(),tableMock()
+menu.expandStation(nil,{properties={height=220}},t,yard,bar)
 local selectable=0
 for _,row in ipairs(t.rows) do if row.key then selectable=selectable+1 end end
-assert(selectable==62 and t.properties.maxVisibleHeight==220)
-assert(t.rows[1][1].text == 'Open Logical Station Overview')
-assert(t.rows[2][1].text == 'Open Build Menu' and t.rows[2][1].button.active == true)
+-- The toolbar sits above the content; the content gets the height left under it.
+assert(t.properties.y==41 and t.properties.maxVisibleHeight==179)
+assert(selectable==60, 'action buttons live in the second table')
+-- Square icon buttons, 1.5x the default button height; remove sits at the right edge.
+assert(#bar.rows==1)
+for _,col in ipairs({1,2,3,4,6}) do assert(bar.colWidths[col]==38) end
+assert(bar.colWidths[5]==nil, 'column 5 absorbs the width so Remove ends on the edge')
+local icons={'stationbuildst_lsov','mapst_plotmanagement','pi_transactionlog','tlt_map','mapst_information','widget_cross_01'}
+local tips={'Open Logical Station Overview','Open Build Menu',ReadText(1001,11287),'Show on map',ReadText(1001,2427),'Remove from this supply chain'}
+for i=1,6 do
+    local c=bar.rows[1][i]
+    assert(c.buttonIcon==icons[i] and c.button.mouseOverText==tips[i], icons[i])
+    assert(c.button.width==38 and c.button.height==38 and c.buttonIconProps.width==38)
+    assert(c.button.active==true, icons[i])
+end
 local savedOpen, savedCleanup = Helper.closeMenuAndOpenNewMenu, menu.cleanup
 local opened, cleaned
 Helper.closeMenuAndOpenNewMenu = function(source, target, params)
@@ -431,15 +445,61 @@ Helper.closeMenuAndOpenNewMenu = function(source, target, params)
     opened = true
 end
 menu.cleanup = function() cleaned = true end
-t.rows[2][1].handlers.onClick()
+bar.rows[1][2].handlers.onClick()
 assert(opened and cleaned)
+Helper.closeMenuAndOpenNewMenu = function(source, target, params)
+    assert(source == menu and target == 'MapMenu')
+    assert(params[1] == 0 and params[2] == 0 and params[3] == true and params[4] == 'yard')
+    opened = 'map'
+end
+bar.rows[1][4].handlers.onClick()
+assert(opened == 'map')
+Helper.closeMenuAndOpenNewMenu = function(source, target, params)
+    assert(target == 'MapMenu' and params[3] == true and params[6] == 'infomode')
+    assert(params[7][1] == 'info' and params[7][2] == 'yard')
+    opened = 'info'
+end
+bar.rows[1][5].handlers.onClick()
+assert(opened == 'info')
+Helper.closeMenuAndOpenNewMenu = function(source, target, params)
+    assert(target == 'TransactionLogMenu' and params[1] == 0 and params[2] == 0 and params[3] == 'yard')
+    opened = 'log'
+end
+bar.rows[1][3].handlers.onClick()
+assert(opened == 'log')
+Helper.closeMenuAndOpenNewMenu = function(source, target)
+    assert(target == 'StationConfigurationMenu')
+    opened = true
+end
 state.npcStation = true
 opened, cleaned = false, false
-t.rows[2][1].handlers.onClick()
+bar.rows[1][2].handlers.onClick()
+bar.rows[1][3].handlers.onClick()
 assert(not opened and not cleaned, 'ownership is rechecked when clicked')
-local npc = tableMock()
-menu.expandStation(nil,{properties={height=220}},npc,{scvid='npc',wares={}})
-assert(npc.rows[2][1].button.active == false)
+local npc,npcBar = tableMock(),tableMock()
+menu.expandStation(nil,{properties={height=220}},npc,{scvid='npc',wares={}},npcBar)
+assert(npcBar.rows[1][2].button.active == false and npcBar.rows[1][3].button.active == false)
+assert(npcBar.rows[1][4].button.active == true and npcBar.rows[1][5].button.active == true
+    and npcBar.rows[1][6].button.active == true)
+-- Remove only acts on the chain the panel was opened in, and closes the panel first.
+local savedSelected, savedRemove, savedDirty = SCV_Store.selected, SCV_Store.removeStation, menu.markDirty
+local chainA, chainB, removed, dirty, collapsed = {}, {}, nil, false, false
+SCV_Store.selected = function() return chainA, 7 end
+SCV_Store.removeStation = function(index, id) removed = {index, id}; return true end
+menu.markDirty = function() dirty = true end
+menu.expandedChain = chainB
+bar.rows[1][6].handlers.onClick()
+assert(removed == nil and not dirty, 'a panel from another chain removes nothing')
+menu.expandedChain = chainA
+menu.expandedNode = { collapse = function() collapsed = true end }
+bar.rows[1][6].handlers.onClick()
+assert(collapsed and removed[1] == 7 and removed[2] == 'yard' and dirty)
+SCV_Store.selected, SCV_Store.removeStation, menu.markDirty = savedSelected, savedRemove, savedDirty
+menu.expandedNode, menu.expandedChain = nil, nil
+-- Without a second table (no toolbar), the content keeps the whole frame.
+local plain=tableMock()
+menu.expandStation(nil,{properties={height=220}},plain,{scvid='npc',wares={}})
+assert(plain.properties.y==nil and plain.properties.maxVisibleHeight==220)
 state.npcStation = nil
 Helper.closeMenuAndOpenNewMenu, menu.cleanup = savedOpen, savedCleanup
 local node,frame={},{}

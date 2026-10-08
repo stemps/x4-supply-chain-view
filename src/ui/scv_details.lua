@@ -60,11 +60,59 @@ function SCV_Details.new(menu, config, presentation)
 	-- at the full height available above or below the node, then shrinks it to what was used;
 	-- capping the table at that initial height is what turns an overflow into a scrollbar.
 	-- (A table with maxVisibleHeight 0 that does not fit is REFUSED outright, not clipped.)
+	-- A table placed below a toolbar (properties.y) gets only the height left under it.
 	local function capToFrame(frame, ftable)
 		local h = frame.properties.height
 		if h and (h > 0) then
-			ftable.properties.maxVisibleHeight = h
+			ftable.properties.maxVisibleHeight = math.max(1, h - (ftable.properties.y or 0))
 		end
+	end
+
+	-- Station actions as square icon buttons in the frame's second table, above the
+	-- scrolling content. The content table's fixed columns cannot hold equal squares,
+	-- so this copies vanilla's two-table expansion (menu_station_overview.lua
+	-- onExpandTradeWares), with the button table on top so it never scrolls away.
+	-- Icons and calls are vanilla's own for the same actions: the station configuration
+	-- left bar's logical/construction modes (helper.lua), the player info Transaction Log
+	-- (menu_playerinfo.lua), the top-level Map tab and the interact menu's Information
+	-- (menu_interactmenu.lua). Remove sits apart at the right edge.
+	local function stationToolbar(ftable, ftable2, id64, scvid)
+		if not ftable2 then
+			return
+		end
+		-- 1.5x the default button height (Helper.standardButtonHeight).
+		local size = Helper.scaleY(math.floor(1.5 * Helper.standardButtonHeight + 0.5))
+		-- Column 5 takes the remaining width, so column 6 (Remove) ends on the table's edge.
+		for _, col in ipairs({ 1, 2, 3, 4, 6 }) do ftable2:setColWidth(col, size, false) end
+		ftable2.properties.highlightMode = "off"
+		local row = ftable2:addRow(true, {})
+		local function iconButton(cell, icon, tip, active, onClick)
+			cell:createButton({ scaling = false, width = size, height = size,
+				mouseOverText = tip, active = active })
+				:setIcon(icon, { scaling = false, width = size, height = size })
+			cell.handlers.onClick = onClick
+		end
+		local function owned() return GetComponentData(id64, "isplayerowned") end
+		iconButton(row[1], "stationbuildst_lsov", T(3030), true,
+			function () openStationOverview(id64) end)
+		-- Match the vanilla map's player-owned station configurator action.
+		iconButton(row[2], "mapst_plotmanagement", T(3103), owned(), function ()
+			if not owned() then return end
+			menu.openMenu("StationConfigurationMenu", { 0, 0, id64 })
+		end)
+		-- The map offers the log for player-owned stations only (menu_map.lua).
+		iconButton(row[3], "pi_transactionlog", ReadText(1001, 11287), owned(), function ()
+			if not owned() then return end
+			menu.openMenu("TransactionLogMenu", { 0, 0, id64 })
+		end)
+		iconButton(row[4], "tlt_map", T(1013), true,
+			function () menu.openMenu("MapMenu", { 0, 0, true, id64 }) end)
+		iconButton(row[5], "mapst_information", ReadText(1001, 2427), true, function ()
+			menu.openMenu("MapMenu", { 0, 0, true, nil, nil, "infomode", { "info", id64 } })
+		end)
+		iconButton(row[6], "widget_cross_01", T(1016), true,
+			function () menu.removeExpandedStation(scvid) end)
+		ftable.properties.y = ftable2:getFullHeight() + Helper.borderSize
 	end
 
 	-- One stock bar, vanilla trade-menu style (menu_map.lua:31054): start = stock now,
@@ -247,32 +295,19 @@ function SCV_Details.new(menu, config, presentation)
 		r[1]:setColSpan(6):createText(" ", { fontsize = 1, height = 2 })
 	end
 
-	function details.expandStation(node, frame, ftable, nodedata)
+	function details.expandStation(node, frame, ftable, nodedata, ftable2)
+		-- The action buttons live here rather than on the node itself because the widget
+		-- system dispatches only expand/collapse and slider events for a flowchart node -
+		-- there is no click event for an icon on its label.
+		stationToolbar(ftable, ftable2, ConvertStringTo64Bit(nodedata.scvid), nodedata.scvid)
 		capToFrame(frame, ftable)
 		setupColumns(ftable)
 
 		local inputs  = sortedWares(nodedata.wares, function (w) return SCV_Graph.metricInput(w) end)
 		local outputs = sortedWares(nodedata.wares, function (w) return SCV_Graph.metricOutput(w) end)
 
-		-- The Logical Station Overview link. It lives here rather than on the node itself
-		-- because the widget system dispatches only expand/collapse and slider events for a
-		-- flowchart node - there is no click event for an icon on its label.
-		local row = ftable:addRow(true, {})
-		row[1]:setColSpan(6):createButton({ mouseOverText = T(3030) })
-			:setText(T(3030), { halign = "center" })
-		local id64 = ConvertStringTo64Bit(nodedata.scvid)
-		row[1].handlers.onClick = function () openStationOverview(id64) end
-
-		-- Match the vanilla map's player-owned station configurator action.
-		row = ftable:addRow(true, {})
-		row[1]:setColSpan(6):createButton({ mouseOverText = T(3103), active = GetComponentData(id64, "isplayerowned") })
-			:setText(T(3103), { halign = "center" })
-		row[1].handlers.onClick = function ()
-			if not GetComponentData(id64, "isplayerowned") then return end
-			menu.openMenu("StationConfigurationMenu", { 0, 0, id64 })
-		end
-
 		sectionHeader(ftable, T(3170))
+		local row
 		local dockTip = T(3171) .. "\n\n" .. T(3172)
 		for _, size in ipairs({ "s", "m", "l" }) do
 			local dockSize = size
