@@ -31,12 +31,12 @@
 -- __CORE_DETAILMONITOR_MAPFILTER_SAVE["searchsectors"] (menu_map.lua:29243):
 --
 --   __SCV_GROUPS = {
---     version  = 6,
+--     version  = 7,
 --     selected = 1,
 --     names    = { "Ore Chain", "Shipyard Feed" },
 --     members  = { "506813|HEA-485,501323|CXG-006", "422158|PHM-325" },
 --     ignoredWarnings = { "HEA-485|ore" },
---     consumerRoles = { "WAR-001|energycells" },
+--     chainConsumerRoles = { "WAR-001|energycells,WAR-001|ore", "" },  -- one per chain
 --     showLogistics = true,
 --   }
 --
@@ -44,7 +44,7 @@
 
 SCV_Store = {}
 
-local CURRENT_VERSION = 6
+local CURRENT_VERSION = 7
 local SEP_MEMBER = ","
 local SEP_FIELD  = "|"
 
@@ -53,13 +53,15 @@ local function log(msg)
 end
 
 -- In-memory working copy:
---   { { name = "...", members = { { id = "506813", code = "HEA-485" }, ... } }, ... }
+--   { { name = "...", members = { { id = "506813", code = "HEA-485" }, ... },
+--       consumerRoles = { ["WAR-001|energycells"] = true } }, ... }
+-- consumerRoles: station+ware pairs this chain shows as consumers although the station
+-- also sells the ware. Per chain, so one station can be a seller in one chain and a buyer
+-- in another.
 -- Rebuilt from __SCV_GROUPS once per Lua environment, then kept live.
 local chains = nil
 local selectedIdx = 1
 local ignoredWarnings = {}
--- Station+ware pairs shown as consumers although the station also sells the ware.
-local consumerRoles = {}
 local showLogistics = true
 
 -- Durable "CODE|ware" key shared by every per-station ware preference.
@@ -167,12 +169,14 @@ function SCV_Store.save()
 	local ignored = {}
 	for key in pairs(ignoredWarnings) do ignored[#ignored + 1] = key end
 	table.sort(ignored)
-	local consumers = {}
-	for key in pairs(consumerRoles) do consumers[#consumers + 1] = key end
-	table.sort(consumers)
+	local roles = {}
 	for i, chain in ipairs(chains or {}) do
 		names[i] = tostring(chain.name or "?")
 		members[i] = encodeMembers(chain.members or {})
+		local keys = {}
+		for key in pairs(chain.consumerRoles or {}) do keys[#keys + 1] = key end
+		table.sort(keys)
+		roles[i] = table.concat(keys, SEP_MEMBER)
 	end
 	__SCV_GROUPS = {
 		version  = CURRENT_VERSION,
@@ -180,7 +184,7 @@ function SCV_Store.save()
 		names    = names,
 		members  = members,
 		ignoredWarnings = ignored,
-		consumerRoles = consumers,
+		chainConsumerRoles = roles,
 		showLogistics = showLogistics,
 	}
 end
@@ -189,7 +193,6 @@ local function rebuildFromStorage()
 	chains = {}
 	selectedIdx = 1
 	ignoredWarnings = {}
-	consumerRoles = {}
 	showLogistics = true
 
 	if type(__SCV_GROUPS) ~= "table" then
@@ -210,7 +213,16 @@ local function rebuildFromStorage()
 		end
 	end
 	readKeys(__SCV_GROUPS.ignoredWarnings, ignoredWarnings)
-	readKeys(__SCV_GROUPS.consumerRoles, consumerRoles)
+	-- Roles are stored as one comma-joined string per chain, parallel to names/members.
+	local storedRoles = (type(__SCV_GROUPS.chainConsumerRoles) == "table") and __SCV_GROUPS.chainConsumerRoles or {}
+	local function decodeRoles(str)
+		local keys, out = {}, {}
+		if type(str) == "string" then
+			for key in string.gmatch(str, "([^" .. SEP_MEMBER .. "]+)") do keys[#keys + 1] = key end
+		end
+		readKeys(keys, out)
+		return out
+	end
 	local legacy = 0
 	if type(__SCV_GROUPS.names) == "table" then
 		-- v3 and v4 share this shape; v3 member strings simply have no codes
@@ -222,7 +234,8 @@ local function rebuildFromStorage()
 					legacy = legacy + 1
 				end
 			end
-			chains[#chains + 1] = { name = tostring(name), members = members }
+			chains[#chains + 1] = { name = tostring(name), members = members,
+				consumerRoles = decodeRoles(storedRoles[i]) }
 		end
 	elseif type(__SCV_GROUPS.groups) == "table" then
 		-- v1/v2 nested form
@@ -230,10 +243,32 @@ local function rebuildFromStorage()
 			if type(g) == "table" then
 				local members = decodeMembers(g.members)
 				legacy = legacy + #members
-				chains[#chains + 1] = { name = tostring(g.name or "?"), members = members }
+				chains[#chains + 1] = { name = tostring(g.name or "?"), members = members, consumerRoles = {} }
 			end
 		end
 		log("migrated " .. #chains .. " supply chain(s) from the old storage format")
+	end
+
+	-- v6 and earlier kept one global role set. It only ever mattered for stations shown in
+	-- a chain, so copying each choice into every chain that contains the station preserves
+	-- what the player saw.
+	local legacyRoles = {}
+	readKeys(__SCV_GROUPS.consumerRoles, legacyRoles)
+	local migratedRoles = 0
+	for key in pairs(legacyRoles) do
+		local code = key:match("^([^|]+)|")
+		for _, chain in ipairs(chains) do
+			for _, m in ipairs(chain.members) do
+				if m.code == code then
+					chain.consumerRoles[key] = true
+					migratedRoles = migratedRoles + 1
+					break
+				end
+			end
+		end
+	end
+	if next(legacyRoles) then
+		log("migrated trade role choices into " .. migratedRoles .. " chain setting(s)")
 	end
 
 	if type(__SCV_GROUPS.selected) == "number" then
@@ -294,19 +329,30 @@ function SCV_Store.setWarningIgnored(stationCode, wareId, ignored)
 	return true
 end
 
-function SCV_Store.isConsumerRole(stationCode, wareId)
-	SCV_Store.load()
+function SCV_Store.isConsumerRole(index, stationCode, wareId)
+	local chain = SCV_Store.get(index)
 	local key = stationWareKey(stationCode, wareId)
-	return key ~= nil and consumerRoles[key] == true
+	return chain ~= nil and key ~= nil and chain.consumerRoles[key] == true
 end
 
-function SCV_Store.setConsumerRole(stationCode, wareId, consumer)
-	SCV_Store.load()
+function SCV_Store.setConsumerRole(index, stationCode, wareId, consumer)
+	local chain = SCV_Store.get(index)
 	local key = stationWareKey(stationCode, wareId)
-	if not key then return false end
-	consumerRoles[key] = consumer and true or nil
+	if not chain or not key then return false end
+	chain.consumerRoles[key] = consumer and true or nil
 	SCV_Store.save()
 	return true
+end
+
+-- Role policy for SCV_Graph: function(stationCode, wareId). Bound to the chain record, not
+-- its index, because the graph keeps the policy for refreshes and chains can be deleted
+-- or reordered meanwhile.
+function SCV_Store.consumerRolePolicy(index)
+	local chain = SCV_Store.get(index)
+	return function (stationCode, wareId)
+		local key = stationWareKey(stationCode, wareId)
+		return chain ~= nil and key ~= nil and chain.consumerRoles[key] == true
+	end
 end
 
 function SCV_Store.get(index)
@@ -333,7 +379,7 @@ end
 -- Returns the new chain's index. `entries` are records { id, code } (or bare ids).
 function SCV_Store.create(name, entries)
 	local list = SCV_Store.load()
-	list[#list + 1] = { name = tostring(name or "?"), members = {} }
+	list[#list + 1] = { name = tostring(name or "?"), members = {}, consumerRoles = {} }
 	selectedIdx = #list
 	SCV_Store.addStations(selectedIdx, entries)   -- saves
 	return selectedIdx

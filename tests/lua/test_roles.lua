@@ -15,8 +15,13 @@ local function world()
             dualTrade=true, stock=0, limit=0}}},
     }
 end
-local policy = {isConsumerRole=SCV_Store.isConsumerRole}
-for _, ware in ipairs({'energycells', 'ore'}) do SCV_Store.setConsumerRole('WAR-001', ware, false) end
+-- Roles belong to the selected chain; a second chain holds the same station untouched.
+local other = SCV_Store.create('Roles other', {{id='w', code='WAR-001'}})
+local chainIdx = SCV_Store.create('Roles', {{id='w', code='WAR-001'}})
+local oldSelected = select(2, SCV_Store.selected())
+SCV_Store.select(chainIdx)
+local function isConsumer(ware) return SCV_Store.isConsumerRole(chainIdx, 'WAR-001', ware) end
+local policy = {isConsumerRole=SCV_Store.consumerRolePolicy(chainIdx)}
 local frame = {properties={height=600}}
 local size = Helper.scaleY(Helper.standardTextHeight)
 local function find(t, key)
@@ -74,8 +79,8 @@ assert(#radios(popup(graph, 'p')) == 0 and #radios(popup(graph, 'n')) == 0,
 
 -- Choosing consumer on one ware stores one choice and rebuilds.
 entry[6].handlers.onClick()
-assert(displays == 1 and SCV_Store.isConsumerRole('WAR-001', 'energycells')
-    and not SCV_Store.isConsumerRole('WAR-001', 'ore'))
+assert(displays == 1 and isConsumer('energycells') and not isConsumer('ore'))
+assert(not SCV_Store.isConsumerRole(other, 'WAR-001', 'energycells'), 'other chain keeps its own role')
 graph = SCV_Graph.build(world(), policy)
 assert(graph.wareNodes.energycells.consumers[1] == 'w')
 
@@ -92,14 +97,13 @@ assert(unselected(station[5]) and unselected(station[6]))
 assert(station[5].button.mouseOverText == T(3197) .. '\n\n' .. T(3200) .. '\n' .. T(3202)
     and station[6].button.mouseOverText == T(3198) .. '\n\n' .. T(3201) .. '\n' .. T(3202))
 station[6].handlers.onClick()
-assert(displays == 2 and SCV_Store.isConsumerRole('WAR-001', 'energycells')
-    and SCV_Store.isConsumerRole('WAR-001', 'ore') and not SCV_Store.isConsumerRole('WAR-001', 'silicon'))
+assert(displays == 2 and isConsumer('energycells') and isConsumer('ore') and not isConsumer('silicon'))
+assert(not SCV_Store.isConsumerRole(other, 'WAR-001', 'ore'), 'station radio stays in its chain')
 graph = SCV_Graph.build(world(), policy)
 station = radios(popup(graph, 'w'))[1]
 assert(unselected(station[5]) and selected(station[6]))
 station[5].handlers.onClick()
-assert(displays == 3 and not SCV_Store.isConsumerRole('WAR-001', 'energycells')
-    and not SCV_Store.isConsumerRole('WAR-001', 'ore'))
+assert(displays == 3 and not isConsumer('energycells') and not isConsumer('ore'))
 
 -- Workforce use lists a producer in both sections; its radio appears only once.
 local staffed = world()
@@ -108,5 +112,8 @@ panel = popup(SCV_Graph.build(staffed, policy), 'w')
 assert(#radios(panel) == 3, 'ware radio duplicated across sections')
 
 menu.display, menu.graph = oldDisplay, oldGraph
+SCV_Store.delete(chainIdx)
+SCV_Store.delete(other)
+SCV_Store.select(oldSelected)
 Helper.scaleY = oldScaleY
 print('Consumer role radios, station radio, persistence and rebuild contracts passed.')

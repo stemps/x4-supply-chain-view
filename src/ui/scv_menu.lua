@@ -369,16 +369,19 @@ function menu.setWareWarnings(stationCode, ware, enabled)
 end
 
 -- Unlike a warning, a role moves edges: rebuild the chain rather than refresh metrics.
+-- Roles belong to the shown chain; the same station can play another role elsewhere.
 function menu.setConsumerRole(stationCode, ware, consumer)
-	if not SCV_Store.setConsumerRole(stationCode, ware, consumer) then return end
+	local _, index = SCV_Store.selected()
+	if not SCV_Store.setConsumerRole(index, stationCode, ware, consumer) then return end
 	menu.display(false, "role change")
 end
 
 -- Station-wide switch: every listed ware, then one rebuild.
 function menu.setStationConsumerRole(stationCode, wares, consumer)
+	local _, index = SCV_Store.selected()
 	local changed = false
 	for _, ware in ipairs(wares or {}) do
-		changed = SCV_Store.setConsumerRole(stationCode, ware, consumer) or changed
+		changed = SCV_Store.setConsumerRole(index, stationCode, ware, consumer) or changed
 	end
 	if changed then menu.display(false, "station role change") end
 end

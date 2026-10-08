@@ -127,7 +127,7 @@ function component.displayChain(frame, x, y, width, reuseGraph)
 	if not reuseGraph then
 		menu.graph, menu.graphLayout, menu.refreshState, menu.flowchart, menu.chainPlaceholder = nil, nil, nil, nil, nil
 	end
-	local chain = SCV_Store.selected()
+	local chain, chainIndex = SCV_Store.selected()
 	if not chain then
 		menu.missingMembers = 0
 		menu.drawChainPlaceholder(frame, x, y, width, T(1004), T(1005))
@@ -153,7 +153,7 @@ function component.displayChain(frame, x, y, width, reuseGraph)
 		end
 
 		graph = SCV_Graph.build(stations, { isWarningIgnored = SCV_Store.isWarningIgnored,
-			isConsumerRole = SCV_Store.isConsumerRole, deferBudget = true })
+			isConsumerRole = SCV_Store.consumerRolePolicy(chainIndex), deferBudget = true })
 		menu.graph = graph
 		if not graph then
 			return

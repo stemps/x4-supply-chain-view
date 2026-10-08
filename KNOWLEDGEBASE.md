@@ -287,13 +287,18 @@ back to CE's `incoming` only when the engine reports zero.
 
 ### Persistence
 
-The singleton store uses persistence version 6.
+The singleton store uses persistence version 7.
 
 `__SCV_GROUPS` stores `selected`, parallel `names`/encoded `members` arrays,
-`ignoredWarnings` and `consumerRoles` as `stationCode|wareId` strings, and
-boolean `showLogistics`. Both per-station ware lists survive chain removal and
-apply across chains; a missing `consumerRoles` field loads as empty, so the
-version stayed 6. Invalid or
+`ignoredWarnings` as `stationCode|wareId` strings, a third parallel array
+`chainConsumerRoles` (one comma-joined string of `stationCode|wareId` keys per
+chain), and boolean `showLogistics`. Ignored warnings are per station and apply
+across chains; consumer roles are per chain and are removed with their chain. The
+per-chain roles use another flat parallel string array, not a table nested in a
+chain, because nested chain tables lost their members on /reloadui. Version 7
+replaced the v6 global `consumerRoles` list: on load each legacy key is copied into
+every chain containing that station code, and the global field is not written
+again. A missing role field loads as empty. Invalid or
 missing display preferences default true; explicit false persists. A read miss
 retains the member for later relinking.
 

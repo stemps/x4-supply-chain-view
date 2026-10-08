@@ -33,7 +33,7 @@ for runtime in (LuaRuntime, LuaJITRuntime):
     lua.execute('''
         assert(#Menus==1 and registrations==1 and #Helper.topLevelMenus==1)
         registeredMenu=Menus[1]
-        assert(SCV_Store.version==6 and SCV_Store.getShowLogistics()==true)
+        assert(SCV_Store.version==7 and SCV_Store.getShowLogistics()==true)
         assert(next(SCV_Data.cache)==nil)
         hidden=0
         SCV_Overlay.active={hide=function() hidden=hidden+1 end}

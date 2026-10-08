@@ -48,7 +48,10 @@ the graph retains the planned connection.
 
 A plain trade ware a station both buys and sells is an output by default ("output
 wins"); the reader marks it `dualTrade`. The player may store a consumer role per
-station code and ware (`SCV_Store` `consumerRoles`). `SCV_Graph.applyRoleOverrides`
+chain, station code and ware (each chain's `consumerRoles`, built for the graph by
+`SCV_Store.consumerRolePolicy`), so one station can sell in one chain and buy in
+another. The policy is bound to the chain record, not its index, because the graph
+keeps it for refreshes. `SCV_Graph.applyRoleOverrides`
 sets the role in both directions, because the scan cache reuses station tables
 between builds. `build` and `refreshMetrics` both apply it before roles are
 compared, so an override never reads as a structure change. A role change moves
