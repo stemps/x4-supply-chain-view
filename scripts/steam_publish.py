@@ -39,6 +39,17 @@ def steam_running():
     return 'steam.exe' in result.stdout.lower()
 
 
+def change_note(notes):
+    """Release notes as Steam BBCode: Workshop change notes render it, and Markdown is shown raw."""
+    from manual_bbcode import convert
+    note = convert(notes, 'steam').strip()
+    # MEASURED (WorkshopTool 1.15): a value starting with '-' is read as the next switch,
+    # failing with "Parameter missing for switch 'changenote'" (exit 905).
+    if note.startswith('-'):
+        raise ReleaseError("WorkshopTool cannot take a change note starting with '-'. Reword the release notes.")
+    return note
+
+
 def update_command(tool, folder, notes, minor):
     # Without -namedesc, WorkshopTool leaves the Workshop title and description alone.
     command = [tool, 'update', '-path', str(Path(folder).resolve()), '-changenote', notes, '-batchmode']
@@ -71,6 +82,7 @@ class SteamPublisher:
             # Release preflight: the manual must also fit Steam's BBCode and length.
             from manual_bbcode import from_commit
             from_commit(self.root, 'HEAD', 'steam')
+            change_note(notes)
         self.workshoptool()
         workshop_build.xrcattool(self.root)
         if not self.running():
@@ -114,6 +126,7 @@ class SteamPublisher:
             raise ReleaseError('Steam resolution flags apply only to an uncertain upload; the last attempt '
                                'uploaded nothing. Resume without --confirm-uploaded/--retry-upload.')
         self.preflight()
+        note = change_note(notes)
         tool = self.workshoptool()
         manifest = Path(folder) / 'content.xml'
         before = manifest.read_bytes()
@@ -122,7 +135,7 @@ class SteamPublisher:
         save()
         try:
             # steam_appid.txt next to the tool is read from the working directory.
-            result = self.run(update_command(tool, folder, notes, minor), cwd=str(Path(tool).parent),
+            result = self.run(update_command(tool, folder, note, minor), cwd=str(Path(tool).parent),
                               capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=3600)
         except subprocess.TimeoutExpired:
             raise ReleaseError('WorkshopTool timed out; the upload outcome is uncertain.') from None
@@ -131,6 +144,12 @@ class SteamPublisher:
         unchanged = manifest.read_bytes() == before
         # MEASURED (WorkshopTool 1.15, exit 903): it stops before uploading anything
         # when it cannot reach Steam, so this outcome is certain, not uncertain.
+        # MEASURED (WorkshopTool 1.15, exit 905): argument errors stop before anything is uploaded.
+        if unchanged and 'Parameter missing for switch' in output:
+            state['upload_stage'] = 'pending'
+            save()
+            raise ReleaseError(f'WorkshopTool rejected its arguments; nothing was uploaded. '
+                               f'Full output: dist/steam/{tag}.log')
         if unchanged and 'No connection to Steam servers' in output:
             state['upload_stage'] = 'pending'
             save()

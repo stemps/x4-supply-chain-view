@@ -84,7 +84,7 @@ test-release:
     uv run python tests/release/test_nexus.py
     uv run --with markdown-it-py==4.0.0 python tests/release/test_archive.py
     uv run --with markdown-it-py==4.0.0 python tests/release/test_release_support.py
-    uv run python tests/release/test_workshop.py
+    uv run --with markdown-it-py==4.0.0 python tests/release/test_workshop.py
     uv run python tests/release/test_discord.py
 
 # Validate, record, push, package and publish a release from clean main.

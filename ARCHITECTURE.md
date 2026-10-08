@@ -127,6 +127,8 @@ suggestion comes from the manifest version; later releases use the latest tag.
   `dist/steam/`. Uncertain outcomes are resolved with `--confirm-uploaded` or
   `--retry-upload`; `--minor` is for an unchanged version. Releases skip Steam
   while `steam.json` is absent or has no `published_file_id`.
+  The change note is the release notes as Steam BBCode: WorkshopTool reads a
+  value starting with `-` (a Markdown list) as the next switch and uploads nothing.
 - `scripts/discord_publish.py`: posts the release announcement (title, Nexus/Steam
   links, tag notes) through the webhook of the channel in `discord.json`. The URL
   is a secret read from the env var that file names, never written anywhere. Release

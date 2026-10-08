@@ -12,7 +12,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'scripts'))
 import workshop_build
 from workshop_build import workshop_manifest, verify_catalog, stage
-from steam_publish import SteamPublisher, update_command
+from steam_publish import SteamPublisher, update_command, change_note
 from release_archive import ReleaseError
 
 MANIFEST = (b'<?xml version="1.0" encoding="utf-8"?>\n'
@@ -205,6 +205,28 @@ class PublisherTests(unittest.TestCase):
         self.assertEqual(command[command.index('-changenote') + 1], 'Line one\nLine two')
         self.assertEqual(command[-1], '-minor')
 
+    def test_change_note_is_steam_bbcode_never_a_switch(self):
+        tool = FakeWorkshopTool()
+        self.publisher(tool).publish('v1.2.3', 'commit', self.folder, 'digest', '- First\n- Second **bold**')
+        command = tool.calls[0][0]
+        self.assertEqual(command[command.index('-changenote') + 1],
+                         '[list]\n[*]First\n[*]Second [b]bold[/b]\n[/list]')
+        with self.assertRaisesRegex(ReleaseError, "starting with '-'"):
+            change_note('-flag-like paragraph')
+
+    def test_unconvertible_notes_fail_preflight_before_tagging(self):
+        import manual_bbcode
+        with patch.object(manual_bbcode, 'from_commit'), self.assertRaisesRegex(ReleaseError, 'nsupported'):
+            self.publisher(FakeWorkshopTool()).preflight('1.2.3', '> quoted')
+
+    def test_argument_error_is_certain_and_retryable(self):
+        with self.assertRaisesRegex(ReleaseError, 'nothing was uploaded'):
+            self.publish(FakeWorkshopTool(905, uploads=False,
+                                          output="ERROR: Parameter missing for switch 'changenote'\n"))
+        self.assertEqual(self.receipt()['upload_stage'], 'pending')
+        self.publish(FakeWorkshopTool())
+        self.assertEqual(self.receipt()['upload_stage'], 'done')
+
     def test_unconfirmed_upload_requires_resolution(self):
         for tool in (FakeWorkshopTool(code=1, uploads=False), FakeWorkshopTool(code=0, uploads=False)):
             with self.subTest(code=tool.code):
@@ -252,7 +274,8 @@ class PublisherTests(unittest.TestCase):
     def test_release_preflight_checks_the_steam_manual(self):
         import manual_bbcode
         publisher = self.publisher(FakeWorkshopTool())
-        with patch.object(manual_bbcode, 'from_commit', side_effect=ReleaseError('too long')) as convert:
+        with patch.object(manual_bbcode, 'from_commit', side_effect=ReleaseError('too long')) as convert, \
+                patch('steam_publish.change_note'):
             publisher.preflight()  # Resumed uploads do not re-check the manual.
             convert.assert_not_called()
             with self.assertRaisesRegex(ReleaseError, 'too long'):
