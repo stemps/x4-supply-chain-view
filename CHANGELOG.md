@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0 - 2026-10-08
+
+- Let user chose whether a station with both buy and sell orders should display as consumer or producer
+- Improved stability of chart ordering
+- Compatibility with Civilian Economy mod. Civilian Hubs not display correctly in a supply chain.
+- Better subordinate infos for NPC stations
+- Add docking queue counter (shoutout to ChemODun for the inspiration and permission to adopt it)
+
 ## 0.4.0 - 2026-09-20
 
 - Show docks (free / total), cargo drones, subordinates and idle count for each station (toggle for more compact display)
