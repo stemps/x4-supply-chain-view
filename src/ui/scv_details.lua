@@ -68,51 +68,103 @@ function SCV_Details.new(menu, config, presentation)
 		end
 	end
 
-	-- Station actions as square icon buttons in the frame's second table, above the
-	-- scrolling content. The content table's fixed columns cannot hold equal squares,
-	-- so this copies vanilla's two-table expansion (menu_station_overview.lua
-	-- onExpandTradeWares), with the button table on top so it never scrolls away.
+	-- The station-wide producer/consumer choice: which side of the chain every ware the
+	-- station both buys and sells is drawn on. nil when the station has no such ware or no
+	-- durable code to store the choice under. state: true = consumer, false = producer,
+	-- nil = mixed, where neither button is selected.
+	local function stationRole(nodedata)
+		if (nodedata.code == nil) or (nodedata.code == "") then return nil end
+		local dual, consumers = {}, 0
+		for ware, w in pairs(nodedata.wares or {}) do
+			if w.dualTrade then
+				dual[#dual + 1] = ware
+				if w.consumerRole then consumers = consumers + 1 end
+			end
+		end
+		if #dual == 0 then return nil end
+		table.sort(dual)
+		local state = nil
+		if consumers == #dual then state = true elseif consumers == 0 then state = false end
+		return { wares = dual, state = state }
+	end
+
+	-- Station actions as square icon buttons in a table of their own above the scrolling
+	-- content, so they never scroll away. The content table's fixed columns cannot hold
+	-- equal squares, so this follows vanilla's multi-table expansion
+	-- (menu_station_overview.lua onExpandTradeWares), positioning the tables by y. It is
+	-- added here rather than as the node's ftable2 because the engine gives both of its
+	-- tables the same column count, and the button count varies.
 	-- Icons and calls are vanilla's own for the same actions: the station configuration
 	-- left bar's logical/construction modes (helper.lua), the player info Transaction Log
-	-- (menu_playerinfo.lua), the top-level Map tab and the interact menu's Information
-	-- (menu_interactmenu.lua). Remove sits apart at the right edge.
-	local function stationToolbar(ftable, ftable2, id64, scvid)
-		if not ftable2 then
+	-- (menu_playerinfo.lua), the top-level Map tab, the interact menu's Information
+	-- (menu_interactmenu.lua) and the export/import pair of the per-ware role radio.
+	-- Remove sits apart at the right edge.
+	local function stationToolbar(frame, ftable, nodedata, role)
+		if type(frame.addTable) ~= "function" then
 			return
 		end
-		-- 1.5x the default button height (Helper.standardButtonHeight).
-		local size = Helper.scaleY(math.floor(1.5 * Helper.standardButtonHeight + 0.5))
-		-- Column 5 takes the remaining width, so column 6 (Remove) ends on the table's edge.
-		for _, col in ipairs({ 1, 2, 3, 4, 6 }) do ftable2:setColWidth(col, size, false) end
-		ftable2.properties.highlightMode = "off"
-		local row = ftable2:addRow(true, {})
-		local function iconButton(cell, icon, tip, active, onClick)
-			cell:createButton({ scaling = false, width = size, height = size,
-				mouseOverText = tip, active = active })
-				:setIcon(icon, { scaling = false, width = size, height = size })
-			cell.handlers.onClick = onClick
-		end
+		local id64, scvid = ConvertStringTo64Bit(nodedata.scvid), nodedata.scvid
 		local function owned() return GetComponentData(id64, "isplayerowned") end
-		iconButton(row[1], "stationbuildst_lsov", T(3030), true,
-			function () openStationOverview(id64) end)
-		-- Match the vanilla map's player-owned station configurator action.
-		iconButton(row[2], "mapst_plotmanagement", T(3103), owned(), function ()
-			if not owned() then return end
-			menu.openMenu("StationConfigurationMenu", { 0, 0, id64 })
-		end)
-		-- The map offers the log for player-owned stations only (menu_map.lua).
-		iconButton(row[3], "pi_transactionlog", ReadText(1001, 11287), owned(), function ()
-			if not owned() then return end
-			menu.openMenu("TransactionLogMenu", { 0, 0, id64 })
-		end)
-		iconButton(row[4], "tlt_map", T(1013), true,
-			function () menu.openMenu("MapMenu", { 0, 0, true, id64 }) end)
-		iconButton(row[5], "mapst_information", ReadText(1001, 2427), true, function ()
-			menu.openMenu("MapMenu", { 0, 0, true, nil, nil, "infomode", { "info", id64 } })
-		end)
-		iconButton(row[6], "widget_cross_01", T(1016), true,
-			function () menu.removeExpandedStation(scvid) end)
-		ftable.properties.y = ftable2:getFullHeight() + Helper.borderSize
+		local actions = {
+			{ icon = "stationbuildst_lsov", tip = T(3030), onClick = function () openStationOverview(id64) end },
+			-- Match the vanilla map's player-owned station configurator action.
+			{ icon = "mapst_plotmanagement", tip = T(3103), active = owned(), onClick = function ()
+				if not owned() then return end
+				menu.openMenu("StationConfigurationMenu", { 0, 0, id64 })
+			end },
+			-- The map offers the log for player-owned stations only (menu_map.lua).
+			{ icon = "pi_transactionlog", tip = ReadText(1001, 11287), active = owned(), onClick = function ()
+				if not owned() then return end
+				menu.openMenu("TransactionLogMenu", { 0, 0, id64 })
+			end },
+			{ icon = "tlt_map", tip = T(1013), onClick = function () menu.openMenu("MapMenu", { 0, 0, true, id64 }) end },
+			{ icon = "mapst_information", tip = ReadText(1001, 2427), onClick = function ()
+				menu.openMenu("MapMenu", { 0, 0, true, nil, nil, "infomode", { "info", id64 } })
+			end },
+		}
+		if role then
+			-- Title, blank line, explanation. Mixed selects neither button.
+			local mixed = role.state == nil and ("\n" .. T(3202)) or ""
+			for _, consumer in ipairs({ false, true }) do
+				actions[#actions + 1] = { icon = consumer and "menu_import" or "menu_export",
+					tip = consumer and (T(3198) .. "\n\n" .. T(3201) .. mixed) or (T(3197) .. "\n\n" .. T(3200) .. mixed),
+					selected = role.state == consumer,
+					onClick = function () menu.setStationConsumerRole(nodedata.code, role.wares, consumer) end }
+			end
+		end
+		actions[#actions + 1] = { icon = "widget_cross_01", tip = T(1016),
+			onClick = function () menu.removeExpandedStation(scvid) end }
+
+		-- 1.5x the default button height, shrunk only as far as needed for every button to
+		-- fit the panel. The column before Remove takes any slack, so Remove ends on the edge.
+		local columns, border = #actions, Helper.borderSize
+		local size = Helper.scaleY(math.floor(1.5 * Helper.standardButtonHeight + 0.5))
+		local available = frame.properties.width or 0
+		if available > 0 then
+			size = math.min(size, math.floor((available - (columns - 1) * border) / columns))
+		end
+		local bar = frame:addTable(columns, { tabOrder = 2, borderEnabled = true, wraparound = true })
+		for col = 1, columns do
+			if col ~= columns - 1 then bar:setColWidth(col, size, false) end
+		end
+		bar.properties.highlightMode = "off"
+		local row = bar:addRow(true, {})
+		for col, action in ipairs(actions) do
+			local cell = row[col]
+			local selected = action.selected
+			-- Role buttons use the per-ware radio's look: selected background, dimmed other.
+			cell:createButton({ scaling = false, width = size, height = size, mouseOverText = action.tip,
+				active = action.active ~= false,
+				bgColor = (selected == true) and Color["row_background_selected"]
+					or (selected == false) and Color["button_background_default"] or nil })
+				:setIcon(action.icon, { scaling = false, width = size, height = size,
+					color = (selected == true) and Color["text_normal"]
+						or (selected == false) and Color["text_inactive"] or nil })
+			if not selected then
+				cell.handlers.onClick = action.onClick
+			end
+		end
+		ftable.properties.y = bar:getFullHeight() + border
 	end
 
 	-- One stock bar, vanilla trade-menu style (menu_map.lua:31054): start = stock now,
@@ -295,11 +347,12 @@ function SCV_Details.new(menu, config, presentation)
 		r[1]:setColSpan(6):createText(" ", { fontsize = 1, height = 2 })
 	end
 
-	function details.expandStation(node, frame, ftable, nodedata, ftable2)
+	function details.expandStation(node, frame, ftable, nodedata)
 		-- The action buttons live here rather than on the node itself because the widget
 		-- system dispatches only expand/collapse and slider events for a flowchart node -
 		-- there is no click event for an icon on its label.
-		stationToolbar(ftable, ftable2, ConvertStringTo64Bit(nodedata.scvid), nodedata.scvid)
+		local role = stationRole(nodedata)
+		stationToolbar(frame, ftable, nodedata, role)
 		capToFrame(frame, ftable)
 		setupColumns(ftable)
 
@@ -339,15 +392,8 @@ function SCV_Details.new(menu, config, presentation)
 			return
 		end
 
-		-- One radio for every ware this station both buys and sells. Mixed selects neither.
-		local dual, consumers = {}, 0
-		for ware, w in pairs(nodedata.wares or {}) do
-			if w.dualTrade then
-				dual[#dual + 1] = ware
-				if w.consumerRole then consumers = consumers + 1 end
-			end
-		end
-		local radioColumns = #dual > 0 and nodedata.code ~= nil and nodedata.code ~= ""
+		-- Wares bought and sold here carry their own role radio, so the bell moves left.
+		local radioColumns = role ~= nil
 
 		local function section(title, list, isInput)
 			sectionHeader(ftable, title)
@@ -359,17 +405,6 @@ function SCV_Details.new(menu, config, presentation)
 				detailEntry(ftable, "ware:" .. entry.ware, entry.w.name or entry.ware, entry.w, isInput, nodedata.code, entry.ware, radioColumns)
 			end
 		end
-		if radioColumns then
-			table.sort(dual)
-			local state = nil -- mixed
-			if consumers == #dual then state = true elseif consumers == 0 then state = false end
-			local mixed = state == nil and ("\n" .. T(3202)) or ""
-			row = ftable:addRow(true, { paddingTop = 8 })
-			row[1]:setColSpan(4):createText(T(3199), { wordwrap = true })
-			roleRadio(row, state, T(3197) .. "\n\n" .. T(3200) .. mixed, T(3198) .. "\n\n" .. T(3201) .. mixed,
-				function (choice) menu.setStationConsumerRole(nodedata.code, dual, choice) end)
-		end
-
 		section(T(3031), inputs, true)
 		section(T(3032), outputs, false)
 	end

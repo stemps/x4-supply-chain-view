@@ -22,7 +22,7 @@ local oldSelected = select(2, SCV_Store.selected())
 SCV_Store.select(chainIdx)
 local function isConsumer(ware) return SCV_Store.isConsumerRole(chainIdx, 'WAR-001', ware) end
 local policy = {isConsumerRole=SCV_Store.consumerRolePolicy(chainIdx)}
-local frame = {properties={height=600}}
+local frame = barFrame(600, 400)
 local size = Helper.scaleY(Helper.standardTextHeight)
 local function find(t, key)
     for _, row in ipairs(t.rows) do if row.key == key then return row end end
@@ -38,8 +38,18 @@ end
 local function popup(graph, id)
     local panel = tableMock()
     menu.graph = graph
+    frame.bar = nil
     menu.expandStation(nil, frame, panel, graph.stationNodes[id])
     return panel
+end
+-- The station-wide radio sits in the toolbar, right before Remove.
+local function stationRadio(graph, id)
+    popup(graph, id)
+    local row = frame.bar.rows[1]
+    local n = frame.bar.columns
+    if row[n - 2].buttonIcon == 'menu_export' and row[n - 1].buttonIcon == 'menu_import' then
+        return { row[n - 2], row[n - 1], columns = n }
+    end
 end
 -- Selected: vanilla's mode-selector background and normal icon colour, no click handler.
 local function selected(cell)
@@ -66,16 +76,17 @@ assert(entry[6].button.x == 160 - size, 'right-aligned in its column')
 assert(find(panel, 'ware:silicon')[1].span == 6 and not find(panel, 'ware:silicon')[5].button,
     'a ware that is not bought and sold has no radio')
 
--- One station radio above the sections, all producers.
-local rows = radios(panel)
-assert(#rows == 3, 'two ware radios and one station radio, got '..#rows)
-local station = rows[1]
-assert(station[1].text == T(3199) and station[1].span == 4)
-assert(selected(station[5]) and unselected(station[6]))
-assert(station[5].button.mouseOverText == T(3197) .. '\n\n' .. T(3200)
-    and station[6].button.mouseOverText == T(3198) .. '\n\n' .. T(3201))
-assert(#radios(popup(graph, 'p')) == 0 and #radios(popup(graph, 'n')) == 0,
+-- The station radio is in the toolbar, all producers; the panel keeps only ware radios.
+assert(#radios(panel) == 2, 'two ware radios in the panel, got '..#radios(panel))
+local station = stationRadio(graph, 'w')
+assert(station and station.columns == 8, 'five actions, the radio pair and Remove')
+assert(selected(station[1]) and unselected(station[2]))
+assert(station[1].button.mouseOverText == T(3197) .. '\n\n' .. T(3200)
+    and station[2].button.mouseOverText == T(3198) .. '\n\n' .. T(3201))
+assert(station[1].button.width == station[1].button.height and station[1].button.width <= 38)
+assert(not stationRadio(graph, 'p') and not stationRadio(graph, 'n'),
     'no radio without a bought-and-sold ware or without a station code')
+assert(frame.bar.columns == 6)
 
 -- Choosing consumer on one ware stores one choice and rebuilds.
 entry[6].handlers.onClick()
@@ -92,24 +103,24 @@ assert(entry[3].icon == 'terraforming_xen_alert' and entry[4].checkbox, 'alert t
 assert(unselected(entry[5]) and selected(entry[6]), 'radio after the alert toggle')
 
 -- Mixed: the station radio selects neither and says so; consumer makes them all consumers.
-station = radios(panel)[1]
-assert(unselected(station[5]) and unselected(station[6]))
-assert(station[5].button.mouseOverText == T(3197) .. '\n\n' .. T(3200) .. '\n' .. T(3202)
-    and station[6].button.mouseOverText == T(3198) .. '\n\n' .. T(3201) .. '\n' .. T(3202))
-station[6].handlers.onClick()
+station = stationRadio(graph, 'w')
+assert(unselected(station[1]) and unselected(station[2]))
+assert(station[1].button.mouseOverText == T(3197) .. '\n\n' .. T(3200) .. '\n' .. T(3202)
+    and station[2].button.mouseOverText == T(3198) .. '\n\n' .. T(3201) .. '\n' .. T(3202))
+station[2].handlers.onClick()
 assert(displays == 2 and isConsumer('energycells') and isConsumer('ore') and not isConsumer('silicon'))
 assert(not SCV_Store.isConsumerRole(other, 'WAR-001', 'ore'), 'station radio stays in its chain')
 graph = SCV_Graph.build(world(), policy)
-station = radios(popup(graph, 'w'))[1]
-assert(unselected(station[5]) and selected(station[6]))
-station[5].handlers.onClick()
+station = stationRadio(graph, 'w')
+assert(unselected(station[1]) and selected(station[2]))
+station[1].handlers.onClick()
 assert(displays == 3 and not isConsumer('energycells') and not isConsumer('ore'))
 
 -- Workforce use lists a producer in both sections; its radio appears only once.
 local staffed = world()
 staffed[2].wares.energycells.metricInput = true
 panel = popup(SCV_Graph.build(staffed, policy), 'w')
-assert(#radios(panel) == 3, 'ware radio duplicated across sections')
+assert(#radios(panel) == 2, 'ware radio duplicated across sections')
 
 menu.display, menu.graph = oldDisplay, oldGraph
 SCV_Store.delete(chainIdx)

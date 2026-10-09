@@ -166,7 +166,6 @@
     <t id="3196">Algumas ligações de entrada estão ocultas para respeitar os limites do componente de fluxogramas da interface do jogo</t>
     <t id="3197">Tratar como produtora</t>
     <t id="3198">Tratar como consumidora</t>
-    <t id="3199">Mercadorias ambíguas: tratar como produtora/consumidora</t>
     <t id="3200">Mostrar todas as mercadorias que esta estação compra e vende como produzidas.</t>
     <t id="3201">Mostrar todas as mercadorias que esta estação compra e vende como consumidas.</t>
     <t id="3202">Atualmente misto: algumas são mostradas como produzidas, outras como consumidas.</t>

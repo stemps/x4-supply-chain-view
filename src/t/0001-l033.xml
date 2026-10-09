@@ -166,7 +166,6 @@
     <t id="3196">Certaines connexions entrantes sont masquées pour respecter les limites du composant de diagramme de l’interface du jeu</t>
     <t id="3197">Traiter comme producteur</t>
     <t id="3198">Traiter comme consommateur</t>
-    <t id="3199">Marchandises ambiguës : traiter comme producteur/consommateur</t>
     <t id="3200">Afficher toutes les marchandises que cette station achète et vend comme produites.</t>
     <t id="3201">Afficher toutes les marchandises que cette station achète et vend comme consommées.</t>
     <t id="3202">Actuellement mixte : certaines sont affichées comme produites, d’autres comme consommées.</t>

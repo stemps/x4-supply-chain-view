@@ -567,7 +567,7 @@ function menu.onFlowchartNodeExpanded(node, frame, ftable, ftable2)
 
 	local ok, err = pcall(function ()
 		if nodedata.scvkind == "station" then
-			menu.expandStation(node, frame, ftable, nodedata, ftable2)
+			menu.expandStation(node, frame, ftable, nodedata)
 		elseif nodedata.scvkind == "ware" then
 			menu.expandWare(node, frame, ftable, nodedata)
 		end

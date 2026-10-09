@@ -166,7 +166,6 @@
     <t id="3196">Algunas conexiones entrantes están ocultas para respetar los límites del componente de diagramas de flujo de la interfaz del juego</t>
     <t id="3197">Tratar como productor</t>
     <t id="3198">Tratar como consumidor</t>
-    <t id="3199">Mercancías ambiguas: tratar como productor/consumidor</t>
     <t id="3200">Mostrar todas las mercancías que esta estación compra y vende como producidas.</t>
     <t id="3201">Mostrar todas las mercancías que esta estación compra y vende como consumidas.</t>
     <t id="3202">Actualmente mixto: algunas se muestran como producidas y otras como consumidas.</t>

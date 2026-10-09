@@ -240,8 +240,8 @@ function resolveProperties(props)
     for key,value in pairs(props or {}) do out[key]=resolve(value) end
     return out
 end
-function tableMock()
-    local t={properties={},rows={},groups={}}
+function tableMock(columns)
+    local t={properties={},rows={},groups={},columns=columns or 6}
     function t:setColWidthPercent() end
     function t:setColWidth(col, width, scaling) self.colWidths=self.colWidths or {}; self.colWidths[col]=width end
     function t:getFullHeight() return 38 end
@@ -258,7 +258,7 @@ function tableMock()
     end
     function t:addRow(key, props)
         local r={key=key,properties=props}; self.rows[#self.rows+1]=r
-        for i=1,6 do
+        for i=1,self.columns do
             local c={handlers={}}; r[i]=c
             function c:setColSpan(n) self.span=n; return self end
             function c:createIcon(icon, props) self.icon=icon; self.iconProps=props; return self end
@@ -284,6 +284,12 @@ function tableMock()
         return r
     end
     return t
+end
+-- An expanded-node frame that records the toolbar table the station panel adds to it.
+function barFrame(height, width)
+    local f={properties={height=height,width=width}}
+    function f:addTable(columns, props) self.bar=tableMock(columns); self.bar.tableProps=props; return self.bar end
+    return f
 end
 function compareEntry(role, stationID)
     graph=SCV_Graph.build({producer,consumer})
@@ -418,13 +424,15 @@ assert(math.abs(over.futurePercent-130)<1e-9)
 local yard={scvid='yard',wares={}}
 for i=1,60 do yard.wares['ware'..i]={name=string.rep('long name ',10)..i,input=true,
     stock=100,limit=1000,consKnown=false} end
-local t,bar=tableMock(),tableMock()
-menu.expandStation(nil,{properties={height=220}},t,yard,bar)
+local t,yardFrame=tableMock(),barFrame(220)
+menu.expandStation(nil,yardFrame,t,yard)
+local bar=yardFrame.bar
 local selectable=0
 for _,row in ipairs(t.rows) do if row.key then selectable=selectable+1 end end
 -- The toolbar sits above the content; the content gets the height left under it.
 assert(t.properties.y==41 and t.properties.maxVisibleHeight==179)
-assert(selectable==60, 'action buttons live in the second table')
+assert(selectable==60, 'action buttons live in their own table')
+assert(bar.columns==6 and bar.tableProps.tabOrder==2, 'one column per button')
 -- Square icon buttons, 1.5x the default button height; remove sits at the right edge.
 assert(#bar.rows==1)
 for _,col in ipairs({1,2,3,4,6}) do assert(bar.colWidths[col]==38) end
@@ -476,8 +484,9 @@ opened, cleaned = false, false
 bar.rows[1][2].handlers.onClick()
 bar.rows[1][3].handlers.onClick()
 assert(not opened and not cleaned, 'ownership is rechecked when clicked')
-local npc,npcBar = tableMock(),tableMock()
-menu.expandStation(nil,{properties={height=220}},npc,{scvid='npc',wares={}},npcBar)
+local npc,npcFrame = tableMock(),barFrame(220)
+menu.expandStation(nil,npcFrame,npc,{scvid='npc',wares={}})
+local npcBar=npcFrame.bar
 assert(npcBar.rows[1][2].button.active == false and npcBar.rows[1][3].button.active == false)
 assert(npcBar.rows[1][4].button.active == true and npcBar.rows[1][5].button.active == true
     and npcBar.rows[1][6].button.active == true)
@@ -496,7 +505,17 @@ bar.rows[1][6].handlers.onClick()
 assert(collapsed and removed[1] == 7 and removed[2] == 'yard' and dirty)
 SCV_Store.selected, SCV_Store.removeStation, menu.markDirty = savedSelected, savedRemove, savedDirty
 menu.expandedNode, menu.expandedChain = nil, nil
--- Without a second table (no toolbar), the content keeps the whole frame.
+-- A narrow panel shrinks the squares just enough for every button to fit:
+-- (200 - 5 borders of 3) / 6 buttons = 30.
+local narrow=barFrame(220,200)
+menu.expandStation(nil,narrow,tableMock(),{scvid='npc',wares={}})
+assert(narrow.bar.colWidths[1]==30 and narrow.bar.rows[1][1].button.width==30
+    and narrow.bar.rows[1][6].buttonIconProps.height==30)
+-- A wide panel keeps the full size.
+local wide=barFrame(220,600)
+menu.expandStation(nil,wide,tableMock(),{scvid='npc',wares={}})
+assert(wide.bar.colWidths[1]==38)
+-- Without a frame that can add tables (no toolbar), the content keeps the whole frame.
 local plain=tableMock()
 menu.expandStation(nil,{properties={height=220}},plain,{scvid='npc',wares={}})
 assert(plain.properties.y==nil and plain.properties.maxVisibleHeight==220)

@@ -188,7 +188,6 @@
     <t id="3196">Some incoming connections hidden to fit constraints of the game's flowchart UI component</t>
     <t id="3197">Treat as producer</t>
     <t id="3198">Treat as consumer</t>
-    <t id="3199">For ambiguous wares, treat as producer/consumer</t>
     <t id="3200">Draw every ware this station both buys and sells as a producer.</t>
     <t id="3201">Draw every ware this station both buys and sells as a consumer.</t>
     <t id="3202">Currently mixed: some are drawn as producers, some as consumers.</t>
