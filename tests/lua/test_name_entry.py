@@ -134,6 +134,8 @@ for _, count in ipairs({1, 7, 16}) do
     local noun=string.lower(ReadText(1001, count == 1 and 3 or 4))
     assert(string.format(ReadText(90210,3021),count,noun) ==
         'Added '..count..' '..(count == 1 and 'station' or 'stations')..'.')
+    assert(string.format(ReadText(90210,3029),count,noun) ==
+        'Removed '..count..' '..(count == 1 and 'station' or 'stations')..'.')
 end
 ''')
 print('PASS creation, rename, cancel, blank-name rejection, membership, selection and count wording')

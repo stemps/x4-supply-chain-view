@@ -7,6 +7,7 @@
     <t id="1004">Aucune chaîne logistique sélectionnée</t>
     <t id="1005">Faites un clic droit sur une ou plusieurs stations de votre faction ou d'une autre sur la carte, puis choisissez Chaîne logistique pour en créer une ou compléter une chaîne existante.</t>
     <t id="1008">Supprimer cette chaîne logistique</t>
+    <t id="1009">Renommer cette chaîne logistique</t>
     <t id="1010">Créer</t>
     <t id="1011">Annuler</t>
     <t id="1013">Afficher sur la carte</t>
@@ -15,8 +16,9 @@
     <t id="1016">Retirer de cette chaîne logistique</t>
     <t id="2000">Créer une chaîne logistique</t>
     <t id="2001">Ajouter à "%s"</t>
-    <t id="2002">%s \(déjà incluse\)</t>
     <t id="2003">%s \(+%s\)</t>
+    <t id="2006">Retirer de "%s"</t>
+    <t id="2007">%s \(-%s\)</t>
     <t id="2004">%s autres non affichées</t>
     <t id="2005">Stations</t>
     <t id="2010">Nommez la nouvelle chaîne logistique. %s station\(s\) y seront ajoutées.</t>
@@ -32,6 +34,7 @@
     <t id="3015">%s fournisseurs, %s preneurs</t>
     <t id="3020">Ces stations étaient déjà dans cette chaîne logistique.</t>
     <t id="3021">%s station\(s\) ajoutée\(s\).</t>
+    <t id="3029">%s station\(s\) retirée\(s\).</t>
     <t id="3022">%s stations sont introuvables et ne sont pas affichées.</t>
     <t id="3025">%s station est introuvable et n’est pas affichée.</t>
     <t id="3023">Les informations de stockage de %s station\(s\) sont indisponibles. Les liaisons restent visibles ; les quantités inconnues sont indiquées par ?.</t>

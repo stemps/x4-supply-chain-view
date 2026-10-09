@@ -435,6 +435,36 @@ function SCV_Store.removeStation(index, stationId)
 	return false
 end
 
+-- Remove stations given as records { id, code } (or bare ids). Matches like
+-- SCV_Store.contains, by id OR code: right after a load the stored id can be stale while
+-- the map hands over the fresh one. Returns how many members were removed.
+function SCV_Store.removeStations(index, entries)
+	local chain = SCV_Store.get(index)
+	if (not chain) or (type(entries) ~= "table") then
+		return 0
+	end
+	local ids, codes = {}, {}
+	for _, entry in ipairs(entries) do
+		local rec = toRecord(entry)
+		if rec then
+			ids[rec.id] = true
+			if rec.code then codes[rec.code] = true end
+		end
+	end
+	local removed = 0
+	for i = #chain.members, 1, -1 do
+		local m = chain.members[i]
+		if ids[m.id] or (m.code and codes[m.code]) then
+			table.remove(chain.members, i)
+			removed = removed + 1
+		end
+	end
+	if removed > 0 then
+		SCV_Store.save()
+	end
+	return removed
+end
+
 function SCV_Store.rename(index, name)
 	local chain = SCV_Store.get(index)
 	if (not chain) or (type(name) ~= "string") then return false end

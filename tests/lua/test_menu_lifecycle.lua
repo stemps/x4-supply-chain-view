@@ -19,7 +19,7 @@ local function prepare()
 	menu.closed = false
 	menu.statusFrame, menu.managementFrame = {}, {}
 	menu.graph, menu.refreshState = {}, {}
-	menu.managementMode = "stations"
+	menu.managementMode = "settings"
 	menu.expandedNode, menu.expandedMenuFrame = nil, nil
 end
 for _, name in ipairs({ "StationOverviewMenu", "StationConfigurationMenu", "MapMenu" }) do

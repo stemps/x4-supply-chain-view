@@ -7,6 +7,7 @@
     <t id="1004">Není vybrán žádný dodavatelský řetězec</t>
     <t id="1005">Klikněte pravým tlačítkem na jednu či více stanic na mapě, vlastních nebo jiné frakce, a zvolte Dodavatelský řetězec. Vytvoříte nový řetězec nebo stanice přidáte do stávajícího.</t>
     <t id="1008">Smazat tento dodavatelský řetězec</t>
+    <t id="1009">Přejmenovat tento dodavatelský řetězec</t>
     <t id="1010">Vytvořit</t>
     <t id="1011">Zrušit</t>
     <t id="1013">Zobrazit na mapě</t>
@@ -15,8 +16,9 @@
     <t id="1016">Odebrat z tohoto řetězce</t>
     <t id="2000">Vytvořit dodavatelský řetězec</t>
     <t id="2001">Přidat do "%s"</t>
-    <t id="2002">%s \(již součástí\)</t>
     <t id="2003">%s \(+%s\)</t>
+    <t id="2006">Odebrat z "%s"</t>
+    <t id="2007">%s \(-%s\)</t>
     <t id="2004">Další nezobrazené: %s</t>
     <t id="2005">Stanice</t>
     <t id="2010">Pojmenujte nový dodavatelský řetězec. Počet přidaných stanic: %s.</t>
@@ -32,6 +34,7 @@
     <t id="3015">Dodavatelé: %s, odběratelé: %s</t>
     <t id="3020">Tyto stanice již byly součástí řetězce.</t>
     <t id="3021">Počet přidaných stanic: %s.</t>
+    <t id="3029">Počet odebraných stanic: %s.</t>
     <t id="3022">Nenalezené stanice: %s. Nejsou zobrazeny.</t>
     <t id="3025">Nenalezená stanice: %s. Není zobrazena.</t>
     <t id="3023">Stanice s nedostupnými údaji o skladech: %s. Spojení zůstávají viditelná; neznámá množství jsou označena ?.</t>

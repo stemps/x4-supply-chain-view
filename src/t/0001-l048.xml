@@ -7,6 +7,7 @@
     <t id="1004">Nie wybrano łańcucha dostaw</t>
     <t id="1005">Kliknij prawym przyciskiem jedną lub więcej stacji na mapie, własnych lub innej frakcji, i wybierz Łańcuch dostaw, aby utworzyć nowy lub dodać je do istniejącego.</t>
     <t id="1008">Usuń ten łańcuch dostaw</t>
+    <t id="1009">Zmień nazwę tego łańcucha dostaw</t>
     <t id="1010">Utwórz</t>
     <t id="1011">Anuluj</t>
     <t id="1013">Pokaż na mapie</t>
@@ -15,8 +16,9 @@
     <t id="1016">Usuń z tego łańcucha dostaw</t>
     <t id="2000">Utwórz nowy łańcuch dostaw</t>
     <t id="2001">Dodaj do "%s"</t>
-    <t id="2002">%s \(już należy\)</t>
     <t id="2003">%s \(+%s\)</t>
+    <t id="2006">Usuń z "%s"</t>
+    <t id="2007">%s \(-%s\)</t>
     <t id="2004">Pozostałe niewyświetlone: %s</t>
     <t id="2005">Stacje</t>
     <t id="2010">Nazwij nowy łańcuch dostaw. Liczba stacji do dodania: %s.</t>
@@ -32,6 +34,7 @@
     <t id="3015">Dostawcy: %s, odbiorcy: %s</t>
     <t id="3020">Te stacje już należały do tego łańcucha dostaw.</t>
     <t id="3021">Dodano stacje: %s.</t>
+    <t id="3029">Usunięto stacje: %s.</t>
     <t id="3022">Nie znaleziono stacji: %s. Nie są wyświetlane.</t>
     <t id="3025">Nie znaleziono stacji: %s. Nie jest wyświetlana.</t>
     <t id="3023">Stacje bez dostępnych danych magazynowych: %s. Połączenia pozostają widoczne; nieznane ilości oznaczono ?.</t>

@@ -7,6 +7,7 @@
     <t id="1004">Tedarik zinciri seçilmedi</t>
     <t id="1005">Haritada size veya başka bir fraksiyona ait bir ya da daha fazla istasyona sağ tıklayın ve yeni zincir oluşturmak veya mevcut zincire eklemek için Tedarik zinciri seçeneğini seçin.</t>
     <t id="1008">Bu tedarik zincirini sil</t>
+    <t id="1009">Bu tedarik zincirini yeniden adlandır</t>
     <t id="1010">Oluştur</t>
     <t id="1011">İptal</t>
     <t id="1013">Haritada göster</t>
@@ -15,8 +16,9 @@
     <t id="1016">Bu tedarik zincirinden çıkar</t>
     <t id="2000">Yeni tedarik zinciri oluştur</t>
     <t id="2001">"%s" zincirine ekle</t>
-    <t id="2002">%s \(zaten dahil\)</t>
     <t id="2003">%s \(+%s\)</t>
+    <t id="2006">"%s" zincirinden çıkar</t>
+    <t id="2007">%s \(-%s\)</t>
     <t id="2004">%s tane daha gösterilmiyor</t>
     <t id="2005">İstasyonlar</t>
     <t id="2010">Yeni tedarik zincirine ad verin. Zincire %s istasyon eklenecek.</t>
@@ -32,6 +34,7 @@
     <t id="3015">%s tedarikçi, %s alıcı</t>
     <t id="3020">Bu istasyonlar zaten bu tedarik zincirindeydi.</t>
     <t id="3021">%s istasyon eklendi.</t>
+    <t id="3029">%s istasyon çıkarıldı.</t>
     <t id="3022">%s istasyon bulunamadı ve gösterilmiyor.</t>
     <t id="3025">%s istasyon bulunamadı ve gösterilmiyor.</t>
     <t id="3023">%s istasyonun depo bilgileri kullanılamıyor. Bağlantılar görünür kalır; bilinmeyen miktarlar ? ile gösterilir.</t>

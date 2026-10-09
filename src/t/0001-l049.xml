@@ -7,6 +7,7 @@
     <t id="1004">Keine Lieferkette ausgewählt</t>
     <t id="1005">Klicke auf der Karte mit der rechten Maustaste auf eine oder mehrere Stationen deiner oder einer anderen Fraktion und wähle Lieferkette, um eine zu erstellen oder Stationen einer bestehenden hinzuzufügen.</t>
     <t id="1008">Diese Lieferkette löschen</t>
+    <t id="1009">Diese Lieferkette umbenennen</t>
     <t id="1010">Erstellen</t>
     <t id="1011">Abbrechen</t>
     <t id="1013">Auf Karte zeigen</t>
@@ -15,8 +16,9 @@
     <t id="1016">Aus dieser Lieferkette entfernen</t>
     <t id="2000">Neue Lieferkette erstellen</t>
     <t id="2001">Zu "%s" hinzufügen</t>
-    <t id="2002">%s \(bereits enthalten\)</t>
     <t id="2003">%s \(+%s\)</t>
+    <t id="2006">Aus "%s" entfernen</t>
+    <t id="2007">%s \(-%s\)</t>
     <t id="2004">%s weitere nicht angezeigt</t>
     <t id="2005">Stationen</t>
     <t id="2010">Gib der neuen Lieferkette einen Namen. Ihr werden %s Stationen hinzugefügt.</t>
@@ -32,6 +34,7 @@
     <t id="3015">%s Lieferanten, %s Abnehmer</t>
     <t id="3020">Diese Stationen waren bereits in dieser Lieferkette.</t>
     <t id="3021">%s Stationen hinzugefügt.</t>
+    <t id="3029">%s Stationen entfernt.</t>
     <t id="3022">%s Stationen konnten nicht gefunden werden und werden nicht angezeigt.</t>
     <t id="3025">%s Station konnte nicht gefunden werden und wird nicht angezeigt.</t>
     <t id="3023">Für %s Stationen sind keine Lagerinformationen verfügbar. Verbindungen bleiben sichtbar; unbekannte Mengen erscheinen als ?.</t>

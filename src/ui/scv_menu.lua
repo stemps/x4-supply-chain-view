@@ -165,7 +165,10 @@ function menu.onShowMenu()
 			menu.nameText        = T(1014, tostring(SCV_Store.count() + 1))
 		elseif pending.mode == "chain" then
 			SCV_Store.select(pending.index)
-			if (pending.added or 0) == 0 then
+			if pending.removed then
+				local n = pending.removed
+				menu.notice = T(3029, tostring(n), string.lower(ReadText(1001, n == 1 and 3 or 4)))
+			elseif (pending.added or 0) == 0 then
 				menu.notice = T(3020)                                   -- already in this chain
 			else
 				menu.notice = T(3021, tostring(pending.added), string.lower(ReadText(1001, pending.added == 1 and 3 or 4)))
@@ -455,7 +458,7 @@ function menu.display(presentationOnly, reason)
 	end
 	if menu.mode == "chain" then
 		if not presentationOnly then
-			if managementMode == "stations" or managementMode == "settings" then menu.openManagement(managementMode) end
+			if managementMode == "settings" then menu.openManagement(managementMode) end
 			menu.updateStatusStrip()
 		end
 	end
@@ -534,7 +537,6 @@ function menu.setShowLogistics(...) return management.setShowLogistics(...) end
 function menu.confirmDelete(...) return management.confirmDelete(...) end
 function menu.displayManagementHeader(...) return management.displayManagementHeader(...) end
 function menu.openManagement(...) return management.openManagement(...) end
-function menu.displayStations(...) return management.displayStations(...) end
 
 function menu.drawChainPlaceholder(...) return chart.drawChainPlaceholder(...) end
 function menu.displayChain(...) return chart.displayChain(...) end

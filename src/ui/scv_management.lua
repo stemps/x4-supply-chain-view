@@ -6,8 +6,6 @@ SCV_Management = {}
 function SCV_Management.new(menu, config, presentation)
 	local component = {}
 	local T = presentation.T
-	local severityColor = presentation.severityColor
-	local warningReason = presentation.warningReason
 	-- How tall a table may grow before it must scroll instead.
 	--
 	-- maxVisibleHeight defaults to 0, which the widget system reads as "no maximum" - and a
@@ -109,7 +107,6 @@ function SCV_Management.new(menu, config, presentation)
 		menu.markDirty()
 	end
 
-	-- Left column: the chains, and the members of the selected one.
 	local function setCenteredButtonIcon(button, icon)
 		-- Widget dimensions are already scaled pixels. Helper adds the button border
 		-- inset itself; fit a square to the whole button and center before that inset.
@@ -153,11 +150,9 @@ function SCV_Management.new(menu, config, presentation)
 		local toolbarX = geo.x + (geo.width - toolbarWidth) / 2
 		-- Like vanilla LSO's title table, share the graph's main frame so expanded
 		-- nodes on layer 4 cover these controls without changing native node depth.
-		local ftable = frame:addTable(6, { tabOrder = 1, width = toolbarWidth, x = toolbarX, y = geo.y })
+		local ftable = frame:addTable(4, { tabOrder = 1, width = toolbarWidth, x = toolbarX, y = geo.y })
 		local buttonWidth = Helper.scaleX(Helper.standardButtonHeight)
-		local stationsWidth = math.min(Helper.scaleX(180), toolbarWidth * 0.28)
-		for _, col in ipairs({ 1, 3, 5, 6 }) do ftable:setColWidth(col, buttonWidth, false) end
-		ftable:setColWidth(4, stationsWidth, false)
+		for _, col in ipairs({ 1, 3, 4 }) do ftable:setColWidth(col, buttonWidth, false) end
 		local chain, index = SCV_Store.selected()
 		local chains, options = SCV_Store.chains(), {}
 		for i, entry in ipairs(chains) do
@@ -170,23 +165,19 @@ function SCV_Management.new(menu, config, presentation)
 			if chain and #chains > 1 then menu.selectChain(index > 1 and index - 1 or #chains) end
 		end
 		row[2]:createDropDown(options, { active = chain ~= nil, startOption = chain and tostring(index) or "0",
-			mouseOverText = chain and chain.name or T(1004) }):setTextProperties({ halign = "left" })
+			mouseOverText = chain and (chain.name .. "\n" .. T(1015, tostring(#chain.members))) or T(1004) })
+			:setTextProperties({ halign = "left" })
 		row[2].handlers.onDropDownConfirmed = function (_, id) menu.selectChain(tonumber(id)) end
 		row[3]:createButton({ active = chain ~= nil and #chains > 1 }):setText(">", { halign = "center" })
 		row[3].handlers.onClick = function ()
 			if chain and #chains > 1 then menu.selectChain(index < #chains and index + 1 or 1) end
 		end
-		row[4]:createButton({ active = chain ~= nil, mouseOverText = T(2005) })
-			:setText(T(2005) .. " (" .. tostring(chain and #chain.members or 0) .. ")", { halign = "center" })
-		row[4].handlers.onClick = function () menu.toggleManagement("stations") end
-		row[5]:createButton({ mouseOverText = T(3185) })
-		setCenteredButtonIcon(row[5], "menu_options")
-		row[5].handlers.onClick = function () menu.toggleManagement("settings") end
-		row[6]:createButton({ active = chain ~= nil, mouseOverText = ReadText(1001, 7865) }):setText("...", { halign = "center" })
-		row[6].handlers.onClick = function () menu.toggleManagement("actions") end
-		-- Store the station button's left edge in screen pixels, including table borders.
-		geo.anchorX = toolbarX + toolbarWidth - stationsWidth - 2 * buttonWidth - 2 * Helper.borderSize
-		geo.settingsX = toolbarX + toolbarWidth - 2 * buttonWidth - Helper.borderSize
+		-- Settings and the chain actions (rename, delete) share the cog menu.
+		row[4]:createButton({ mouseOverText = T(3185) })
+		setCenteredButtonIcon(row[4], "menu_options")
+		row[4].handlers.onClick = function () menu.toggleManagement("settings") end
+		-- Store the cog's left edge in screen pixels; every overlay opens below it.
+		geo.settingsX = toolbarX + toolbarWidth - buttonWidth
 		geo.overlayY = geo.y + Helper.scaleY(Helper.standardButtonHeight) + Helper.borderSize
 	end
 
@@ -212,10 +203,13 @@ function SCV_Management.new(menu, config, presentation)
 		menu.markDirty()
 	end
 
-	-- Shared title and close control for management overlays.
-	function component.displayManagementHeader(ftable, columns, title)
+	-- Shared title and close control for management overlays. textProperties replaces the
+	-- plain wrapped title style (wordwrap is always kept).
+	function component.displayManagementHeader(ftable, columns, title, textProperties)
+		local props = { wordwrap = true }
+		for key, value in pairs(textProperties or {}) do props[key] = value end
 		local row = ftable:addRow(true, { fixed = true })
-		row[1]:setColSpan(columns - 1):createText(title, { wordwrap = true })
+		row[1]:setColSpan(columns - 1):createText(title, props)
 		row[columns]:createButton({ mouseOverText = ReadText(1001, 2670) }):setText("x", { halign = "center" })
 		row[columns].handlers.onClick = menu.closeManagement
 		return row
@@ -232,8 +226,8 @@ function SCV_Management.new(menu, config, presentation)
 		menu.managementMode = mode
 		menu.managementChain = chain
 		local geo, border = menu.toolbarGeometry, Helper.frameBorder
-		local width = math.min(Helper.scaleX(mode == "actions" and 240 or mode == "settings" and 400 or 600), Helper.viewWidth - 2 * border)
-		local x = math.max(border, math.min(mode == "settings" and geo.settingsX or geo.anchorX, Helper.viewWidth - width - border))
+		local width = math.min(Helper.scaleX(mode == "rename" and 600 or 400), Helper.viewWidth - 2 * border)
+		local x = math.max(border, math.min(geo.settingsX, Helper.viewWidth - width - border))
 		local y = math.min(geo.overlayY + (menu.statusHeight or 0), Helper.viewHeight - Helper.scaleY(160) - border)
 		y = math.max(border, y)
 		local height = Helper.viewHeight - y - border
@@ -247,96 +241,44 @@ function SCV_Management.new(menu, config, presentation)
 				width = width - 2 * border, maxVisibleHeight = height - 2 * border })
 			ftable:setColWidth(1, Helper.scaleX(Helper.standardTextHeight), false)
 			ftable:setColWidth(3, Helper.scaleX(30), false)
-			menu.displayManagementHeader(ftable, 3, T(3185))
+			-- The selected chain names the popover; Settings only when there is none.
+			menu.displayManagementHeader(ftable, 3, chain and chain.name or T(3185), Helper.headerRow1Properties)
 			local row = ftable:addRow(true, { fixed = true })
 			row[1]:createCheckBox(SCV_Store.getShowLogistics(), { width = Helper.standardTextHeight, height = Helper.standardTextHeight })
 			row[1].handlers.onClick = function (_, checked) menu.setShowLogistics(checked) end
 			row[2]:setColSpan(2):createText(T(3186), { wordwrap = true })
+			if chain then
+				for i, action in ipairs({ { "rename", 1009 }, { "delete", 1008 } }) do
+					local target = action[1]
+					-- Set the actions apart from the setting above, like detail section headers.
+					row = ftable:addRow(true, { fixed = false, paddingTop = i == 1 and 8 or nil })
+					row[1]:setColSpan(3):createButton():setText(T(action[2]))
+					row[1].handlers.onClick = function () menu.openManagement(target) end
+				end
+			end
 			frame.properties.height = math.min(height, ftable:getVisibleHeight() + 2 * border)
 		elseif mode == "rename" then
 			menu.renameIndex, menu.nameText = index, chain.name
 			menu.displayNameEntry(frame, border, border, width - 2 * border)
 			frame.properties.height = math.min(height, frame:getUsedHeight() + 2 * border)
-		else
-			local columns = mode == "stations" and 4 or 3
-			local ftable = frame:addTable(columns, { tabOrder = 1, x = border, y = border,
+		elseif mode == "delete" then
+			local ftable = frame:addTable(3, { tabOrder = 1, x = border, y = border,
 				width = width - 2 * border, maxVisibleHeight = height - 2 * border })
-			for column = 2, columns do ftable:setColWidth(column, Helper.scaleX(30), false) end
-			local row = menu.displayManagementHeader(ftable, columns, chain.name)
-			if mode == "stations" then
-				menu.displayStations(ftable, chain, index)
-			elseif mode == "actions" then
-				for _, action in ipairs({ { "rename", 1114 }, { "delete", 8931 } }) do
-					local target = action[1]
-					row = ftable:addRow(true, { fixed = false })
-					row[1]:setColSpan(3):createButton():setText(ReadText(1001, action[2]))
-					row[1].handlers.onClick = function () menu.openManagement(target) end
-				end
-			elseif mode == "delete" then
-				row = ftable:addRow(false, { fixed = false })
-				row[1]:setColSpan(3):createText(T(2020, chain.name), { wordwrap = true })
-				row = ftable:addRow(true, { fixed = false })
-				row[1]:setColSpan(3):createButton():setText(ReadText(1001, 8931))
-				row[1].handlers.onClick = menu.confirmDelete
-				row = ftable:addRow(true, { fixed = false })
-				row[1]:setColSpan(3):createButton():setText(T(1011))
-				row[1].handlers.onClick = menu.closeManagement
-			end
+			for column = 2, 3 do ftable:setColWidth(column, Helper.scaleX(30), false) end
+			menu.displayManagementHeader(ftable, 3, chain.name)
+			local row = ftable:addRow(false, { fixed = false })
+			row[1]:setColSpan(3):createText(T(2020, chain.name), { wordwrap = true })
+			row = ftable:addRow(true, { fixed = false })
+			row[1]:setColSpan(3):createButton():setText(ReadText(1001, 8931))
+			row[1].handlers.onClick = menu.confirmDelete
+			row = ftable:addRow(true, { fixed = false })
+			row[1]:setColSpan(3):createButton():setText(T(1011))
+			row[1].handlers.onClick = menu.closeManagement
 			-- Match vanilla: grow the frame only as far as its bounded table content.
 			frame.properties.height = math.min(height, ftable:getVisibleHeight() + 2 * border)
 		end
 		frame:display()
 	end
-
-	function component.displayStations(ftable, chain, index)
-		local members = menu.currentMembers()
-		-- Match the map's ascending name order, with station code breaking name ties.
-		-- Reconciliation returns a fresh display list, separate from saved membership.
-		for _, st in ipairs(members) do st.objectid = st.code or "" end
-		table.sort(members, Helper.sortNameAndObjectID)
-		local row = ftable:addRow(false, { fixed = false })
-		row[1]:setColSpan(4):createText(T(2005) .. " (" .. #chain.members .. ")", Helper.headerRow1Properties)
-		if #members == 0 then
-			row = ftable:addRow(false, { fixed = false })
-			row[1]:setColSpan(4):createText(T(1005), { wordwrap = true })
-		end
-		for _, st in ipairs(members) do
-			local function stationStyle()
-				local sn = menu.graph and menu.graph.stationNodes[st.id]
-				local w = sn and sn.worstWare and sn.wares[sn.worstWare]
-				return severityColor(sn and sn.severity or "ok") or Color["text_normal"],
-					w and warningReason(w.name or sn.worstWare, w.health)
-			end
-			row = ftable:addRow(true, { fixed = false })
-			row[1]:createButton({ bgColor = Color["button_background_hidden"], mouseOverText = function ()
-				local _, reason = stationStyle()
-				return st.name .. "\n" .. (reason and (reason .. "\n") or "") .. T(1013)
-			end }):setText(st.name, { halign = "left", color = function () local color = stationStyle(); return color end })
-			row[1].handlers.onClick = function ()
-				menu.openMenu("MapMenu", { 0, 0, true, st.id64 })
-			end
-			row[2]:createButton({ mouseOverText = T(3030) })
-			setCenteredButtonIcon(row[2], "stationbuildst_lsov")
-			row[2].handlers.onClick = function ()
-				menu.openMenu("StationOverviewMenu", { 0, 0, st.id64 })
-			end
-			row[3]:createButton({ mouseOverText = T(3103), active = GetComponentData(st.id64, "isplayerowned") })
-			setCenteredButtonIcon(row[3], "mapst_plotmanagement")
-			row[3].handlers.onClick = function ()
-				if not GetComponentData(st.id64, "isplayerowned") then return end
-				menu.openMenu("StationConfigurationMenu", { 0, 0, st.id64 })
-			end
-			row[4]:createButton({ mouseOverText = T(1016) }):setText("-", { halign = "center" })
-			row[4].handlers.onClick = function ()
-				local selected = SCV_Store.selected()
-				if selected ~= chain then return end
-				SCV_Store.removeStation(index, st.id)
-				menu.markDirty()
-			end
-		end
-	end
-
-
 
 	return component
 end

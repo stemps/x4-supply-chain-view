@@ -51,8 +51,9 @@ for runtime in (LuaRuntime, LuaJITRuntime):
         function ReadText(_,id)
             if id==2000 then return '=ReadText90210-2000=' end
             if id==2001 then return nil end
-            if id==2002 then return false end
             if id==2003 then error('missing multiple-selection label') end
+            if id==2006 then return false end
+            if id==2007 then error('missing multiple-selection remove label') end
             return tostring(id)
         end
         function ConvertStringTo64Bit(id) return id end
@@ -79,10 +80,11 @@ for runtime in (LuaRuntime, LuaJITRuntime):
         assert(SCV_Store.contains(1,{id='1',code='code1'}) and opened==1)
         assert(#SCV_Store.get(2).members==0, 'label fallback must not change the action target')
         actions={}; SCV_Interact.buildActions()
-        assert(actions[2].text=='SCV#2002: SCV#2001: '..name)
+        assert(actions[2].text=='SCV#2006: '..name)
         interact.selectedotherobjects={'1','2'}
         actions={}; SCV_Interact.buildActions()
         assert(actions[2].text=='SCV#2003: SCV#2001: '..name..' 1')
+        assert(actions[3].text=='SCV#2007: SCV#2006: '..name..' 1')
         actions[2].script()
         assert(#SCV_Store.get(1).members==2 and #SCV_Store.get(2).members==0)
         local count=#logs

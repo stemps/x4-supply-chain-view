@@ -7,6 +7,7 @@
     <t id="1004">Nessuna catena di approvvigionamento selezionata</t>
     <t id="1005">Fai clic destro su una o più stazioni della mappa, tue o di un'altra fazione, e scegli Catena di approvvigionamento per crearne una o aggiungerle a una esistente.</t>
     <t id="1008">Elimina questa catena di approvvigionamento</t>
+    <t id="1009">Rinomina questa catena di approvvigionamento</t>
     <t id="1010">Crea</t>
     <t id="1011">Annulla</t>
     <t id="1013">Mostra sulla mappa</t>
@@ -15,8 +16,9 @@
     <t id="1016">Rimuovi da questa catena</t>
     <t id="2000">Crea nuova catena di approvvigionamento</t>
     <t id="2001">Aggiungi a "%s"</t>
-    <t id="2002">%s \(già presente\)</t>
     <t id="2003">%s \(+%s\)</t>
+    <t id="2006">Rimuovi da "%s"</t>
+    <t id="2007">%s \(-%s\)</t>
     <t id="2004">Altre %s non mostrate</t>
     <t id="2005">Stazioni</t>
     <t id="2010">Assegna un nome alla nuova catena. Verranno aggiunte %s stazioni.</t>
@@ -32,6 +34,7 @@
     <t id="3015">%s fornitori, %s destinatari</t>
     <t id="3020">Queste stazioni erano già nella catena.</t>
     <t id="3021">Aggiunte %s stazioni.</t>
+    <t id="3029">Rimosse %s stazioni.</t>
     <t id="3022">Impossibile trovare %s stazioni, che non vengono mostrate.</t>
     <t id="3025">Impossibile trovare %s stazione, che non viene mostrata.</t>
     <t id="3023">Dati di stoccaggio non disponibili per %s stazioni. I collegamenti restano visibili; le quantità sconosciute sono indicate con ?.</t>

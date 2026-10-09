@@ -7,6 +7,7 @@
     <t id="1004">Ninguna cadena de suministro seleccionada</t>
     <t id="1005">Haz clic derecho en una o varias estaciones del mapa, tuyas o de otra facción, y elige Cadena de suministro para crear una o añadirlas a una existente.</t>
     <t id="1008">Eliminar esta cadena de suministro</t>
+    <t id="1009">Renombrar esta cadena de suministro</t>
     <t id="1010">Crear</t>
     <t id="1011">Cancelar</t>
     <t id="1013">Mostrar en el mapa</t>
@@ -15,8 +16,9 @@
     <t id="1016">Quitar de esta cadena de suministro</t>
     <t id="2000">Crear cadena de suministro</t>
     <t id="2001">Añadir a "%s"</t>
-    <t id="2002">%s \(ya incluida\)</t>
     <t id="2003">%s \(+%s\)</t>
+    <t id="2006">Quitar de "%s"</t>
+    <t id="2007">%s \(-%s\)</t>
     <t id="2004">%s más sin mostrar</t>
     <t id="2005">Estaciones</t>
     <t id="2010">Asigna un nombre a la nueva cadena. Se añadirán %s estaciones.</t>
@@ -32,6 +34,7 @@
     <t id="3015">%s proveedores, %s receptores</t>
     <t id="3020">Estas estaciones ya estaban en esta cadena de suministro.</t>
     <t id="3021">Se han añadido %s estaciones.</t>
+    <t id="3029">Se han quitado %s estaciones.</t>
     <t id="3022">No se encontraron %s estaciones y no se muestran.</t>
     <t id="3025">No se encontró %s estación y no se muestra.</t>
     <t id="3023">Información de almacenamiento no disponible para %s estaciones. Los enlaces siguen visibles; las cantidades desconocidas se indican con ?.</t>

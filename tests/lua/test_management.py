@@ -113,14 +113,17 @@ menu.mode='chain'; menu.display()
 local function toolbarTable() return frames[5].tables[1] end
 local function toolbar() return toolbarTable().rows[1] end
 local row=toolbar()
-for _,i in ipairs({1,2,3,4,6}) do assert(row[i].properties.active==false) end
+for _,i in ipairs({1,2,3}) do assert(row[i].properties.active==false) end
+assert(#row==4 and row[4].properties.active~=false, 'only the cog works without a chain')
 row[1].handlers.onClick(); row[3].handlers.onClick()
 assert(SCV_Store.count()==0)
 assert(row[2].options[1].id=='0')
-assert(row[5].icon=='menu_options' and row[6].text=='...', 'cog immediately precedes actions')
-row[5].handlers.onClick()
+assert(row[4].icon=='menu_options', 'cog is the last toolbar button')
+row[4].handlers.onClick()
 assert(menu.managementMode=='settings' and frames[1].properties.closeOnUnhandledClick)
 assert(frames[1].tables[1].rows[2][1].checked==true, 'settings work without a selected chain')
+assert(#frames[1].tables[1].rows==2, 'no chain actions without a chain')
+assert(frames[1].tables[1].rows[1][1].text=='Settings', 'Settings heading only without a chain')
 menu.onCloseElement('back',1)
 assert(not frames[1] and closed==0)
 assert(graphRect.x==Helper.frameBorder)
@@ -129,8 +132,8 @@ assert(not frames[2], 'toolbar must not create a foreground frame over expanded 
 assert(toolbarTable().properties.width==graphRect.width/2, 'toolbar matches LSO half-width proportions')
 assert(toolbarTable().properties.x==graphRect.x+graphRect.width/4, 'toolbar is centered')
 assert(toolbarTable().widths[1]==Helper.scaleY(Helper.standardButtonHeight), 'navigation buttons are square')
-assert(menu.toolbarGeometry.anchorX>toolbarTable().properties.x and
-    menu.toolbarGeometry.anchorX<toolbarTable().properties.x+toolbarTable().properties.width)
+assert(menu.toolbarGeometry.settingsX==toolbarTable().properties.x+toolbarTable().properties.width-toolbarTable().widths[4],
+    'overlays open below the cog')
 
 -- Presentation refreshes never query or restore native scroll positions.
 local savedGraph, savedBuilds = menu.graph, builds
@@ -147,7 +150,7 @@ assert(not row[1].properties.active and not row[3].properties.active)
 local singleBuilds=builds
 row[1].handlers.onClick(); row[3].handlers.onClick()
 assert(select(2,SCV_Store.selected())==1 and builds==singleBuilds)
-assert(row[2].properties.mouseOverText==SCV_Store.get(1).name)
+assert(row[2].properties.mouseOverText==SCV_Store.get(1).name..'\\n1 stations', 'station count moved into the tooltip')
 SCV_Store.create('Chain 2',{})
 menu.display()
 for _,button in ipairs({1,3}) do
@@ -164,17 +167,17 @@ assert(#row[2].options==8 and row[2].options[8].text=='Chain 8')
 assert(row[1].properties.active and row[3].properties.active)
 
 local graph,flow,refresh,before=menu.graph,menu.flowchart,menu.refreshState,builds
-row[5].handlers.onClick()
+row[4].handlers.onClick()
 local settings=frames[1].tables[1].rows[2]
 assert(settings[2].text=='Show docks/subordinates')
 assert(settings[1].properties.width==Helper.standardTextHeight and settings[1].properties.height==Helper.standardTextHeight)
 assert(frames[1].tables[1].widths[1]==Helper.scaleX(Helper.standardTextHeight))
 local settingsHeader=frames[1].tables[1].rows[1]
-assert(settingsHeader[1].text=='Settings' and settingsHeader[3].text=='x')
+assert(settingsHeader[1].text==SCV_Store.get(1).name and settingsHeader[3].text=='x', 'the chain names the popover')
 assert(settingsHeader[3].handlers.onClick==menu.closeManagement)
 settingsHeader[3].handlers.onClick()
 assert(not frames[1] and closed==0, 'settings X closes only its overlay')
-toolbar()[5].handlers.onClick()
+toolbar()[4].handlers.onClick()
 settings=frames[1].tables[1].rows[2]
 settings[1].handlers.onClick(nil,false)
 assert(menu.managementMode=='settings' and not frames[1].tables[1].rows[2][1].checked)
@@ -184,25 +187,26 @@ assert(SCV_Store.getShowLogistics() and frames[1].tables[1].rows[2][1].checked)
 assert(menu.graph==graph and menu.refreshState==refresh and builds==before)
 menu.onCloseElement('close',1)
 assert(not frames[1] and closed==0, 'outside-click close dismisses only settings')
-toolbar()[5].handlers.onClick(); toolbar()[5].handlers.onClick()
+toolbar()[4].handlers.onClick(); toolbar()[4].handlers.onClick()
 assert(not frames[1], 'second cog click dismisses settings')
-toolbar()[5].handlers.onClick(); toolbar()[6].handlers.onClick()
-assert(menu.managementMode=='actions', 'actions replace settings')
-menu.closeManagement()
 flow=menu.flowchart -- toggling recreates native presentation, but not graph data
 menu.expandedNode={collapse=function() collapsed=true end}
 row[4].handlers.onClick()
-assert(collapsed and menu.expandedNode==nil and menu.managementMode=='stations')
+assert(collapsed and menu.expandedNode==nil and menu.managementMode=='settings')
+-- The chain actions live in the cog menu, under the selected chain's name.
+local actions=frames[1].tables[1].rows
+assert(#actions==4, 'no separate chain name row')
+assert(actions[3][1].text=='Rename this supply chain' and actions[4][1].text=='Delete this supply chain')
 assert(menu.graph==graph and menu.flowchart==flow and menu.refreshState==refresh and builds==before)
 local p=frames[1].properties
 assert(p.x>=5 and p.x+p.width<=1275 and p.y+p.height<=715)
 menu.onUpdate(); assert(refreshes==1 and frames[1].updates>0)
 menu.onCloseElement('back',1)
 assert(not frames[1] and closed==0 and menu.graph==graph)
-menu.toggleManagement('stations'); menu.toggleManagement('stations'); assert(not frames[1])
+menu.toggleManagement('settings'); menu.toggleManagement('settings'); assert(not frames[1])
 
-menu.openManagement('actions')
-frames[1].tables[1].rows[2][1].handlers.onClick()
+menu.openManagement('settings')
+frames[1].tables[1].rows[3][1].handlers.onClick()
 assert(menu.managementMode=='rename')
 local edit=frames[1].tables[1].rows[2]
 edit[1].handlers.onTextChanged(nil,' Renamed '); edit[2].handlers.onClick()
@@ -241,7 +245,7 @@ assert(SCV_Store.get(1).name=='Keyboard rename' and menu.nameEntry==nil)
 menu.notice='Added 7 stations.'; menu.missingMembers=2
 menu.graph.structureChanged=true; menu.graph.refreshFailed=true; menu.graph.lockedCount=3
 menu.updateStatusStrip()
-assert(#toolbar()==6 and frames[3])
+assert(#toolbar()==4 and frames[3])
 local status=frames[3].tables[1]
 assert(#status.rows==5 and status.rows[1][1].text:find('could not be found',1,true))
 assert(status.rows[5][1].text=='Added 7 stations.')
@@ -271,18 +275,13 @@ menu.notice=string.rep('Long translated feedback ',100); menu.updateStatusStrip(
 assert(frames[3].tables[1]:getFullHeight()>frames[3].properties.height)
 assert(frames[3].properties.height==frames[3].tables[1].properties.maxVisibleHeight)
 menu.notice=nil; menu.noticeUntil=nil; menu.updateStatusStrip()
-menu.openManagement('stations')
-assert(#frames[1].tables[1].rows==3, 'no duplicate status block')
-
--- Remove a member, rebuild once, and restore the panel. No chain deletion occurs.
-local rows=frames[1].tables[1].rows
-rows[#rows][4].handlers.onClick(); assert(menu.managementMode=='stations' and menu.refreshState==nil)
-menu.display(); assert(menu.managementMode=='stations' and #SCV_Store.get(1).members==0)
+menu.openManagement('settings')
+assert(#frames[1].tables[1].rows==4, 'no duplicate status block')
 menu.closeManagement()
 toolbar()[2].handlers.onDropDownConfirmed(nil,'8')
 assert(select(2,SCV_Store.selected())==8 and menu.refreshState==nil)
 menu.display(); row=toolbar(); assert(row[1].properties.active and row[3].properties.active)
-menu.openManagement('stations')
+menu.openManagement('settings')
 row[3].handlers.onClick()
 assert(select(2,SCV_Store.selected())==1, 'next wraps from last to first')
 assert(menu.managementMode==nil and menu.refreshState==nil)
@@ -304,13 +303,11 @@ menu.openManagement('delete'); frames[1].tables[1].rows[3][1].handlers.onClick()
 assert(SCV_Store.count()==7 and menu.managementMode==nil)
 menu.display()
 
--- A large station list scrolls inside the overlay; square icons fill buttons.
+-- The cog icon is a centered square filling its button.
 local entries={}; for i=1,100 do entries[i]={id=tostring(i),code='code'..i} end
-SCV_Store.create('Large',entries); menu.display(); menu.openManagement('stations')
-local t=frames[1].tables[1]
-assert(#t.rows==102 and t:getVisibleHeight()<=t.properties.maxVisibleHeight)
-local icon=t.rows[3][2].iconprops
-assert(icon.width==39 and icon.height==39 and icon.x==3 and icon.y==0 and icon.scaling==false)
+SCV_Store.create('Large',entries); menu.display(); menu.openManagement('settings')
+local icon=toolbar()[4].iconprops
+assert(icon.width==icon.height and icon.scaling==false)
 before=builds; menu.closeManagement(); assert(builds==before)
 menu.onCloseElement('back',5); assert(closed==1)
 

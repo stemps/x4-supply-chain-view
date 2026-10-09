@@ -7,6 +7,7 @@
     <t id="1004">Nenhuma cadeia de suprimentos selecionada</t>
     <t id="1005">Clique com o botão direito em uma ou mais estações no mapa, suas ou de outra facção, e escolha Cadeia de suprimentos para criar uma ou adicionar estações a uma existente.</t>
     <t id="1008">Excluir esta cadeia de suprimentos</t>
+    <t id="1009">Renomear esta cadeia de suprimentos</t>
     <t id="1010">Criar</t>
     <t id="1011">Cancelar</t>
     <t id="1013">Mostrar no mapa</t>
@@ -15,8 +16,9 @@
     <t id="1016">Remover desta cadeia de suprimentos</t>
     <t id="2000">Criar cadeia de suprimentos</t>
     <t id="2001">Adicionar a "%s"</t>
-    <t id="2002">%s \(já incluída\)</t>
     <t id="2003">%s \(+%s\)</t>
+    <t id="2006">Remover de "%s"</t>
+    <t id="2007">%s \(-%s\)</t>
     <t id="2004">Mais %s não exibidas</t>
     <t id="2005">Estações</t>
     <t id="2010">Dê um nome à nova cadeia de suprimentos. Serão adicionadas %s estações.</t>
@@ -32,6 +34,7 @@
     <t id="3015">%s fornecedores, %s recebedores</t>
     <t id="3020">Estas estações já estavam nesta cadeia de suprimentos.</t>
     <t id="3021">%s estações adicionadas.</t>
+    <t id="3029">%s estações removidas.</t>
     <t id="3022">Não foi possível encontrar %s estações, que não são exibidas.</t>
     <t id="3025">Não foi possível encontrar %s estação, que não é exibida.</t>
     <t id="3023">Informações de armazenamento indisponíveis para %s estações. As conexões continuam visíveis; quantidades desconhecidas aparecem como ?.</t>

@@ -111,7 +111,7 @@ end
 -- What the entries do
 -- ---------------------------------------------------------------------------------
 
--- Both actions hand off through SCV_Store.pending rather than menu parameters. The context
+-- All actions hand off through SCV_Store.pending rather than menu parameters. The context
 -- menu and the screen share one Lua environment, so a shared table is simpler than the
 -- parameter plumbing, and none of it needs to survive a save.
 local function openScreen(m)
@@ -132,6 +132,15 @@ local function actionAddTo(m, index, stationIds)
 	-- screen otherwise, and the second one reads as a menu entry that did nothing.
 	SCV_Store.setPending({ mode = "chain", index = index, added = added,
 	                       requested = #stationIds })
+	openScreen(m)
+end
+
+-- Removal is cheap to undo: roles and ignored warnings are kept per chain by station
+-- code, so re-adding a station restores them. Hence no confirmation step.
+local function actionRemoveFrom(m, index, stationIds)
+	local removed = SCV_Store.removeStations(index, stationIds)
+	SCV_Store.select(index)
+	SCV_Store.setPending({ mode = "chain", index = index, removed = removed })
 	openScreen(m)
 end
 
@@ -166,26 +175,36 @@ function SCV_Interact.buildActions()
 		local shown = math.min(#chains, config.maxListedChains)
 		for i = 1, shown do
 			local chain = chains[i]
-			-- Say how many of the selected stations are NOT yet in this chain, so picking
-			-- the right one does not require remembering what is already where.
-			local missing = 0
+			-- Split the selection by membership: Add takes the stations not yet in this
+			-- chain, Remove the ones already in it. A mixed selection gets both entries,
+			-- side by side; a single station always gets exactly one.
+			local outside, inside = {}, {}
 			for _, entry in ipairs(stations) do
-				if not SCV_Store.contains(i, entry) then
-					missing = missing + 1
+				local list = SCV_Store.contains(i, entry) and inside or outside
+				list[#list + 1] = entry
+			end
+			if #outside > 0 then
+				local label = T(2001, chain.name)       -- Add to "<name>"
+				if #stations > 1 then
+					label = T(2003, label, tostring(#outside)) -- Add to "<name>" (+n)
 				end
+				m.insertInteractionContent(SECTION, {
+					text   = label,
+					active = true,
+					script = function () actionAddTo(m, i, outside) end,
+				})
 			end
-			local label = T(2001, chain.name)       -- Add to "<name>"
-			if missing == 0 then
-				label = T(2002, label)              -- Add to "<name>" (already in)
-			elseif #stations > 1 then
-				label = T(2003, label, tostring(missing)) -- Add to "<name>" (+n)
+			if #inside > 0 then
+				local label = T(2006, chain.name)       -- Remove from "<name>"
+				if #stations > 1 then
+					label = T(2007, label, tostring(#inside)) -- Remove from "<name>" (-n)
+				end
+				m.insertInteractionContent(SECTION, {
+					text   = label,
+					active = true,
+					script = function () actionRemoveFrom(m, i, inside) end,
+				})
 			end
-
-			m.insertInteractionContent(SECTION, {
-				text   = label,
-				active = true,
-				script = function () actionAddTo(m, i, stations) end,
-			})
 		end
 
 		if #chains > shown then
