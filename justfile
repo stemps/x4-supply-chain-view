@@ -15,11 +15,6 @@ default:
 # Run every mod check (stops on the first failure).
 check: translations test lint syntax xml validate
 
-# Require every neutral entry in every supported language, across all pages.
-translations:
-    uv run python tests/translations/test_translations.py
-    uv run python tools/check_sources.py translations
-
 # Check mod references and diff selectors in src/ against base game and DLC.
 validate:
     uv run --project "{{toolkit}}/tools/x4validate" x4validate "{{justfile_directory()}}/src" --reference "{{reference}}"
@@ -71,70 +66,72 @@ xml:
     uv run --with lxml python tools/check_sources.py xml "{{reference}}"
 
 # ---------------------------------------------------------------------------
-# Shared tasks: keep this block identical in every mod repository.
+# Shared tasks from x4-modkit. Keep this block identical to `x4mod justfile`;
+# `x4mod doctor` (part of test-release) fails when it drifts.
 # ---------------------------------------------------------------------------
+
+x4mod := env('X4MOD', 'x4mod')
+
+# Every translation matches the English source src/t/0001.xml: coverage, escapes and formatting.
+translations:
+    {{x4mod}} translations
 
 # Release gate: the mod checks plus the release tooling tests.
 check-release: check test-release
 
-# Exercise releases using temporary repositories and local remotes only.
+# Release tooling tests, including live checks of this repository's manifests, manual and configs.
 test-release:
-    uv run --with markdown-it-py==4.0.0 python tests/release/test_release.py
-    uv run --with markdown-it-py==4.0.0 python tests/release/test_manual_bbcode.py
-    uv run python tests/release/test_nexus.py
-    uv run --with markdown-it-py==4.0.0 python tests/release/test_archive.py
-    uv run --with markdown-it-py==4.0.0 python tests/release/test_release_support.py
-    uv run --with markdown-it-py==4.0.0 python tests/release/test_workshop.py
-    uv run python tests/release/test_discord.py
+    {{x4mod}} doctor
+    {{x4mod}} test
 
 # Validate, record, push, package and publish a release from clean main.
 release:
-    uv run --with markdown-it-py==4.0.0 python scripts/release.py
+    {{x4mod}} release
 
 # Package src/ from the working tree, including uncommitted files.
 build-zip:
-    uv run python scripts/release.py build-zip
+    {{x4mod}} build-zip
 
 # Stage src/ as a Workshop folder (ws_ manifest, packed catalog) in dist/workshop/local.
 build-workshop:
-    uv run python scripts/release.py build-workshop
+    {{x4mod}} build-workshop
 
 # Minimal folder for the one-time WorkshopTool publish that creates the Workshop item.
 workshop-placeholder:
-    uv run python scripts/release.py workshop-placeholder
+    {{x4mod}} workshop-placeholder
 
 # Publish or resume an existing tagged release on Nexus Mods.
 publish-nexus tag *args:
-    uv run --with markdown-it-py==4.0.0 python scripts/release.py publish-nexus "{{tag}}" {{args}}
+    {{x4mod}} publish-nexus "{{tag}}" {{args}}
 
 # Publish or resume a tagged release on the Steam Workshop (WorkshopTool; Steam must be running).
 publish-steam tag *args:
-    uv run --with markdown-it-py==4.0.0 python scripts/release.py publish-steam "{{tag}}" {{args}}
+    {{x4mod}} publish-steam "{{tag}}" {{args}}
 
 # Announce a published release in the Discord channel named in discord.json.
 publish-discord tag *args:
-    uv run python scripts/release.py publish-discord "{{tag}}" {{args}}
+    {{x4mod}} publish-discord "{{tag}}" {{args}}
 
 # Render and open the manual at a release tag, branch or commit without publishing anything.
 nexus-description ref:
-    uv run --with markdown-it-py==4.0.0 python scripts/manual_bbcode.py "{{ref}}"
+    {{x4mod}} description "{{ref}}"
 
 # Render and open the manual as Steam BBCode at a release tag, branch or commit without publishing anything.
 steam-description ref:
-    uv run --with markdown-it-py==4.0.0 python scripts/manual_bbcode.py "{{ref}}" --target steam
+    {{x4mod}} description "{{ref}}" --target steam
 
 # Junction src/ into the game's extensions folder for in-game testing.
 link:
-    & ./scripts/game_link.ps1 link
+    {{x4mod}} link
 
 # Remove the extensions junction; never deletes a regular folder or the dev files.
 unlink:
-    & ./scripts/game_link.ps1 unlink
+    {{x4mod}} unlink
 
 # Show whether the extensions folder holds a junction, a copied folder or nothing.
 link-status:
-    & ./scripts/game_link.ps1 status
+    {{x4mod}} link-status
 
 # Follow the game's debug log; press Ctrl+C to stop.
 log:
-    & ./scripts/game_log.ps1
+    {{x4mod}} log

@@ -1,0 +1,8 @@
+{
+  "format_exemptions": {
+    "90210/2010": "KNOWN ISSUE: Lua passes a count and the native station/stations label; translations dropped the label %s. 14 locales always use the plural (wrong for 1), French uses station\\(s\\). Fix by giving translations their own singular and plural entries.",
+    "90210/3021": "KNOWN ISSUE: same as 90210/2010 (Added %s %s.).",
+    "90210/3029": "KNOWN ISSUE: same as 90210/2010 (Removed %s %s.).",
+    "90210/3175": "Correct as is: Turkish writes the percent sign before the number (%50), and T(3175) is called without arguments, so the text is never formatted."
+  }
+}

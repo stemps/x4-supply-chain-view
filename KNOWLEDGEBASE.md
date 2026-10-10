@@ -90,6 +90,10 @@ parentheses as `\(` and `\)` in text XML; use XML comments for translator notes.
 Raw-XML text mocks hid this bug; tests now model comment removal. Extra Lua format
 arguments are ignored, which can conceal stale localized placeholder contracts.
 Avoid `station(s)` for pluralization; use the native singular/plural labels.
+MEASURED 2026-10-10 by the shared format check: texts 2010, 3021 and 3029 pass
+the native label as a second `%s`, and all 15 locales drop it; 42 of 45 always use
+the plural (wrong for 1) and French uses `station\(s\)`. They are KNOWN ISSUE
+exemptions in `translations.json` until each gets its own singular/plural text.
 
 The September reference snapshot had 16 language files but enabled only 13 in
 `libraries/languages.xml`: Turkish/Ukrainian were commented out and Bulgarian
@@ -328,8 +332,10 @@ not imply a known balance. Tooltips separate inventory, rate and coverage facts.
 
 Text lookup failures produce `SCV#<id>` with arguments, deduplicating diagnostics
 per page/ID per addon load. Each call retries the read; failed formatting returns
-the raw template. Translation coverage checks all neutral page/ID pairs in every
-locale, duplicates, empty values and parentheses, but cannot prove language quality.
+the raw template. Translation coverage (`x4mod translations`) checks all neutral
+page/ID pairs in every locale, duplicates, empty values, parentheses, em dashes and
+format contracts, but cannot prove language quality. `translations.json` lists the
+entries exempt from the format contract, each with its reason.
 
 ### Scanning, refresh and record identity
 

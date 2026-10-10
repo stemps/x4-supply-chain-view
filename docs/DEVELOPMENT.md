@@ -7,6 +7,10 @@ lifetimes, compatibility contracts and the native acceptance checklist.
 
 - [uv](https://docs.astral.sh/uv/) Python package manager
 - [Just](https://github.com/casey/just) for running convenience tasks
+- [x4-modkit](https://github.com/stemps/x4-modkit), the shared release,
+  publishing, `just link` and `just log` tooling. Install it once with
+  `uv tool install git+https://github.com/stemps/x4-modkit` (or
+  `uv tool install --editable <path to a local checkout>`) so `x4mod` is on PATH
 - [X4 Claude Toolkit](https://github.com/WingedGuardian/x4-claude-toolkit)
   (optional but recommended)
 - For Steam Workshop releases: Egosoft's "X Tools" (free, in the Steam library
@@ -15,12 +19,12 @@ lifetimes, compatibility contracts and the native acceptance checklist.
 ## Repository layout
 
 - `src/` is the mod: exactly the files the game loads and every release ships.
-- `tests/lua/` holds the Lua behaviour suites with a fake engine,
-  `tests/release/` the release tooling tests and `tests/translations/` the
-  translation checks.
-- `tools/` holds the source checkers (Lua syntax, globals, XML and schemas);
-  `scripts/` holds release, publishing, the `just link` junction and `just log`.
+- `tests/lua/` holds the Lua behaviour suites with a fake engine.
+- `tools/` holds the source checkers (Lua syntax, globals, XML and schemas).
   `docs/` and `images/` hold documentation and promotional material.
+- Release, publishing, `just link` and `just log` come from x4-modkit. The
+  "Shared tasks" block at the end of the `justfile` must stay identical to
+  `x4mod justfile`; `just test-release` fails when it drifts.
 
 ## Local development setup
 
@@ -35,8 +39,9 @@ layout.
 `just link` creates a junction from the game's `extensions/supply_chain_view` to
 `src/`, so the game loads your working copy directly. `just unlink` removes only
 the junction and `just link-status` shows its target. The extensions folder comes
-from `X4_EXTENSIONS`, then the toolkit's `.claude/x4-paths.env`, then
-`X4_GAME\extensions`. `just log` follows the game's `debug.txt`.
+from `X4_EXTENSIONS`, then `X4_GAME\extensions`, each read from the environment
+or from x4-modkit's `~/.config/x4-modkit/paths.env` (`x4mod config` shows what
+resolved). `just log` follows the game's `debug.txt`.
 
 ## Running checks
 
@@ -47,16 +52,28 @@ subdirectory):
 just                 # list tasks
 just check           # every mod check; fail fast
 just check-release   # check plus the release tooling tests
+just translations    # all game languages match the English source (see below)
 just test            # all behavioral suites
 just lint            # undefined Lua globals
 just syntax          # compile all Lua files without executing them
 just xml             # XML parsing and UI addon schema validation
 just validate        # x4validate on src/ against base game + DLC
-just test-release    # release workflow against temporary local Git remotes
+just test-release    # x4-modkit drift check and release tooling tests against this repo
 just build-zip       # package the current src/ for local testing
 ```
 
 The recipes are written for PowerShell (Windows).
+
+## Translations
+
+English lives only in `src/t/0001.xml` (root `<language>`, no id); do not add a
+`0001-l044.xml`. Each of the 15 other game locales has `src/t/0001-lNNN.xml` with
+`<language id="NNN">` and exactly the English page/text ids. `just translations`
+(x4-modkit, part of `just check`) also rejects empty or duplicate entries, unescaped
+parentheses (write `\(` and `\)`), em dashes, and placeholders, `{page,t}`
+references or `\n` line breaks that differ from English. An entry whose formatting
+legitimately differs is listed in `translations.json` with its reason.
+Translation files need a full game restart; `/reloadui` does not reload them.
 
 ## Building a local test ZIP
 
@@ -82,8 +99,8 @@ pushes, then publishes to Nexus and afterwards to the Steam Workshop.
   Workshop item. The Workshop copy gets its own `content.xml` with the
   Workshop id `ws_<item id>`, and requires the Workshop copy of UI Extensions
   (`ws_3477279743`) instead of `kuerteeUIExtensionsAndHUD`.
-- `XRCATTOOL` must point to `XRCatTool.exe` (or be set in the toolkit's
-  `x4-paths.env`) to pack the Workshop catalog.
+- `XRCATTOOL` must point to `XRCatTool.exe` (environment variable or
+  x4-modkit's `paths.env`) to pack the Workshop catalog.
 
 Until the Workshop item exists, `steam.json` has no `published_file_id` and
 releases stop at the Steam check. Create it once: run `just workshop-placeholder`
@@ -106,8 +123,7 @@ BBCode from the released commit's manual and opens it in Windows Notepad:
 description editor and preview it before saving; neither page description is
 published by an API.
 
-The converter uses `markdown-it-py==4.0.0`, supplied automatically by `uv` in the
-relevant Just recipes. It supports paragraphs, headings, bold, italic, absolute
+The converter uses `markdown-it-py==4.0.0`, installed with x4-modkit. It supports paragraphs, headings, bold, italic, absolute
 HTTP/HTTPS/mailto links, and nested bullet or numbered lists. Markdown source line
 wraps become spaces; explicit line breaks are preserved. Tables, images, code,
 HTML, blockquotes, horizontal rules, strikethrough and task lists are rejected
