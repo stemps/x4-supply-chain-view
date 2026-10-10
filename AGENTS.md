@@ -19,6 +19,8 @@ instructions.
   - experiments performed and their relevant findings
 - Maintain a repo-root ARCHITECTURE.md with info about code organisation and
   module responsibilities.
+- The mod is already released and used by players. Any new additions need to be
+  backwards compatible with existing older saves.
 - README.md and all files in `docs/` are end-user focused (players and mod
   developers) and maintained by the repo owner. Leave them alone.
 - Keep useful UI architecture notes in the root `ARCHITECTURE.md`; do not create
