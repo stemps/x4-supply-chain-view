@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.0 - 2026-10-10
+
+- Store producer / supplier toggle per supply chain, so the same station can play different roles in different chains
+- Icons instead of text labels for station buttons, consolidate all station actions in button bar
+
 ## 0.5.0 - 2026-10-08
 
 - Let user chose whether a station with both buy and sell orders should display as consumer or producer
